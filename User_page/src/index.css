@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* ─── Light mode CSS variables ────────────────────────────────────────────── */
+:root {
+  --bg:          #f8fafc;
+  --surface:     #ffffff;
+  --border:      #e2e8f0;
+  --text-main:   #111827;
+  --text-muted:  #6b7280;
+  --shadow:      0 4px 12px -2px rgb(0 0 0 / 0.06);
+}
+
+/* ─── Dark mode CSS variable overrides ────────────────────────────────────── */
+html.dark {
+  --bg:          #0f172a;
+  --surface:     #1e293b;
+  --border:      #334155;
+  --text-main:   #f1f5f9;
+  --text-muted:  #94a3b8;
+  --shadow:      0 4px 12px -2px rgb(0 0 0 / 0.4);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ─── Component classes ────────────────────────────────────────────────────── */
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition-colors duration-200 shadow-md;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-secondary text-white rounded-lg font-bold hover:bg-secondary-dark transition-colors duration-200 shadow-md;
+  }
+
+  /* .card uses CSS variables so it auto-switches with dark mode */
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+  }
+
+  /* Utility: hide scrollbars */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}

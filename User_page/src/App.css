@@ -1,0 +1,4 @@
+/* Reset Vite boilerplate — App-level layout is controlled by components */
+#root {
+  min-height: 100vh;
+}
