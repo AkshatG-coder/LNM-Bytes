@@ -6,19 +6,18 @@ import UserAccordion from '../components/UserAccordion';
 import { useOrders } from '../hooks/useOrders';
 import { type OrderStatus } from '../types';
 
-// ─── Tabs match the real backend status enum exactly ─────────────────────────
+// "accepted" tab removed — flow is: pending → preparing → ready
 const TABS: { status: OrderStatus; label: string; icon: string }[] = [
-  { status: 'pending',   label: 'New Orders',  icon: '🔥' },
-  { status: 'accepted',  label: 'Accepted',    icon: '👨‍🍳' },
-  { status: 'preparing', label: 'Preparing',   icon: '🍳' },
-  { status: 'ready',     label: 'Ready',       icon: '✅' },
-  { status: 'cancelled', label: 'Cancelled',   icon: '❌' },
+  { status: 'pending',   label: 'New Orders', icon: '🔥' },
+  { status: 'preparing', label: 'Preparing',  icon: '🍳' },
+  { status: 'ready',     label: 'Ready',      icon: '✅' },
+  { status: 'cancelled', label: 'Cancelled',  icon: '❌' },
 ];
 
 function Admin() {
   const {
     users, loading, error,
-    acceptOrder, rejectOrder, markPreparing, markReady,
+    acceptOrder, rejectOrder, markReady,
     refreshOrders
   } = useOrders();
 
@@ -26,7 +25,6 @@ function Admin() {
 
   const count = (s: OrderStatus) => users.filter(u => u.status === s).length;
 
-  // Revenue = sum of totalAmount for ready + delivered orders
   const revenue = users
     .filter(u => u.status === 'ready' || u.status === 'delivered')
     .reduce((acc, u) => acc + (u.totalAmount ?? 0), 0);
@@ -38,41 +36,33 @@ function Admin() {
       {/* Header */}
       <header className="flex justify-between items-center mb-8">
         <div>
-          <h1
-            className="text-2xl font-black tracking-tight"
-            style={{ color: 'var(--color-surface)' === '#1e293b' ? '#f1f5f9' : 'var(--text-main, #1f2937)' }}
-          >
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
             Kitchen Dashboard
           </h1>
           <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 font-medium">
-            Live order updates · auto-refreshes every 20s
+            Live order updates · auto-refreshes every 15s
           </p>
         </div>
         <button
           onClick={refreshOrders}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all shadow-sm disabled:opacity-50 border"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderColor: 'var(--color-surface)' === '#1e293b' ? '#334155' : '#f1f5f9',
-            color: 'inherit',
-          }}
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--border)', color: 'inherit' }}
         >
           {loading ? '⏳' : '🔄'} Refresh
         </button>
       </header>
 
-      {/* Error banner */}
       {error && (
         <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-700 dark:text-red-400 font-bold text-sm">
-          ⚠️ {error}. Make sure the backend is running on port 8081.
+          ⚠️ {error}. Make sure the backend is running.
         </div>
       )}
 
-      {/* Stats Row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard title="New Orders"  value={count('pending')}   icon="🔥" color="text-secondary-dark" bg="bg-secondary-light/10"  borderColor="border-secondary-light/20" />
-        <StatsCard title="Preparing"   value={count('preparing')} icon="🍳"  color="text-primary"        bg="bg-primary-light/10"    borderColor="border-primary-light/20"   />
+        <StatsCard title="Preparing"   value={count('preparing')} icon="🍳" color="text-primary"        bg="bg-primary-light/10"    borderColor="border-primary-light/20"   />
         <StatsCard title="Ready"       value={count('ready')}     icon="✅" color="text-green-600"      bg="bg-green-50"            borderColor="border-green-100"           />
         <StatsCard title="Revenue"     value={`₹${revenue}`}      icon="💰" color="text-white"          bg="bg-gradient-to-r from-primary to-primary-dark" borderColor="border-primary-dark/20" />
       </div>
@@ -80,11 +70,7 @@ function Admin() {
       {/* Tabs */}
       <div
         className="mb-6 border-b sticky top-0 backdrop-blur z-10 pt-2 transition-colors duration-300"
-        style={{
-          borderColor: 'var(--color-surface)' === '#1e293b' ? '#334155' : '#e5e7eb',
-          backgroundColor: 'var(--color-background)',
-          opacity: 0.97,
-        }}
+        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--color-background)', opacity: 0.97 }}
       >
         <div className="flex space-x-2 overflow-x-auto pb-2 no-scrollbar">
           {TABS.map(t => (
@@ -114,14 +100,9 @@ function Admin() {
           filteredUsers.map(user => (
             <UserAccordion
               key={user.userId}
-              userId={user.userId}
-              userName={user.userName}
-              status={user.status}
-              orders={user.orders}
-              totalAmount={user.totalAmount}
+              {...user}
               onAccept={acceptOrder}
               onReject={rejectOrder}
-              onPreparing={markPreparing}
               onReady={markReady}
             />
           ))

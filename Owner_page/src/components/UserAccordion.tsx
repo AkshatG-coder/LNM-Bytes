@@ -2,27 +2,26 @@ import { useState } from 'react';
 import { type UserData, type OrderStatus } from '../types';
 
 interface UserAccordionProps extends UserData {
-  onAccept:    (orderId: string) => void;
-  onReject:    (orderId: string) => void;
-  onPreparing: (orderId: string) => void;
-  onReady:     (orderId: string) => void;
+  onAccept: (orderId: string) => void;
+  onReject: (orderId: string) => void;
+  onReady:  (orderId: string) => void;
 }
 
-const STATUS_BADGE: Record<OrderStatus, { label: string; cls: string }> = {
-  pending:   { label: 'NEW ORDER',  cls: 'bg-yellow-900/50 text-yellow-200 border border-yellow-700/50' },
-  accepted:  { label: 'ACCEPTED',  cls: 'bg-blue-900/50   text-blue-200   border border-blue-700/50'   },
-  preparing: { label: 'PREPARING', cls: 'bg-orange-900/50 text-orange-200 border border-orange-700/50' },
-  ready:     { label: 'READY ✅',  cls: 'bg-green-900/50  text-green-200  border border-green-700/50'  },
-  delivered: { label: 'DELIVERED', cls: 'bg-purple-900/50 text-purple-200 border border-purple-700/50' },
-  cancelled: { label: 'CANCELLED', cls: 'bg-red-900/50    text-red-200    border border-red-700/50'    },
+// "accepted" removed — flow is: pending → preparing → ready
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  pending:   { label: '🆕 NEW ORDER',  cls: 'bg-yellow-900/50 text-yellow-200 border border-yellow-700/50' },
+  preparing: { label: '🍳 PREPARING',  cls: 'bg-orange-900/50 text-orange-200 border border-orange-700/50' },
+  ready:     { label: '✅ READY',       cls: 'bg-green-900/50  text-green-200  border border-green-700/50'  },
+  delivered: { label: '🚀 DELIVERED',  cls: 'bg-purple-900/50 text-purple-200 border border-purple-700/50' },
+  cancelled: { label: '❌ CANCELLED',  cls: 'bg-red-900/50    text-red-200    border border-red-700/50'    },
 };
 
 const UserAccordion = ({
   userId, userName, userEmail, userPhone, paymentType, paymentStatus,
   orders, status, totalAmount,
-  onAccept, onReject, onPreparing, onReady,
+  onAccept, onReject, onReady,
 }: UserAccordionProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(status === 'pending'); // auto-open new orders
 
   const grandTotal = totalAmount ??
     orders.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
@@ -34,9 +33,13 @@ const UserAccordion = ({
     : { icon: '💵', label: 'Cash', cls: 'bg-slate-700/60 text-slate-300 border-slate-600/40', sublabel: 'At Counter' };
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-lg hover:border-gray-600">
+    <div className={`border rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-lg ${
+      status === 'pending' ? 'bg-gray-800 border-yellow-700/40' :
+      status === 'preparing' ? 'bg-gray-800 border-orange-700/30' :
+      'bg-gray-800 border-gray-700'
+    }`}>
 
-      {/* ── HEADER (clickable) ── */}
+      {/* ── HEADER ── */}
       <div
         onClick={() => setIsOpen(o => !o)}
         className="p-5 cursor-pointer flex justify-between items-center gap-4"
@@ -47,25 +50,26 @@ const UserAccordion = ({
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${badge.cls}`}>
               {badge.label}
             </span>
-            {/* Payment method badge */}
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${paymentBadge.cls}`}>
               {paymentBadge.icon} {paymentBadge.label} · {paymentBadge.sublabel}
             </span>
           </div>
 
-          <div className="text-xs text-gray-400 flex items-center gap-2 font-medium flex-wrap">
+          {/* Email + Phone always visible in header */}
+          <div className="text-xs flex items-center gap-2 font-medium flex-wrap">
             <span className="bg-gray-700 px-2 py-0.5 rounded font-mono text-gray-300">
               #{userId.slice(-6).toUpperCase()}
             </span>
             <span className="text-gray-600">·</span>
-            <span>{orders.length} item{orders.length !== 1 ? 's' : ''}</span>
-            <span className="text-gray-600">·</span>
-            <span className="text-gray-400 truncate max-w-[160px]">{userEmail}</span>
+            <span className="text-blue-400 truncate max-w-[200px]">✉️ {userEmail}</span>
             {userPhone && (
               <>
                 <span className="text-gray-600">·</span>
-                <span className="text-blue-400 font-bold">📞 {userPhone}</span>
+                <span className="text-green-400 font-bold">📞 +91 {userPhone}</span>
               </>
+            )}
+            {!userPhone && (
+              <span className="text-gray-600 italic">no phone</span>
             )}
           </div>
         </div>
@@ -87,22 +91,23 @@ const UserAccordion = ({
       {isOpen && (
         <div className="border-t border-gray-700 bg-gray-800/50 p-5 animate-fade-in">
 
-          {/* Student profile card */}
-          <div className="mb-4 p-3 rounded-xl bg-gray-900/50 border border-gray-700/50 flex flex-wrap gap-4">
+          {/* Student profile */}
+          <div className="mb-4 p-3 rounded-xl bg-gray-900/50 border border-gray-700/50 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Student</div>
               <div className="text-sm font-bold text-gray-200">{userName}</div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Email</div>
-              <div className="text-sm font-medium text-blue-400">{userEmail}</div>
+              <div className="text-xs font-medium text-blue-400 break-all">{userEmail}</div>
             </div>
-            {userPhone && (
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Phone</div>
-                <div className="text-sm font-bold text-green-400">+91 {userPhone}</div>
-              </div>
-            )}
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Phone</div>
+              {userPhone
+                ? <div className="text-sm font-bold text-green-400">+91 {userPhone}</div>
+                : <div className="text-sm text-gray-600 italic">Not provided</div>
+              }
+            </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Payment</div>
               <div className="text-sm font-bold text-orange-300">{paymentBadge.icon} {paymentBadge.label} ({paymentBadge.sublabel})</div>
@@ -138,10 +143,16 @@ const UserAccordion = ({
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-700">
+                  <td colSpan={4} className="py-3 px-4 text-right text-xs font-black text-gray-400 uppercase tracking-wider">Total</td>
+                  <td className="py-3 px-4 text-right text-lg font-black text-orange-400">₹{grandTotal}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
-          {/* Action buttons */}
+          {/* Action buttons — 2-step flow: pending → preparing → ready */}
           <div className="mt-5 flex justify-end gap-3 pt-4 border-t border-gray-700/50">
 
             {status === 'pending' && (
@@ -156,18 +167,9 @@ const UserAccordion = ({
                   onClick={e => { e.stopPropagation(); onAccept(userId); }}
                   className="px-6 py-2.5 rounded-xl text-sm font-black text-white bg-orange-500 hover:bg-orange-600 shadow-lg shadow-orange-900/20 transition-all active:scale-95"
                 >
-                  ✅ Accept Order
+                  ✅ Accept & Start Preparing
                 </button>
               </>
-            )}
-
-            {status === 'accepted' && (
-              <button
-                onClick={e => { e.stopPropagation(); onPreparing(userId); }}
-                className="px-6 py-2.5 rounded-xl text-sm font-black text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/20 transition-all active:scale-95"
-              >
-                🍳 Start Preparing
-              </button>
             )}
 
             {status === 'preparing' && (
@@ -175,7 +177,7 @@ const UserAccordion = ({
                 onClick={e => { e.stopPropagation(); onReady(userId); }}
                 className="px-6 py-2.5 rounded-xl text-sm font-black text-white bg-green-600 hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all active:scale-95"
               >
-                🛎️ Mark as Ready
+                🛎️ Mark as Ready for Pickup
               </button>
             )}
 
@@ -184,22 +186,13 @@ const UserAccordion = ({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                 </svg>
-                Ready for Pickup
-              </div>
-            )}
-
-            {status === 'delivered' && (
-              <div className="flex items-center gap-2 text-purple-400 font-black text-sm bg-purple-900/20 px-4 py-2.5 rounded-xl border border-purple-800/30">
-                🚀 Delivered
+                Ready for Pickup — Student Notified ✅
               </div>
             )}
 
             {status === 'cancelled' && (
               <div className="flex items-center gap-2 text-red-400 font-black text-sm bg-red-900/20 px-4 py-2.5 rounded-xl border border-red-800/30">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Order Cancelled
+                ❌ Order Cancelled
               </div>
             )}
           </div>

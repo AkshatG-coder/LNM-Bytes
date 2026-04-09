@@ -28,25 +28,23 @@ const OrderItemSchema = new Schema({
 })
 
 const OrderSchema = new Schema({
-    // ─── User info (denormalized so owner sees student details) ────────────────
+    // ─── Unique human-readable order number (e.g. LNM-1042) ──────────────────
+    orderNumber: {
+        type: Number,
+        unique: true,
+    },
+
+    // ─── User info (denormalized so owner sees student details) ───────────────
     userId: {
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true,
     },
-    userName: {
-        type: String,
-        required: true,
-    },
-    userEmail: {
-        type: String,
-        required: true,
-    },
-    userPhone: {
-        type: String,
-        default: null,
-    },
-    // ──────────────────────────────────────────────────────────────────────────
+    userName:  { type: String, required: true },
+    userEmail: { type: String, required: true },
+    userPhone: { type: String, default: null  },
+
+    // ─── Store ────────────────────────────────────────────────────────────────
     storeId: {
         type: Schema.Types.ObjectId,
         ref: "Stores",
@@ -61,42 +59,30 @@ const OrderSchema = new Schema({
         required: true,
         min: 0,
     },
+
+    // ─── Status ───────────────────────────────────────────────────────────────
     status: {
         type: String,
-        enum: [
-            "pending",
-            "accepted",
-            "preparing",
-            "ready",
-            "delivered",
-            "cancelled"
-        ],
+        enum: ["pending", "accepted", "preparing", "ready", "delivered", "cancelled"],
         default: "pending",
     },
-    paymentType: {
-        type: String,
-        enum: ["online", "cash"],
-        required: true,
-        default: "cash",
-    },
-    paymentStatus: {
-        type: String,
-        enum: ["pending", "paid", "failed"],
-        default: "pending",
-    },
-    // For Cashfree integration (fill later)
-    cashfreeOrderId: {
-        type: String,
-        default: null,
-    },
-    orderNote: {
-        type: String,
-    },
-    deliveryType: {
-        type: String,
-        enum: ["pickup"],
-        default: "pickup",
-    },
+
+    // ─── Payment ──────────────────────────────────────────────────────────────
+    paymentType:   { type: String, enum: ["online", "cash"], required: true, default: "cash" },
+    paymentStatus: { type: String, enum: ["pending", "paid", "failed"],       default: "pending" },
+    cashfreeOrderId: { type: String, default: null },
+
+    // ─── Misc ─────────────────────────────────────────────────────────────────
+    orderNote:    { type: String, default: "" },
+    deliveryType: { type: String, enum: ["pickup"], default: "pickup" },
+
+    // ─── QR Code (generated when order is marked Ready) ──────────────────────
+    qrToken:      { type: String, default: null },
+    qrExpiresAt:  { type: Date,   default: null },
+    qrVerified:   { type: Boolean, default: false },
+    qrVerifiedAt: { type: Date,   default: null },
+
 }, { timestamps: true })
+
 
 export const OrderModel = mongoose.model("Orders", OrderSchema)

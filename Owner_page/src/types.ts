@@ -1,11 +1,12 @@
 // ─── Must match the backend Order_Schema.model.ts status enum exactly ────────
+// NOTE: "accepted" is intentionally removed — Accept button now goes straight to "preparing"
 export type OrderStatus =
   | 'pending'
-  | 'accepted'
   | 'preparing'
   | 'ready'
   | 'delivered'
   | 'cancelled';
+
 
 export type UserData = {
   userId: string;        // order _id (used as key + action handler arg)
