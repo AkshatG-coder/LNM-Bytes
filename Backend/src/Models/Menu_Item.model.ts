@@ -10,11 +10,23 @@ const MenuItemSchema = new Schema(
       type:String,
       required:false
     },
+    // 'price' always means the FULL portion price
     price: {
       type: Number,
       required: true,
       min: 0,
     },
+    // Half portion support
+    hasHalf: {
+      type: Boolean,
+      default: false,
+    },
+    halfPrice: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
     rating: {
       type: Number,
       default: 0,
@@ -46,3 +58,4 @@ const MenuItemSchema = new Schema(
 );
 
 export const MenuItemModel = mongoose.model("MenuItem", MenuItemSchema);
+

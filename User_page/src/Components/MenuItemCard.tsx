@@ -1,10 +1,13 @@
+import { useState } from "react"
 import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { add_item, increase_item, decrease_item } from "../Util/CartReducer"
 
 export interface MenuCardItemInterface {
   _id: string
   name: string
-  price: number
+  price: number          // full price
+  halfPrice?: number | null
+  hasHalf?: boolean
   image?: string
   isAvailable: boolean
   isVeg?: boolean
@@ -16,6 +19,8 @@ export function MenuItemCard({
   _id,
   name,
   price,
+  halfPrice,
+  hasHalf,
   image,
   isAvailable,
   isVeg,
@@ -25,12 +30,19 @@ export function MenuItemCard({
   const dispatch = useAppDispatch()
   const cart_items = useAppSelector((state) => state.Cart.items)
 
-  const cartItem = cart_items.find((item) => item.id === _id)
+  // Default to full portion
+  const [selectedPortion, setSelectedPortion] = useState<'full' | 'half'>('full')
+
+  const selectedPrice = selectedPortion === 'half' && halfPrice ? halfPrice : price
+
+  const cartItem = cart_items.find(
+    (item) => item.id === _id && item.portionSize === selectedPortion
+  )
   const qty = cartItem?.qty ?? 0
 
   function handleAdd() {
     if (cart_items.length === 0) {
-      dispatch(add_item({ id: _id, item_name: name, price, qty: 1, canteen_id: storeId }))
+      dispatch(add_item({ id: _id, item_name: name, price: selectedPrice, qty: 1, canteen_id: storeId, portionSize: selectedPortion }))
       return
     }
     if (cart_items[0].canteen_id !== storeId) {
@@ -38,14 +50,14 @@ export function MenuItemCard({
       return
     }
     if (cartItem) {
-      dispatch(increase_item(_id))
+      dispatch(increase_item({ id: _id, portionSize: selectedPortion }))
     } else {
-      dispatch(add_item({ id: _id, item_name: name, price, qty: 1, canteen_id: storeId }))
+      dispatch(add_item({ id: _id, item_name: name, price: selectedPrice, qty: 1, canteen_id: storeId, portionSize: selectedPortion }))
     }
   }
 
   function handleRemove() {
-    if (qty > 0) dispatch(decrease_item(_id))
+    if (qty > 0) dispatch(decrease_item({ id: _id, portionSize: selectedPortion }))
   }
 
   return (
@@ -89,8 +101,38 @@ export function MenuItemCard({
           )}
         </div>
 
+        {/* Full / Half Toggle */}
+        {hasHalf && halfPrice && isAvailable && (
+          <div
+            className="flex rounded-lg p-0.5 gap-0.5 border"
+            style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
+          >
+            <button
+              onClick={() => setSelectedPortion('full')}
+              className={`flex-1 py-1.5 rounded-md text-xs font-black transition-all ${
+                selectedPortion === 'full'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🍱 Full · ₹{price}
+            </button>
+            <button
+              onClick={() => setSelectedPortion('half')}
+              className={`flex-1 py-1.5 rounded-md text-xs font-black transition-all ${
+                selectedPortion === 'half'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🍜 Half · ₹{halfPrice}
+            </button>
+          </div>
+        )}
+
+        {/* Price row */}
         <div className="flex justify-between items-center">
-          <span className="text-primary font-extrabold text-xl">₹{price}</span>
+          <span className="text-primary font-extrabold text-xl">₹{selectedPrice}</span>
           {isAvailable && (
             <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-md bg-green-100 text-green-700 font-bold border border-green-200">
               In Stock

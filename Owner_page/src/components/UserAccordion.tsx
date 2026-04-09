@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { type UserData, type OrderStatus } from '../types';
 
 interface UserAccordionProps extends UserData {
-  onAccept:    (orderId: string) => void;  // pending   → accepted
-  onReject:    (orderId: string) => void;  // pending   → cancelled
-  onPreparing: (orderId: string) => void;  // accepted  → preparing
-  onReady:     (orderId: string) => void;  // preparing → ready
+  onAccept:    (orderId: string) => void;
+  onReject:    (orderId: string) => void;
+  onPreparing: (orderId: string) => void;
+  onReady:     (orderId: string) => void;
 }
 
-// ─── Status badge config — maps every real backend status ────────────────────
 const STATUS_BADGE: Record<OrderStatus, { label: string; cls: string }> = {
   pending:   { label: 'NEW ORDER',  cls: 'bg-yellow-900/50 text-yellow-200 border border-yellow-700/50' },
   accepted:  { label: 'ACCEPTED',  cls: 'bg-blue-900/50   text-blue-200   border border-blue-700/50'   },
@@ -19,21 +18,25 @@ const STATUS_BADGE: Record<OrderStatus, { label: string; cls: string }> = {
 };
 
 const UserAccordion = ({
-  userId, userName, orders, status, totalAmount,
+  userId, userName, userEmail, userPhone, paymentType, paymentStatus,
+  orders, status, totalAmount,
   onAccept, onReject, onPreparing, onReady,
 }: UserAccordionProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Use backend totalAmount when available; compute from items as fallback
   const grandTotal = totalAmount ??
     orders.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
 
   const badge = STATUS_BADGE[status] ?? STATUS_BADGE.pending;
 
+  const paymentBadge = paymentType === 'online'
+    ? { icon: '💳', label: 'Online', cls: paymentStatus === 'paid' ? 'bg-green-800/40 text-green-300 border-green-700/40' : 'bg-yellow-800/40 text-yellow-300 border-yellow-700/40', sublabel: paymentStatus === 'paid' ? 'Paid' : 'Pending' }
+    : { icon: '💵', label: 'Cash', cls: 'bg-slate-700/60 text-slate-300 border-slate-600/40', sublabel: 'At Counter' };
+
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-lg hover:border-gray-600">
 
-      {/* ── HEADER (clickable) ─────────────────────────────────────────────── */}
+      {/* ── HEADER (clickable) ── */}
       <div
         onClick={() => setIsOpen(o => !o)}
         className="p-5 cursor-pointer flex justify-between items-center gap-4"
@@ -44,13 +47,26 @@ const UserAccordion = ({
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${badge.cls}`}>
               {badge.label}
             </span>
+            {/* Payment method badge */}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${paymentBadge.cls}`}>
+              {paymentBadge.icon} {paymentBadge.label} · {paymentBadge.sublabel}
+            </span>
           </div>
-          <div className="text-xs text-gray-400 flex items-center gap-2 font-medium">
+
+          <div className="text-xs text-gray-400 flex items-center gap-2 font-medium flex-wrap">
             <span className="bg-gray-700 px-2 py-0.5 rounded font-mono text-gray-300">
               #{userId.slice(-6).toUpperCase()}
             </span>
             <span className="text-gray-600">·</span>
             <span>{orders.length} item{orders.length !== 1 ? 's' : ''}</span>
+            <span className="text-gray-600">·</span>
+            <span className="text-gray-400 truncate max-w-[160px]">{userEmail}</span>
+            {userPhone && (
+              <>
+                <span className="text-gray-600">·</span>
+                <span className="text-blue-400 font-bold">📞 {userPhone}</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -67,9 +83,31 @@ const UserAccordion = ({
         </div>
       </div>
 
-      {/* ── EXPANDED CONTENT ───────────────────────────────────────────────── */}
+      {/* ── EXPANDED CONTENT ── */}
       {isOpen && (
         <div className="border-t border-gray-700 bg-gray-800/50 p-5 animate-fade-in">
+
+          {/* Student profile card */}
+          <div className="mb-4 p-3 rounded-xl bg-gray-900/50 border border-gray-700/50 flex flex-wrap gap-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Student</div>
+              <div className="text-sm font-bold text-gray-200">{userName}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Email</div>
+              <div className="text-sm font-medium text-blue-400">{userEmail}</div>
+            </div>
+            {userPhone && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Phone</div>
+                <div className="text-sm font-bold text-green-400">+91 {userPhone}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Payment</div>
+              <div className="text-sm font-bold text-orange-300">{paymentBadge.icon} {paymentBadge.label} ({paymentBadge.sublabel})</div>
+            </div>
+          </div>
 
           {/* Items table */}
           <div className="overflow-x-auto rounded-lg border border-gray-700 bg-gray-900/30">
@@ -77,6 +115,7 @@ const UserAccordion = ({
               <thead>
                 <tr className="bg-gray-900/50 text-gray-400 uppercase text-xs tracking-wider">
                   <th className="py-3 px-4 font-semibold">Item</th>
+                  <th className="py-3 px-4 font-semibold">Portion</th>
                   <th className="py-3 px-4 font-semibold text-right">Price</th>
                   <th className="py-3 px-4 font-semibold text-center">Qty</th>
                   <th className="py-3 px-4 font-semibold text-right">Total</th>
@@ -84,8 +123,13 @@ const UserAccordion = ({
               </thead>
               <tbody className="divide-y divide-gray-700/50">
                 {orders.map(order => (
-                  <tr key={order.id} className="text-gray-300 hover:bg-gray-700/30 transition-colors">
+                  <tr key={`${order.id}-${order.portionSize}`} className="text-gray-300 hover:bg-gray-700/30 transition-colors">
                     <td className="py-3 px-4 font-medium text-white">{order.itemName}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${order.portionSize === 'full' ? 'bg-orange-900/50 text-orange-300' : 'bg-blue-900/50 text-blue-300'}`}>
+                        {order.portionSize === 'full' ? '🍱 Full' : '🍜 Half'}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 text-right text-gray-400">₹{order.price}</td>
                     <td className="py-3 px-4 text-center">
                       <span className="inline-block px-2 py-0.5 rounded bg-gray-700 text-xs font-bold text-gray-300">×{order.quantity}</span>
@@ -97,10 +141,9 @@ const UserAccordion = ({
             </table>
           </div>
 
-          {/* ── Action buttons — each step drives a real backend transition ── */}
+          {/* Action buttons */}
           <div className="mt-5 flex justify-end gap-3 pt-4 border-t border-gray-700/50">
 
-            {/* pending: Accept or Reject */}
             {status === 'pending' && (
               <>
                 <button
@@ -118,7 +161,6 @@ const UserAccordion = ({
               </>
             )}
 
-            {/* accepted: Mark as Preparing */}
             {status === 'accepted' && (
               <button
                 onClick={e => { e.stopPropagation(); onPreparing(userId); }}
@@ -128,7 +170,6 @@ const UserAccordion = ({
               </button>
             )}
 
-            {/* preparing: Mark as Ready */}
             {status === 'preparing' && (
               <button
                 onClick={e => { e.stopPropagation(); onReady(userId); }}
@@ -138,7 +179,6 @@ const UserAccordion = ({
               </button>
             )}
 
-            {/* ready: display-only badge */}
             {status === 'ready' && (
               <div className="flex items-center gap-2 text-green-400 font-black text-sm bg-green-900/20 px-4 py-2.5 rounded-xl border border-green-800/30">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,14 +188,12 @@ const UserAccordion = ({
               </div>
             )}
 
-            {/* delivered */}
             {status === 'delivered' && (
               <div className="flex items-center gap-2 text-purple-400 font-black text-sm bg-purple-900/20 px-4 py-2.5 rounded-xl border border-purple-800/30">
                 🚀 Delivered
               </div>
             )}
 
-            {/* cancelled */}
             {status === 'cancelled' && (
               <div className="flex items-center gap-2 text-red-400 font-black text-sm bg-red-900/20 px-4 py-2.5 rounded-xl border border-red-800/30">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

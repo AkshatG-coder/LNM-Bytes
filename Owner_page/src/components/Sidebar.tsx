@@ -15,9 +15,10 @@ const Sidebar = () => {
   const navigate  = useNavigate();
   const { isDark, toggle } = useTheme();
 
-  // Read display names from localStorage (set on login)
   const ownerName  = localStorage.getItem('OWNER_NAME')       || 'Owner';
   const storeName  = localStorage.getItem('OWNER_STORE_NAME') || 'LNM BYTES';
+  const ownerRole  = localStorage.getItem('OWNER_ROLE')       || 'owner';
+  const isSuperAdmin = ownerRole === 'superadmin';
   const initials   = ownerName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
   const handleLogout = () => {
@@ -79,6 +80,23 @@ const Sidebar = () => {
             </NavLink>
           );
         })}
+
+        {/* Super Admin only link */}
+        {isSuperAdmin && (
+          <NavLink
+            to="/admin/superadmin"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              location.pathname.startsWith('/admin/superadmin')
+                ? 'bg-yellow-500 text-white shadow-md shadow-yellow-500/20'
+                : isDark
+                  ? 'text-yellow-400 hover:bg-yellow-500/20 hover:text-yellow-300 font-medium'
+                  : 'text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 font-medium'
+            }`}
+          >
+            <span className="text-lg">👑</span>
+            <span className="font-bold text-sm tracking-tight">Super Admin</span>
+          </NavLink>
+        )}
       </nav>
 
       {/* Bottom section: Owner profile + Theme toggle + Logout */}

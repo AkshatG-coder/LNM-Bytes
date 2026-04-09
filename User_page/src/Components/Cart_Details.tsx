@@ -1,21 +1,63 @@
 import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { CartItemCard } from "./Cart_ItemCard"
 import { clear_all_item } from "../Util/CartReducer"
+import { useAppSelector as useSelector } from "../Util/hook"
+import api from "../Util/api"
+import { useState } from "react"
 
 export function Cart_Details() {
   const cart_details = useAppSelector((state) => state.Cart.items)
+  const user = useSelector((state) => state.User.user)
   const dispatch = useAppDispatch()
+  const [placing, setPlacing] = useState(false)
 
   const total = cart_details.reduce((acc, item) => acc + item.price * item.qty, 0)
 
-  function HandleClearCart() {
+  function handleClearCart() {
     dispatch(clear_all_item())
-    localStorage.removeItem("cart")
   }
 
-  function HandlePay() {
-    dispatch(clear_all_item())
-    alert("Order Received! We will deliver soon 🎉")
+  async function placeOrder(paymentType: 'cash' | 'online') {
+    if (!user) {
+      alert("Please login to place an order!")
+      return
+    }
+
+    setPlacing(true)
+    try {
+      const items = cart_details.map(item => ({
+        menuItemId: item.id,
+        name: item.item_name,
+        quantity: item.qty,
+        price: item.price,
+        portionSize: item.portionSize,
+      }))
+
+      const response = await api.post('/order/create', {
+        userId: user.id,
+        storeId: cart_details[0].canteen_id,
+        items,
+        totalAmount: total,
+        paymentType,
+      })
+
+      if (response.data?.success) {
+        dispatch(clear_all_item())
+        if (paymentType === 'cash') {
+          alert("✅ Order placed! Please pick it up at the counter after it's ready.")
+        } else {
+          // Cashfree integration placeholder
+          alert("✅ Order placed! Pay at the counter when ready (online payment coming soon).")
+        }
+      } else {
+        alert("Failed to place order. Please try again.")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to place order. Please try again.")
+    } finally {
+      setPlacing(false)
+    }
   }
 
   return (
@@ -43,7 +85,7 @@ export function Cart_Details() {
 
           {cart_details.length > 0 && (
             <button
-              onClick={HandleClearCart}
+              onClick={handleClearCart}
               className="text-sm font-bold text-red-400 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-100"
             >
               Clear
@@ -57,10 +99,12 @@ export function Cart_Details() {
         {cart_details.length > 0 ? (
           cart_details.map((item, index) => (
             <CartItemCard
-              key={index}
+              key={`${item.id}__${item.portionSize}__${index}`}
               item_name={item.item_name}
               price={item.price}
               qty={item.qty}
+              portionSize={item.portionSize}
+              itemId={item.id}
             />
           ))
         ) : (
@@ -96,18 +140,20 @@ export function Cart_Details() {
 
             {/* Pay Online */}
             <button
-              onClick={HandlePay}
-              className="w-full bg-primary text-white py-3.5 rounded-xl font-black text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
+              onClick={() => placeOrder('online')}
+              disabled={placing}
+              className="w-full bg-primary text-white py-3.5 rounded-xl font-black text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-60"
             >
-              Pay Online ₹{total.toFixed(2)}
+              {placing ? '⏳ Placing...' : `💳 Pay Online ₹${total.toFixed(2)}`}
             </button>
 
-            {/* Pay on Delivery */}
+            {/* Pay at Counter */}
             <button
-              onClick={HandlePay}
-              className="w-full border-2 border-primary/30 text-primary py-3 rounded-xl font-black text-base hover:bg-primary/5 transition-all active:scale-[0.98]"
+              onClick={() => placeOrder('cash')}
+              disabled={placing}
+              className="w-full border-2 border-primary/30 text-primary py-3 rounded-xl font-black text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-60"
             >
-              Pay on Delivery
+              {placing ? '⏳ Placing...' : `💵 Pay at Counter · ₹${total.toFixed(2)}`}
             </button>
           </div>
         </div>

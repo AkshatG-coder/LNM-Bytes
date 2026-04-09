@@ -3,10 +3,11 @@ import type { MenuItem, MenuCategory } from "../types";
 import api from "./api";
 import { getStoreId } from "./config";
 
-
 export type NewMenuItem = {
   name: string;
-  price: number;
+  price: number;       // full price
+  hasHalf: boolean;
+  halfPrice?: number;
   category: MenuCategory;
   isVeg: boolean;
   isAvailable: boolean;
@@ -36,15 +37,17 @@ export const useMenu = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const addItem = async (item: NewMenuItem): Promise<boolean> => {
     try {
       setSaving(true);
       setError(null);
-      const response = await api.post(`/menu_item/create/${getStoreId()}`, item);
+      const payload = {
+        ...item,
+        halfPrice: item.hasHalf ? item.halfPrice : null,
+      };
+      const response = await api.post(`/menu_item/create/${getStoreId()}`, payload);
       if (response.data?.success) {
         await fetchItems();
         return true;
@@ -100,14 +103,8 @@ export const useMenu = () => {
   };
 
   return {
-    items,
-    loading,
-    saving,
-    error,
-    addItem,
-    updateItem,
-    deleteItem,
-    toggleAvailability,
+    items, loading, saving, error,
+    addItem, updateItem, deleteItem, toggleAvailability,
     refreshItems: fetchItems,
     STORE_ID: getStoreId(),
   };

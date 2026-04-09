@@ -1,32 +1,28 @@
 import { Router } from "express";
 import {
-  GetUserAll_Orders,
-  GetOwnerAll_Orders,
-  GetSingleOrder_Details,
-  CancelOrder,
-  TrackOrderStatus,
-  AcceptOrder,
-  RejectOrder,
-  MarkPreparing,
-  MarkReady,
-  GetDailySales
+    CreateOrder,
+    GetUserAll_Orders,
+    GetOwnerAll_Orders,
+    GetSingleOrder_Details,
+    CancelOrder,
+    AcceptOrder,
+    MarkPreparing,
+    MarkReady,
+    RejectOrder,
+    TrackOrderStatus,
 } from "../Controller/Order_Controller";
 
-const OrderRouter = Router();
+const Order_Router = Router();
 
-// ─── Customer routes ──────────────────────────────────────────────────────────
-OrderRouter.get("/user/:userId",               GetUserAll_Orders);
-OrderRouter.get("/track/:orderId",             TrackOrderStatus);
-OrderRouter.post("/cancel/:order_id/:userId",  CancelOrder);
+Order_Router.post("/create", CreateOrder);
+Order_Router.get("/user/:userId", GetUserAll_Orders);
+Order_Router.get("/store/:storeId", GetOwnerAll_Orders);
+Order_Router.get("/track/:orderId", TrackOrderStatus);
+Order_Router.get("/:order_id", GetSingleOrder_Details);
+Order_Router.patch("/cancel/:order_id/:userId", CancelOrder);
+Order_Router.patch("/accept/:orderId", AcceptOrder);
+Order_Router.patch("/reject/:orderId", RejectOrder);
+Order_Router.patch("/preparing/:orderId", MarkPreparing);
+Order_Router.patch("/ready/:orderId", MarkReady);
 
-// ─── Owner routes ─────────────────────────────────────────────────────────────
-OrderRouter.get("/store/:storeId",             GetOwnerAll_Orders);
-OrderRouter.get("/sales/daily/:storeId",       GetDailySales);         // daily analytics — must be before catch-all
-OrderRouter.get("/:order_id",                  GetSingleOrder_Details); // keep last (catch-all id)
-
-OrderRouter.patch("/accept/:orderId",          AcceptOrder);      // pending   → accepted
-OrderRouter.patch("/reject/:orderId",          RejectOrder);      // pending   → cancelled
-OrderRouter.patch("/preparing/:orderId",       MarkPreparing);    // accepted  → preparing
-OrderRouter.patch("/ready/:orderId",           MarkReady);        // preparing → ready
-
-export { OrderRouter };
+export { Order_Router };

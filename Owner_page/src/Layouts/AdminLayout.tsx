@@ -13,7 +13,17 @@ function AdminLayout() {
   // Guard: redirect to login if no valid auth in localStorage
   useEffect(() => {
     const auth = readAuth();
-    if (!auth) {
+    if (!auth || !auth.token) {
+      navigate('/', { replace: true });
+      return;
+    }
+    // Superadmin must go to their own panel
+    if (auth.role === 'superadmin') {
+      navigate('/superadmin', { replace: true });
+      return;
+    }
+    // Unapproved owners go back to login/waiting
+    if (!auth.isApproved) {
       navigate('/', { replace: true });
     }
   }, [navigate]);

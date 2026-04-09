@@ -58,7 +58,18 @@ function Landing(): React.JSX.Element {
     e.preventDefault();
     if (!email || !password) { setError('Email and password are required.'); return; }
     const auth = await login(email, password);
-    if (auth) navigate('/admin');
+    if (auth) {
+      if (!auth.isApproved) {
+        // Stay on landing page — waiting screen will show
+        return;
+      }
+      // Superadmin gets their own panel
+      if (auth.role === 'superadmin') {
+        navigate('/superadmin');
+      } else {
+        navigate('/admin');
+      }
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -71,6 +82,55 @@ function Landing(): React.JSX.Element {
     const auth = await register(name, email, password, storeName);
     if (auth) navigate('/admin');
   };
+
+  // ─── Auth state from localStorage ──────────────────────────────────────────
+  const existingAuth = (() => {
+    try {
+      const token = localStorage.getItem('OWNER_TOKEN');
+      const isApproved = localStorage.getItem('OWNER_IS_APPROVED') === 'true';
+      const ownerName = localStorage.getItem('OWNER_NAME') || '';
+      const storeName = localStorage.getItem('OWNER_STORE_NAME') || '';
+      return token ? { isApproved, ownerName, storeName } : null;
+    } catch { return null; }
+  })();
+
+  // ─── Waiting screen for unapproved owners ────────────────────────────────
+  if (existingAuth && !existingAuth.isApproved) {
+    return (
+      <div
+        className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=2070&auto=format&fit=crop')" }}
+      >
+        <div className="absolute inset-0 bg-primary/45 backdrop-blur-sm" />
+        <div className="relative z-10 w-full max-w-md px-4">
+          <div className="rounded-3xl p-10 shadow-2xl border border-white/20 text-center" style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }}>
+            <div className="text-6xl mb-6">⏳</div>
+            <h2 className="text-2xl font-black text-gray-800 dark:text-gray-100">Awaiting Approval</h2>
+            <p className="mt-3 text-gray-500 font-medium">
+              Hi <span className="font-black text-primary">{existingAuth.ownerName}</span>! Your account for{' '}
+              <span className="font-black">{existingAuth.storeName}</span> is pending super admin approval.
+            </p>
+            <p className="mt-2 text-sm text-gray-400 font-medium">
+              You'll be able to access your dashboard once approved. Please check back later.
+            </p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('OWNER_TOKEN');
+                localStorage.removeItem('OWNER_STORE_ID');
+                localStorage.removeItem('OWNER_NAME');
+                localStorage.removeItem('OWNER_STORE_NAME');
+                localStorage.removeItem('OWNER_IS_APPROVED');
+                window.location.reload();
+              }}
+              className="mt-8 px-6 py-3 rounded-xl font-black text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 transition-all"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -138,21 +198,36 @@ function Landing(): React.JSX.Element {
             ))}
           </div>
 
-          {/* Error banner */}
-          {error && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
-              <span className="text-red-400 flex-shrink-0 mt-0.5">⚠️</span>
-              <span className="text-sm font-bold text-red-600">{error}</span>
-            </div>
-          )}
+          {/* Error banner — context-aware */}
+          {error && (() => {
+            const isNotFound = error.toLowerCase().includes('no account') || error.toLowerCase().includes('not found');
+            const isWrongPw  = error.toLowerCase().includes('incorrect password') || error.toLowerCase().includes('wrong password');
+            const isServer   = error.toLowerCase().includes('server') || error.toLowerCase().includes('connect');
+            const icon = isNotFound ? '🔍' : isWrongPw ? '🔑' : isServer ? '🌐' : '⚠️';
+            return (
+              <div className="mb-5 px-4 py-3.5 rounded-xl border flex items-start gap-3 animate-fade-in"
+                style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fff5f5', borderColor: isDark ? 'rgba(239,68,68,0.3)' : '#fecaca' }}
+              >
+                <span className="text-lg flex-shrink-0">{icon}</span>
+                <div>
+                  <p className="text-sm font-black text-red-500">
+                    {isNotFound ? 'Account not found' : isWrongPw ? 'Wrong password' : isServer ? 'Connection error' : 'Error'}
+                  </p>
+                  <p className="text-xs font-medium mt-0.5" style={{ color: isDark ? '#fca5a5' : '#ef4444' }}>{error}</p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── LOGIN FORM ── */}
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-5">
               <Field label="Business Email" type="email" placeholder="admin@lnmbytes.com"
-                value={email} onChange={setEmail} error={!!error} />
+                value={email} onChange={setEmail}
+                error={!!error && (error.toLowerCase().includes('email') || error.toLowerCase().includes('account') || error.toLowerCase().includes('required'))} />
               <Field label="Password" type="password" placeholder="••••••••"
-                value={password} onChange={setPassword} error={!!error} />
+                value={password} onChange={setPassword}
+                error={!!error && (error.toLowerCase().includes('password') || error.toLowerCase().includes('incorrect'))} />
               <button
                 type="submit"
                 disabled={loading}

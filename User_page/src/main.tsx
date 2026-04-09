@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import {createBrowserRouter,Router, RouterProvider} from "react-router-dom"
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { MenuCard } from './Components/MenuCard.tsx'
 import { CanteenShop } from './Components/CanteenShop.tsx'
 import { Provider } from 'react-redux'
@@ -10,28 +10,57 @@ import { store } from './Util/store.ts'
 import { Cart_Details } from './Components/Cart_Details.tsx'
 import { CanteenStoreAddition } from './Components/SuperAdminStoreAdditon.tsx'
 import ErrorPage from './Components/Error_Page.tsx'
-const router=createBrowserRouter([
+import LoginPage from './Components/LoginPage.tsx'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+
+// Auth guard component — redirect to /login if not authenticated
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const state = store.getState()
+  const isAuthenticated = state.User.isAuthenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
+const router = createBrowserRouter([
   {
-    path:"/",
-    element:<App/>,
-    errorElement:<ErrorPage/>,
-    children:[{
-      path:"/",
-      element:<CanteenShop/>
-    },{
-      path:"/menu_card_shop/:id",
-      element:<MenuCard/>
-    },{
-      path:"/cart",
-      element:<Cart_Details/>
-    },{
-      path:"/canteenstoreAddition",
-      element:<CanteenStoreAddition/>
-    }]
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/",
+    element: <App />,
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        path: "/",
+        element: <RequireAuth><CanteenShop /></RequireAuth>
+      },
+      {
+        path: "/menu_card_shop/:id",
+        element: <RequireAuth><MenuCard /></RequireAuth>
+      },
+      {
+        path: "/cart",
+        element: <RequireAuth><Cart_Details /></RequireAuth>
+      },
+      {
+        path: "/canteenstoreAddition",
+        element: <RequireAuth><CanteenStoreAddition /></RequireAuth>
+      }
+    ]
   }
 ])
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ""
+
 createRoot(document.getElementById('root')!).render(
-  <Provider store={store}>
-    <RouterProvider router={router}/>
-  </Provider>,
+  <StrictMode>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <Provider store={store}>
+        <RouterProvider router={router} />
+      </Provider>
+    </GoogleOAuthProvider>
+  </StrictMode>
 )

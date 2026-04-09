@@ -8,8 +8,12 @@ export type OrderStatus =
   | 'cancelled';
 
 export type UserData = {
-  userId: string;
+  userId: string;        // order _id (used as key + action handler arg)
   userName: string;
+  userEmail: string;
+  userPhone: string | null;
+  paymentType: 'online' | 'cash';
+  paymentStatus: 'pending' | 'paid' | 'failed';
   status: OrderStatus;
   orders: OrderItem[];
   totalAmount?: number;
@@ -21,6 +25,7 @@ export type OrderItem = {
   itemName: string;
   quantity: number;
   price: number;
+  portionSize: 'full' | 'half';
 };
 
 export type MenuCategory = 'snacks' | 'drinks' | 'meals' | 'dessert' | 'other';
@@ -28,7 +33,9 @@ export type MenuCategory = 'snacks' | 'drinks' | 'meals' | 'dessert' | 'other';
 export type MenuItem = {
   _id: string;
   name: string;
-  price: number;
+  price: number;      // full price
+  halfPrice?: number | null;
+  hasHalf?: boolean;
   category: MenuCategory;
   isVeg: boolean;
   isAvailable: boolean;
@@ -57,3 +64,18 @@ export type Store = {
   isActive: boolean;
 };
 
+// ─── For Super Admin Panel ────────────────────────────────────────────────────
+export type OwnerRecord = {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'owner' | 'superadmin';
+  isApproved: boolean;
+  storeId: {
+    _id: string;
+    name: string;
+    status: string;
+    location: string;
+  } | null;
+  createdAt: string;
+};
