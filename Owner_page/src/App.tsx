@@ -6,6 +6,7 @@ import MenuEditor from "./Layouts/MenuEditor";
 import DailySales from "./Layouts/DailySales";
 import ShopSettings from "./Layouts/ShopSettings";
 import SuperAdminLayout from "./Layouts/SuperAdminLayout";
+import QRScanner from "./Layouts/QRScanner";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route index element={<Admin />} />
           <Route path="menu" element={<MenuEditor />} />
           <Route path="sales" element={<DailySales />} />
+          <Route path="scan" element={<QRScanner />} />
           <Route path="settings" element={<ShopSettings />} />
         </Route>
 

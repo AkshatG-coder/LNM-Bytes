@@ -25,6 +25,7 @@ export const useOrders = () => {
         // ── KEY FIX: userId here is the ORDER _id (used as the accordion key
         //    and passed to action handlers as the orderId)
         userId: order._id as string,
+        orderNumber: order.orderNumber ?? undefined,
 
         // ── User info from denormalized fields on the order document
         userName:    order.userName  || `Order #${(order._id as string).slice(-6).toUpperCase()}`,

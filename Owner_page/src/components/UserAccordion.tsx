@@ -5,6 +5,7 @@ interface UserAccordionProps extends UserData {
   onAccept: (orderId: string) => void;
   onReject: (orderId: string) => void;
   onReady:  (orderId: string) => void;
+  orderNumber?: number;
 }
 
 // "accepted" removed — flow is: pending → preparing → ready
@@ -18,7 +19,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 
 const UserAccordion = ({
   userId, userName, userEmail, userPhone, paymentType, paymentStatus,
-  orders, status, totalAmount,
+  orders, status, totalAmount, orderNumber,
   onAccept, onReject, onReady,
 }: UserAccordionProps) => {
   const [isOpen, setIsOpen] = useState(status === 'pending'); // auto-open new orders
@@ -47,6 +48,11 @@ const UserAccordion = ({
         <div className="flex flex-col gap-1.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-gray-100 text-base truncate">{userName}</span>
+            {orderNumber && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gray-700 text-gray-300 font-mono">
+                #{orderNumber}
+              </span>
+            )}
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${badge.cls}`}>
               {badge.label}
             </span>

@@ -10,6 +10,7 @@ export type OrderStatus =
 
 export type UserData = {
   userId: string;        // order _id (used as key + action handler arg)
+  orderNumber?: number;  // human-readable order number e.g. 1042
   userName: string;
   userEmail: string;
   userPhone: string | null;
@@ -20,6 +21,7 @@ export type UserData = {
   totalAmount?: number;
   createdAt?: string;
 };
+
 
 export type OrderItem = {
   id: string;

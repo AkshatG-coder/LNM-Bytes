@@ -7,8 +7,10 @@ const navItems = [
   { icon: '📊', label: 'Dashboard',     to: '/admin' },
   { icon: '🍔', label: 'Menu Editor',   to: '/admin/menu' },
   { icon: '📈', label: 'Daily Sales',   to: '/admin/sales' },
+  { icon: '📷', label: 'Scan QR',       to: '/admin/scan' },
   { icon: '⚙️', label: 'Shop Settings', to: '/admin/settings' },
 ];
+
 
 const Sidebar = () => {
   const location  = useLocation();
