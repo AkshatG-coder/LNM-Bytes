@@ -13,42 +13,59 @@ const fail = (res: any, code: number, msg: string) =>
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
 const CreateOrder = asyncHandler(async (req, res) => {
-    const { userId, storeId, items, totalAmount, paymentType, orderNote } = req.body;
+    try {
+        const { userId, storeId, items, totalAmount, paymentType, orderNote } = req.body;
 
-    if (!userId || !storeId || !items || items.length === 0 || !totalAmount || !paymentType)
-        return fail(res, 400, "All fields are required");
+        console.log("=== CreateOrder called ===");
+        console.log("Body:", JSON.stringify(req.body, null, 2));
 
-    const user = await UserModel.findById(userId);
-    if (!user) return fail(res, 404, "User not found");
+        if (!userId || !storeId || !items || items.length === 0 || !totalAmount || !paymentType)
+            return fail(res, 400, "All fields are required");
 
-    const lastOrder = await OrderModel.findOne({}, { orderNumber: 1 }).sort({ orderNumber: -1 });
-    const nextOrderNumber = ((lastOrder as any)?.orderNumber ?? 1000) + 1;
+        // Validate ObjectIds before hitting Mongoose (prevents CastError 500)
+        if (!mongoose.Types.ObjectId.isValid(userId))
+            return fail(res, 400, "Invalid userId format");
+        if (!mongoose.Types.ObjectId.isValid(storeId))
+            return fail(res, 400, "Invalid storeId format");
 
-    const newOrder = await OrderModel.create({
-        orderNumber: nextOrderNumber,
-        userId,
-        userName:  user.name,
-        userEmail: user.email,
-        userPhone: user.phone || null,
-        storeId,
-        items,
-        totalAmount,
-        paymentType,
-        paymentStatus: "pending",
-        orderNote: orderNote || "",
-        deliveryType: "pickup",
-        status: "pending",
-    });
+        const user = await UserModel.findById(userId);
+        if (!user) return fail(res, 404, "User not found");
 
-    sendNotification(storeId.toString(), {
-        type: "newOrder",
-        orderId:     newOrder._id,
-        orderNumber: (newOrder as any).orderNumber,
-        message:     `New order #${(newOrder as any).orderNumber} from ${user.name}!`,
-        paymentType,
-    });
+        const lastOrder = await OrderModel.findOne({}, { orderNumber: 1 }).sort({ orderNumber: -1 });
+        const nextOrderNumber = ((lastOrder as any)?.orderNumber ?? 1000) + 1;
 
-    return res.status(201).json(new ApiResponse(201, true, "Order created successfully", newOrder));
+        const newOrder = await OrderModel.create({
+            orderNumber: nextOrderNumber,
+            userId,
+            userName:  user.name,
+            userEmail: user.email,
+            userPhone: user.phone || null,
+            storeId,
+            items,
+            totalAmount,
+            paymentType,
+            paymentStatus: "pending",
+            orderNote: orderNote || "",
+            deliveryType: "pickup",
+            status: "pending",
+        });
+
+        sendNotification(storeId.toString(), {
+            type: "newOrder",
+            orderId:     newOrder._id,
+            orderNumber: (newOrder as any).orderNumber,
+            message:     `New order #${(newOrder as any).orderNumber} from ${user.name}!`,
+            paymentType,
+        });
+
+        return res.status(201).json(new ApiResponse(201, true, "Order created successfully", newOrder));
+    } catch (err: any) {
+        console.error("=== CreateOrder ERROR ===");
+        console.error("Name:", err.name);
+        console.error("Message:", err.message);
+        console.error("Stack:", err.stack);
+        throw err; // re-throw so asyncHandler → Express error handler catches it
+    }
 });
 
 // ─── Get All Orders for a User ────────────────────────────────────────────────
@@ -141,7 +158,7 @@ const MarkReady = asyncHandler(async (req, res) => {
 
     // Generate one-time QR token
     const token = crypto.randomBytes(16).toString("hex");
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 30 minutes
 
     order.status      = "ready";
     (order as any).qrToken     = token;

@@ -34,27 +34,32 @@ app.use(
   })
 );
 
+
+
+app.use("/store_handler", Store_Router)
+app.use("/menu_item", MenuItemRouter)
+app.use("/auth", Auth_Router)
+app.use("/order", Order_Router)
+
+// ─── Global Error Handler (MUST be last, after all routes) ────────────────────
 app.use((
   err: any,
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) => {
+  // Mongoose CastError → invalid ObjectId → treat as 400 Bad Request
+  if (err.name === "CastError" && err.kind === "ObjectId") {
+    return res.status(400).json({ success: false, message: "Invalid ID format" });
+  }
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
-  req.log.error({
-    err,
-    body:req.body
-  },"Unhandled error")
+  req.log.error({ err, body: req.body }, "Unhandled error");
   res.status(statusCode).json({
     success: false,
     status: statusCode,
-    message
+    message,
   });
 });
 
-app.use("/store_handler", Store_Router)
-app.use("/menu_item", MenuItemRouter)
-app.use("/auth", Auth_Router)
-app.use("/order", Order_Router)
 export {app}
