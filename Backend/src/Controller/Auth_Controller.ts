@@ -77,9 +77,9 @@ const sendPhoneOtp = asyncHandler(async (req, res) => {
     if (!phone || !/^\d{10}$/.test(phone))
         return err(res, 400, "Please enter a valid 10-digit mobile number");
 
-    // Check if Twilio is configured
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-        // Development fallback: skip real SMS, log OTP to console
+    // Check if Twilio Verify is configured
+    if (!process.env.TWILIO_VERIFY_SID || !process.env.TWILIO_AUTH_TOKEN) {
+        // Development fallback — no real SMS sent
         console.log(`[DEV MODE] OTP for ${phone}: 123456`);
         return res.json(new ApiResponse(200, true, "OTP sent (dev mode — use 123456)", { phone }));
     }
@@ -101,7 +101,7 @@ const verifyPhoneOtp = asyncHandler(async (req, res) => {
         return err(res, 400, "userId, phone, and otp are all required");
 
     // Dev mode bypass
-    const isDev = !process.env.TWILIO_ACCOUNT_SID;
+    const isDev = !process.env.TWILIO_VERIFY_SID || !process.env.TWILIO_AUTH_TOKEN;
     const isValid = isDev ? otp === "123456" : verifyOtp(phone, otp);
 
     if (!isValid)

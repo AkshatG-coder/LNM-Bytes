@@ -1,42 +1,54 @@
+/**
+ * Twilio Verify OTP Service
+ * Uses Twilio Verify, NOT regular SMS — works internationally even on trial.
+ *
+ * Setup:
+ * 1. Go to: https://console.twilio.com/us1/develop/verify/services
+ * 2. Create a new Verify Service → copy the Service SID (starts with VA...)
+ * 3. Fill TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SID in .env
+ */
+
 import twilio from "twilio";
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken  = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-// In-memory OTP store { phone: { otp, expiresAt } }
-// In production, replace with Redis
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
-
 function getClient() {
-    if (!accountSid || !authToken) {
-        throw new Error("Twilio credentials not configured");
-    }
-    return twilio(accountSid, authToken);
+    const sid   = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    if (!sid || !token) throw new Error("Twilio credentials not set in .env");
+    return twilio(sid, token);
 }
 
+function getVerifySid(): string {
+    const sid = process.env.TWILIO_VERIFY_SID;
+    if (!sid) throw new Error("TWILIO_VERIFY_SID not set in .env");
+    return sid;
+}
+
+// ─── Send OTP via Twilio Verify ───────────────────────────────────────────────
 export async function sendOtp(phone: string): Promise<void> {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-    otpStore.set(phone, { otp, expiresAt });
-
-    const client = getClient();
-    await client.messages.create({
-        body: `Your LNM Bytes verification code is: ${otp}. Valid for 10 minutes.`,
-        from: fromNumber!,
-        to: `+91${phone}`,
-    });
+    await getClient()
+        .verify.v2
+        .services(getVerifySid())
+        .verifications
+        .create({
+            to: `+91${phone}`,    // Indian numbers
+            channel: "sms",
+        });
 }
 
-export function verifyOtp(phone: string, inputOtp: string): boolean {
-    const record = otpStore.get(phone);
-    if (!record) return false;
-    if (Date.now() > record.expiresAt) {
-        otpStore.delete(phone);
+// ─── Verify OTP via Twilio Verify ─────────────────────────────────────────────
+export async function verifyOtp(phone: string, code: string): Promise<boolean> {
+    try {
+        const result = await getClient()
+            .verify.v2
+            .services(getVerifySid())
+            .verificationChecks
+            .create({
+                to: `+91${phone}`,
+                code,
+            });
+        return result.status === "approved";
+    } catch {
+        // Twilio throws if code is wrong/expired
         return false;
     }
-    if (record.otp !== inputOtp) return false;
-    otpStore.delete(phone); // one-time use
-    return true;
 }

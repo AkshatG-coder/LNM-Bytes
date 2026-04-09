@@ -30,11 +30,11 @@ const Get_All_Store=asyncHandler(async(req,res)=>{
 
 
 const GetStoreById=asyncHandler(async(req,res)=>{
-    const {Id}=req.params;
-    if(!Id){
+    const {id}=req.params;
+    if(!id){
         return res.json(new ApiError("StoreId is Missing",400));
     }
-    const store_detail=await Store.findById(Id);
+    const store_detail=await Store.findById(id);
     if(!store_detail){
          return res.json(new ApiError("Some Error while fetching details",500));
     }
@@ -42,8 +42,8 @@ const GetStoreById=asyncHandler(async(req,res)=>{
 })
 
 const DeleteStore=asyncHandler(async(req,res)=>{
-    const {Id}=req.params;
-    if(!Id){
+    const {id}=req.params;
+    if(!id){
         return res.json(new ApiError("StoreId is Missing",400));
     }
     const store = await Store.findByIdAndUpdate(
@@ -54,11 +54,11 @@ const DeleteStore=asyncHandler(async(req,res)=>{
     return res.json(new ApiResponse(200,true,"Store Deleted Successfully",{}));
 })
 const ToggleStoreStatus=asyncHandler(async(req,res)=>{
-    const {Id}=req.params;
-    if(!Id){
+    const {id}=req.params;
+    if(!id){
         return res.json(new ApiError("StoreId is Missing",400));
     }
-    const store=await Store.findById(Id);
+    const store=await Store.findById(id);
     if(!store){
         return res.json(new ApiError("Store not found",404));
     }
