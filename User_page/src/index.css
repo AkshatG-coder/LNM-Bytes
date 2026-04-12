@@ -6,27 +6,30 @@
 
 /* ─── Light mode CSS variables ────────────────────────────────────────────── */
 :root {
-  --bg:          #f8fafc;
-  --surface:     #ffffff;
-  --border:      #e2e8f0;
-  --text-main:   #111827;
-  --text-muted:  #6b7280;
-  --shadow:      0 4px 12px -2px rgb(0 0 0 / 0.06);
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --shadow: 0 4px 12px -2px rgb(0 0 0 / 0.06);
 }
 
 /* ─── Dark mode CSS variable overrides ────────────────────────────────────── */
 html.dark {
-  --bg:          #0f172a;
-  --surface:     #1e293b;
-  --border:      #334155;
-  --text-main:   #f1f5f9;
-  --text-muted:  #94a3b8;
-  --shadow:      0 4px 12px -2px rgb(0 0 0 / 0.4);
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --shadow: 0 4px 12px -2px rgb(0 0 0 / 0.4);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
 @layer base {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     transition-property: background-color, border-color, color;
     transition-duration: 200ms;
     transition-timing-function: ease;
@@ -61,6 +64,12 @@ html.dark {
   }
 
   /* Utility: hide scrollbars */
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

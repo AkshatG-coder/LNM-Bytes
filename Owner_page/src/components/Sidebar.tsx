@@ -12,7 +12,7 @@ const navItems = [
 ];
 
 
-const Sidebar = () => {
+const Sidebar = ({ isMobileOpen, closeMobile }: { isMobileOpen?: boolean; closeMobile?: () => void }) => {
   const location  = useLocation();
   const navigate  = useNavigate();
   const { isDark, toggle } = useTheme();
@@ -29,14 +29,25 @@ const Sidebar = () => {
   };
 
   return (
-    <aside
-      className="hidden md:flex flex-col w-64 fixed h-full z-20 shadow-lg transition-colors duration-300"
-      style={{
-        backgroundColor: 'var(--color-surface)',
-        borderRight: '1px solid',
-        borderColor: isDark ? '#334155' : '#f1f5f9',
-      }}
-    >
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {isMobileOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          onClick={closeMobile}
+        />
+      )}
+
+      <aside
+        className={`flex flex-col w-64 fixed h-full z-50 shadow-2xl md:shadow-lg transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderRight: '1px solid',
+          borderColor: isDark ? '#334155' : '#f1f5f9',
+        }}
+      >
       {/* Logo */}
       <div
         className="p-6 flex items-center gap-3"
@@ -69,6 +80,7 @@ const Sidebar = () => {
             <NavLink
               key={to}
               to={to}
+              onClick={closeMobile}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                 isActive
                   ? 'bg-primary text-white shadow-md shadow-primary/20'
@@ -87,6 +99,7 @@ const Sidebar = () => {
         {isSuperAdmin && (
           <NavLink
             to="/admin/superadmin"
+            onClick={closeMobile}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
               location.pathname.startsWith('/admin/superadmin')
                 ? 'bg-yellow-500 text-white shadow-md shadow-yellow-500/20'
@@ -171,6 +184,7 @@ const Sidebar = () => {
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

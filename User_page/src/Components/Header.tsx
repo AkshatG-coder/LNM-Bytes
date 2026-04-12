@@ -24,7 +24,7 @@ export function Header() {
         borderColor: 'var(--border)',
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
 
         {/* Left: Logo / Branding */}
         <Link to="/" className="flex items-center gap-3 cursor-pointer group">
@@ -42,7 +42,7 @@ export function Header() {
         </Link>
 
         {/* Right: Theme toggle + User info + Cart */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
 
           {/* 🌗 Dark / Light Toggle */}
           <button
@@ -113,7 +113,7 @@ export function Header() {
           {isAuthenticated && (
             <Link
               to="/orders"
-              className="relative flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 hover:bg-primary/10"
+              className="relative flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl transition-all duration-200 hover:bg-primary/10"
               style={{ color: 'var(--text-muted)' }}
               title="My Orders"
             >
@@ -125,7 +125,7 @@ export function Header() {
           {/* Cart Icon */}
           <Link
             to="/cart"
-            className="relative flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200"
+            className="relative flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl transition-all duration-200"
             style={{ color: 'var(--text-muted)' }}
           >
             <div className="relative">

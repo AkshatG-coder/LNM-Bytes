@@ -3,6 +3,7 @@ import cors from 'cors'
 import bodyParser from 'body-parser'
 import { limiter } from './utils/limiter'
 import helmet from 'helmet'
+import compression from 'compression'
 import PinoHttp, { pinoHttp } from 'pino-http'
 import logger from "./utils/logger"
 import { Store_Router } from './Routers/Store_Router'
@@ -15,6 +16,7 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(limiter)
 app.use(helmet())
+app.use(compression())
 app.use(cors({
   origin:"*",
   credentials:true

@@ -14,9 +14,11 @@ export async function DbConnection() {
         await mongoose.connect(uri, {
             dbName,
             tls: true,
-            family: 4,    // force IPv4 — avoids SRV/IPv6 issues on some networks
+            family: 4,    // force IPv4
             serverSelectionTimeoutMS: 15000,
             socketTimeoutMS: 45000,
+            maxPoolSize: 200,
+            minPoolSize: 10,
         });
         console.log("✅ MongoDB connected:", mongoose.connection.host);
     } catch (err: any) {

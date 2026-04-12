@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type UserData, type OrderStatus } from '../types';
+import { type UserData } from '../types';
 
 interface UserAccordionProps extends UserData {
   onAccept: (orderId: string) => void;

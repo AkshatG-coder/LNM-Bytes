@@ -142,7 +142,7 @@ export function Cart_Details() {
             <button
               onClick={() => placeOrder('online')}
               disabled={placing}
-              className="w-full bg-primary text-white py-3.5 rounded-xl font-black text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-60"
+              className="w-full bg-primary text-white py-4 rounded-xl font-black text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-60"
             >
               {placing ? '⏳ Placing...' : `💳 Pay Online ₹${total.toFixed(2)}`}
             </button>
@@ -151,7 +151,7 @@ export function Cart_Details() {
             <button
               onClick={() => placeOrder('cash')}
               disabled={placing}
-              className="w-full border-2 border-primary/30 text-primary py-3 rounded-xl font-black text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-60"
+              className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-60"
             >
               {placing ? '⏳ Placing...' : `💵 Pay at Counter · ₹${total.toFixed(2)}`}
             </button>

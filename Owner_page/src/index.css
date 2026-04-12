@@ -2,17 +2,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @theme {
-  --color-primary-light: #818cf8;
-  --color-primary: #4f46e5;
-  --color-primary-dark: #3730a3;
+  --color-primary-light: #FF6B81;
+  --color-primary: #FF4757;
+  --color-primary-dark: #E03C4B;
 
-  --color-secondary-light: #fbbf24;
-  --color-secondary: #f59e0b;
-  --color-secondary-dark: #b45309;
+  --color-secondary-light: #FBBF24;
+  --color-secondary: #F59E0B;
+  --color-secondary-dark: #B45309;
 
-  --color-accent: #f43f5e;
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
+  --color-accent: #F43F5E;
+  --color-background: #FAFAFB;
+  --color-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-text-main: #1E202C;
+  --color-text-muted: #64748B;
 
   --font-sans: "Inter", system-ui, sans-serif;
 
@@ -27,8 +30,11 @@
 
 /* ── Dark mode overrides ──────────────────────────────────────────────────── */
 html.dark {
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
+  --color-background: #0F111A;
+  --color-surface: #161925;
+  --color-border: #2A2E3D;
+  --color-text-main: #F3F4F6;
+  --color-text-muted: #9CA3AF;
 }
 
 
@@ -152,33 +158,48 @@ html.dark {
     padding: 0.5rem 1rem;
     background-color: var(--color-primary);
     color: white;
-    border-radius: 0.5rem;
-    transition: background-color 0.2s;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    font-weight: 700;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   }
 
   .btn-primary:hover {
     background-color: var(--color-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
   .btn-secondary {
     padding: 0.5rem 1rem;
     background-color: var(--color-secondary);
     color: white;
-    border-radius: 0.5rem;
-    transition: background-color 0.2s;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    font-weight: 700;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   }
 
   .btn-secondary:hover {
     background-color: var(--color-secondary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
   .card {
     background-color: var(--color-surface);
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.06);
+    border-radius: 1rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
     padding: 1.5rem;
-    border: 1px solid var(--color-border, #f1f5f9);
+    border: 1px solid var(--color-border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  }
+  html.dark .card:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   }
 }

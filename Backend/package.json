@@ -16,6 +16,7 @@
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
     "cloudinary": "^2.9.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -36,6 +37,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/ws": "^8.18.1"
