@@ -2,20 +2,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @theme {
-  --color-primary-light: #FF6B81;
-  --color-primary: #FF4757;
-  --color-primary-dark: #E03C4B;
+  --color-primary-light: #818cf8;
+  --color-primary: #4f46e5;
+  --color-primary-dark: #3730a3;
 
-  --color-secondary-light: #FBBF24;
-  --color-secondary: #F59E0B;
-  --color-secondary-dark: #B45309;
+  --color-secondary-light: #fbbf24;
+  --color-secondary: #f59e0b;
+  --color-secondary-dark: #b45309;
 
-  --color-accent: #F43F5E;
-  --color-background: #FAFAFB;
-  --color-surface: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-text-main: #1E202C;
-  --color-text-muted: #64748B;
+  --color-accent: #f43f5e;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-main: #111827;
+  --color-text-muted: #6b7280;
 
   --font-sans: "Inter", system-ui, sans-serif;
 
@@ -30,11 +30,11 @@
 
 /* ── Dark mode overrides ──────────────────────────────────────────────────── */
 html.dark {
-  --color-background: #0F111A;
-  --color-surface: #161925;
-  --color-border: #2A2E3D;
-  --color-text-main: #F3F4F6;
-  --color-text-muted: #9CA3AF;
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-border: #334155;
+  --color-text-main: #f1f5f9;
+  --color-text-muted: #94a3b8;
 }
 
 
