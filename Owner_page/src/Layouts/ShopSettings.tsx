@@ -62,7 +62,6 @@ function ShopSettings() {
       showToast('Please enter exactly 10 digits for the phone number', 'error');
       return;
     }
-
     const ok = await updateStore({
       phone,
       operationTime: { openTime, closeTime },
@@ -152,6 +151,7 @@ function ShopSettings() {
           <p className="mt-4 text-sm text-gray-500 font-medium leading-relaxed border-t border-gray-50 pt-4">{store.description}</p>
         </div>
       </section>
+
 
       {/* 🔴/🟢 Shop Open/Close — Big Toggle */}
       <section className="mb-6">

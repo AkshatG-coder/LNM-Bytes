@@ -6,32 +6,36 @@ export interface AuthState {
   storeId: string;
   storeName: string;
   ownerName: string;
+  ownerId: string;
+  phone: string;
   isApproved: boolean;
   role: string;
 }
 
 // ─── Persist to localStorage ──────────────────────────────────────────────────
 function persist(auth: AuthState) {
-  localStorage.setItem("OWNER_TOKEN", auth.token);
-  localStorage.setItem("OWNER_STORE_ID", auth.storeId);
-  localStorage.setItem("OWNER_NAME", auth.ownerName);
+  localStorage.setItem("OWNER_TOKEN",      auth.token);
+  localStorage.setItem("OWNER_STORE_ID",   auth.storeId);
+  localStorage.setItem("OWNER_NAME",       auth.ownerName);
+  localStorage.setItem("OWNER_ID",         auth.ownerId);
+  localStorage.setItem("OWNER_PHONE",      auth.phone);
   localStorage.setItem("OWNER_STORE_NAME", auth.storeName);
   localStorage.setItem("OWNER_IS_APPROVED", String(auth.isApproved));
-  localStorage.setItem("OWNER_ROLE", auth.role);
+  localStorage.setItem("OWNER_ROLE",       auth.role);
 }
 
 // ─── Read from localStorage (for app reload) ──────────────────────────────────
 export function readAuth(): AuthState | null {
-  const token = localStorage.getItem("OWNER_TOKEN");
-  const storeId = localStorage.getItem("OWNER_STORE_ID") || "";
-  const storeName = localStorage.getItem("OWNER_STORE_NAME") || "";
-  const ownerName = localStorage.getItem("OWNER_NAME") || "";
+  const token      = localStorage.getItem("OWNER_TOKEN");
+  const storeId    = localStorage.getItem("OWNER_STORE_ID") || "";
+  const storeName  = localStorage.getItem("OWNER_STORE_NAME") || "";
+  const ownerName  = localStorage.getItem("OWNER_NAME") || "";
+  const ownerId    = localStorage.getItem("OWNER_ID") || "";
+  const phone      = localStorage.getItem("OWNER_PHONE") || "";
   const isApproved = localStorage.getItem("OWNER_IS_APPROVED") === "true";
-  const role = localStorage.getItem("OWNER_ROLE") || "owner";
-  // Superadmin may not have a storeId — allow token alone
-  if (token && token !== "pending") return { token, storeId, storeName, ownerName, isApproved, role };
-  // Pending marker (registered but not yet approved)
-  if (token === "pending") return { token: "", storeId, storeName, ownerName, isApproved: false, role };
+  const role       = localStorage.getItem("OWNER_ROLE") || "owner";
+  if (token && token !== "pending") return { token, storeId, storeName, ownerName, ownerId, phone, isApproved, role };
+  if (token === "pending") return { token: "", storeId, storeName, ownerName, ownerId, phone, isApproved: false, role };
   return null;
 }
 
@@ -39,6 +43,8 @@ export function clearAuth() {
   localStorage.removeItem("OWNER_TOKEN");
   localStorage.removeItem("OWNER_STORE_ID");
   localStorage.removeItem("OWNER_NAME");
+  localStorage.removeItem("OWNER_ID");
+  localStorage.removeItem("OWNER_PHONE");
   localStorage.removeItem("OWNER_STORE_NAME");
   localStorage.removeItem("OWNER_IS_APPROVED");
   localStorage.removeItem("OWNER_ROLE");
@@ -58,11 +64,13 @@ export const useAuth = () => {
         const { token, owner, store, isApproved } = res.data.data;
         const auth: AuthState = {
           token,
-          storeId: store?._id || "",
+          storeId:   store?._id || "",
           storeName: store?.name || "",
           ownerName: owner.name,
+          ownerId:   owner.id || "",
+          phone:     (owner as any).phone || "",
           isApproved: isApproved ?? false,
-          role: owner.role || "owner",
+          role:      owner.role || "owner",
         };
         persist(auth);
         return auth;
@@ -82,12 +90,13 @@ export const useAuth = () => {
     name: string,
     email: string,
     password: string,
-    storeName: string
+    storeName: string,
+    phone: string
   ): Promise<AuthState | null> => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.post("/auth/owner/register", { name, email, password, storeName });
+      const res = await api.post("/auth/owner/register", { name, email, password, storeName, phone });
       if (res.data?.success) {
         const { owner, store } = res.data.data;
         // After register, owner is not yet approved — persist with isApproved: false

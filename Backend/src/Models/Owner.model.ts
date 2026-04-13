@@ -27,6 +27,11 @@ const OwnerSchema = new Schema(
       ref: "Stores",
       required: true,
     },
+    phone: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     role: {
       type: String,
       enum: ["owner", "superadmin"],

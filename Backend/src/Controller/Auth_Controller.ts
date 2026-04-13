@@ -60,12 +60,12 @@ const googleLogin = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Login successful", {
         token,
         user: {
-            id:      user!._id,
+            id:      user!._id.toString(),   // must be a plain string — ObjectId breaks localStorage round-trip
             name:    user!.name,
             email:   user!.email,
-            phone:   (user as any).phone,
+            phone:   (user as any).phone ?? null,
             picture: user!.picture,
-            role:    (user as any).role,
+            role:    (user as any).role ?? "user",
         },
     }));
 });
@@ -140,10 +140,13 @@ const updatePhone = asyncHandler(async (req, res) => {
 
 // ─── Owner: Register ─────────────────────────────────────────────────────────
 const ownerRegister = asyncHandler(async (req, res) => {
-    const { name, email, password, storeName } = req.body;
+    const { name, email, password, storeName, phone } = req.body;
 
-    if (!name || !email || !password || !storeName)
-        return err(res, 400, "All fields are required — name, email, password, and store name");
+    if (!name || !email || !password || !storeName || !phone)
+        return err(res, 400, "All fields are required — name, phone, email, password, and store name");
+
+    if (!/^\d{10}$/.test(phone))
+        return err(res, 400, "Phone number must be exactly 10 digits");
 
     if (password.length < 6)
         return err(res, 400, "Password must be at least 6 characters long");
@@ -155,7 +158,7 @@ const ownerRegister = asyncHandler(async (req, res) => {
     const store = await Store.create({
         name: storeName,
         description: `${storeName} - LNMIIT Canteen`,
-        phone: "0000000000",
+        phone,           // Use owner's real phone number for store contact
         ownerName: name,
         location: "LNMIIT Campus",
         operationTime: { openTime: "08:00", closeTime: "22:00" },
@@ -167,6 +170,7 @@ const ownerRegister = asyncHandler(async (req, res) => {
         name,
         email,
         password,
+        phone,           // Also save on owner record for profile editing later
         storeId: store._id,
         isApproved: false,
     });
@@ -210,7 +214,7 @@ const ownerLogin = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Login successful", {
         token,
         isApproved: owner.isApproved,
-        owner: { id: owner._id, name: owner.name, email: owner.email, role: owner.role },
+        owner: { id: owner._id, name: owner.name, email: owner.email, role: owner.role, phone: (owner as any).phone || null },
         store: { _id: store._id, name: store.name, status: store.status },
     }));
 });
@@ -247,6 +251,29 @@ const revokeOwner = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Owner revoked successfully", owner));
 });
 
+// ─── Owner: Update Phone ──────────────────────────────────────────────────────
+// PATCH /auth/owner/phone/:ownerId
+const updateOwnerPhone = asyncHandler(async (req, res) => {
+    const { ownerId } = req.params;
+    const { phone }   = req.body;
+
+    if (!phone || !/^\d{10}$/.test(phone))
+        return err(res, 400, "Phone number must be exactly 10 digits");
+
+    const owner = await OwnerModel.findByIdAndUpdate(
+        ownerId, { phone }, { new: true }
+    ).select("-password");
+    if (!owner) return err(res, 404, "Owner not found");
+
+    // Keep Store.phone in sync so the customer-facing card shows the right number
+    await Store.findByIdAndUpdate(owner.storeId, { phone });
+
+    return res.json(new ApiResponse(200, true, "Phone updated successfully", {
+        id:    owner._id,
+        phone: (owner as any).phone,
+    }));
+});
+
 export {
     googleLogin,
     updatePhone,
@@ -254,6 +281,7 @@ export {
     verifyPhoneOtp,
     ownerRegister,
     ownerLogin,
+    updateOwnerPhone,
     getAllOwners,
     approveOwner,
     revokeOwner,

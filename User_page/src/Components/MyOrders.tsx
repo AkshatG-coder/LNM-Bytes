@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import type { RootState } from '../Util/store'
+import { add_item } from '../Util/CartReducer'
 import api from '../Util/api'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered'
@@ -75,7 +77,13 @@ const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
 
 // ─── Single order card ────────────────────────────────────────────────────────
 // memo: prevents re-rendering all cards when only one order's status changes
-const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
+const OrderCard = memo(function OrderCard({
+  order,
+  onReorder,
+}: {
+  order: Order
+  onReorder: (order: Order) => void
+}) {
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending
   const isCancelled = order.status === 'cancelled'
 
@@ -170,18 +178,46 @@ const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
           <p className="text-purple-400 font-bold text-sm">✅ Picked up successfully. Enjoy your meal!</p>
         </div>
       )}
+
+      {/* Reorder button — shown on completed orders */}
+      {(order.status === 'delivered' || order.status === 'cancelled') && (
+        <button
+          onClick={() => onReorder(order)}
+          className="mt-3 w-full py-2.5 rounded-xl text-sm font-black border-2 border-primary/30 text-primary
+            hover:bg-primary hover:text-white transition-all active:scale-[0.98]"
+        >
+          🔁 Reorder
+        </button>
+      )}
     </div>
   )
 })
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function MyOrders() {
-  const user = useSelector((s: RootState) => s.User.user)
+  const user     = useSelector((s: RootState) => s.User.user)
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [wsConnected, setWsConnected] = useState(false)
   const prevStatuses = useRef<Record<string, OrderStatus>>({})
   const wsRef = useRef<WebSocket | null>(null)
+
+  // ─── Reorder handler ─────────────────────────────────────────────────────
+  const handleReorder = useCallback((order: Order) => {
+    order.items.forEach((item) => {
+      dispatch(add_item({
+        id:          item.name,   // use item name as id fallback (menuItemId not in order doc)
+        item_name:   item.name,
+        price:       item.price,
+        qty:         item.quantity,
+        canteen_id:  order.storeId,
+        portionSize: (item.portionSize as 'full' | 'half') || 'full',
+      }))
+    })
+    navigate('/cart')
+  }, [dispatch, navigate])
 
   // Request browser notification permission once
   useEffect(() => {
@@ -327,7 +363,7 @@ export default function MyOrders() {
               <h2 className="text-xs font-black uppercase tracking-widest mb-3 text-red-400">
                 🔴 Active Orders ({active.length})
               </h2>
-              {active.map(o => <OrderCard key={o._id} order={o} />)}
+              {active.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)}
             </section>
           )}
           {completed.length > 0 && (
@@ -335,7 +371,7 @@ export default function MyOrders() {
               <h2 className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
                 Past Orders
               </h2>
-              {completed.map(o => <OrderCard key={o._id} order={o} />)}
+              {completed.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)}
             </section>
           )}
         </>

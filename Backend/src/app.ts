@@ -9,7 +9,6 @@ import { Store_Router } from './Routers/Store_Router'
 import { MenuItemRouter } from './Routers/Menu_Item_Router'
 import { Auth_Router } from './Routers/Auth_Router'
 import { Order_Router } from './Routers/Order_Router'
-import { authLimiter } from './utils/limiter'
 
 const app = express()
 
@@ -59,7 +58,7 @@ app.use(
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use("/store_handler", Store_Router)
 app.use("/menu_item", MenuItemRouter)
-app.use("/auth", authLimiter, Auth_Router)   // stricter rate limit on auth endpoints
+app.use("/auth", Auth_Router)   // OTP routes have per-route authLimiter inside Auth_Router
 app.use("/order", Order_Router)
 
 // ─── Global Error Handler (must be last middleware) ───────────────────────────

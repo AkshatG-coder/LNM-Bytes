@@ -18,7 +18,7 @@ function Admin() {
   const {
     users, loading, error,
     acceptOrder, rejectOrder, markReady,
-    refreshOrders
+    refreshOrders, wsConnected,
   } = useOrders();
 
   const [activeTab, setActiveTab] = useState<OrderStatus>('pending');
@@ -40,7 +40,9 @@ function Admin() {
             Kitchen Dashboard
           </h1>
           <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 font-medium">
-            Live order updates · auto-refreshes every 15s
+            {wsConnected
+              ? '🟢 Live alerts active — sound + notification on new order'
+              : '🟡 Polling every 8s — sound alert on new order'}
           </p>
         </div>
         <button

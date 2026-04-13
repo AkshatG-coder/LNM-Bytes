@@ -47,6 +47,7 @@ function Landing(): React.JSX.Element {
   // Register-only
   const [name, setName]           = useState('');
   const [storeName, setStoreName] = useState('');
+  const [phone, setPhone]         = useState('');
   const [confirmPw, setConfirmPw] = useState('');
 
   const switchMode = (m: Mode) => {
@@ -74,12 +75,15 @@ function Landing(): React.JSX.Element {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password || !storeName) {
+    if (!name || !email || !password || !storeName || !phone) {
       setError('All fields are required.'); return;
+    }
+    if (!/^\d{10}$/.test(phone)) {
+      setError('Phone number must be exactly 10 digits.'); return;
     }
     if (password !== confirmPw) { setError('Passwords do not match.'); return; }
     if (password.length < 6)   { setError('Password must be at least 6 characters.'); return; }
-    const auth = await register(name, email, password, storeName);
+    const auth = await register(name, email, password, storeName, phone);
     if (auth) navigate('/admin');
   };
 
@@ -245,8 +249,11 @@ function Landing(): React.JSX.Element {
             <form onSubmit={handleRegister} className="space-y-4">
               <Field label="Your Full Name" placeholder="e.g. Rahul Sharma"
                 value={name} onChange={setName} />
-              <Field label="Store Name" placeholder="e.g. LNM Bytes Canteen"
+              <Field label="Store / Canteen Name" placeholder="e.g. LNM Bytes Canteen"
                 value={storeName} onChange={setStoreName} />
+              <Field label="Phone Number" type="tel" placeholder="10-digit mobile number"
+                value={phone} onChange={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
+                error={phone.length > 0 && phone.length !== 10} />
               <Field label="Business Email" type="email" placeholder="owner@lnmbytes.com"
                 value={email} onChange={setEmail} error={!!error} />
               <Field label="Password (min 6 chars)" type="password" placeholder="••••••••"
@@ -256,7 +263,7 @@ function Landing(): React.JSX.Element {
                 error={password !== confirmPw && confirmPw.length > 0} />
 
               <p className="text-[11px] text-gray-400 font-medium px-1">
-                🏪 Your store will be created automatically. You can update the details from Settings.
+                🏪 Your store will be created automatically. Phone is used as your store contact number.
               </p>
 
               <button

@@ -9,7 +9,6 @@ import { Provider, useSelector } from 'react-redux'
 import { store } from './Util/store.ts'
 import type { RootState } from './Util/store.ts'
 import { Cart_Details } from './Components/Cart_Details.tsx'
-import { CanteenStoreAddition } from './Components/SuperAdminStoreAdditon.tsx'
 import ErrorPage from './Components/Error_Page.tsx'
 import LoginPage from './Components/LoginPage.tsx'
 import MyOrders from './Components/MyOrders.tsx'
@@ -53,10 +52,6 @@ const router = createBrowserRouter([
         path: "/orders",
         element: <RequireAuth><MyOrders /></RequireAuth>
       },
-      {
-        path: "/canteenstoreAddition",
-        element: <RequireAuth><CanteenStoreAddition /></RequireAuth>
-      }
     ]
   }
 ])

@@ -35,9 +35,13 @@ export function CanteenShop() {
       const response = await api.get("/store_handler/");
       if (response.data?.success) {
         const data = response.data.data
-        setCanteenStores(data)
-        // Cache result for 60 seconds — avoids redundant API calls on remount
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() } satisfies StoreCache))
+        // Filter out internal admin/super-admin placeholder stores
+        const publicStores = data.filter(
+          (s: CanteenStoreInterface) => !s.name.toLowerCase().includes('admin')
+        )
+        setCanteenStores(publicStores)
+        // Cache the filtered result for 60 seconds
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: publicStores, ts: Date.now() } satisfies StoreCache))
       }
     } catch (error) {
       console.error("Failed to fetch stores:", error);
