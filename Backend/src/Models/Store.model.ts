@@ -62,3 +62,7 @@ const CanteenSchema = new Schema(
 );
 
 export const Store=mongoose.model("Stores",CanteenSchema)
+
+// ─── Performance Index ────────────────────────────────────────────────────────
+// Get_All_Store and GetOnlineStores both filter by isActive + status
+CanteenSchema.index({ isActive: 1, status: 1 });

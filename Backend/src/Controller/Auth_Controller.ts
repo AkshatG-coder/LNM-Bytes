@@ -37,37 +37,39 @@ const googleLogin = asyncHandler(async (req, res) => {
         return err(res, 403, "Only @lnmiit.ac.in email addresses are allowed. Please use your LNMIIT account.");
     }
 
-    let user = await UserModel.findOne({ googleId });
-    const isNewUser = !user;
-
-    if (!user) {
-        user = await UserModel.create({
-            name: name || email.split("@")[0],
-            email,
-            googleId,
-            picture: picture || null,
-        });
-    }
+    // Atomic upsert — single DB round-trip instead of find + conditional create
+    const user = await UserModel.findOneAndUpdate(
+        { googleId },
+        {
+            $setOnInsert: {
+                name:    name || email.split("@")[0],
+                email,
+                googleId,
+                picture: picture || null,
+            },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     const token = jwt.sign(
-        { userId: user._id, email: user.email, role: user.role },
+        { userId: user!._id, email: user!.email, role: (user as any).role },
         process.env.JWT_SECRET as string,
         { expiresIn: "7d" }
     );
 
     return res.json(new ApiResponse(200, true, "Login successful", {
         token,
-        isNewUser,
         user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            picture: user.picture,
-            role: user.role,
+            id:      user!._id,
+            name:    user!.name,
+            email:   user!.email,
+            phone:   (user as any).phone,
+            picture: user!.picture,
+            role:    (user as any).role,
         },
     }));
 });
+
 
 // ─── User: Send OTP to phone ─────────────────────────────────────────────────
 // POST /auth/otp/send
@@ -79,8 +81,10 @@ const sendPhoneOtp = asyncHandler(async (req, res) => {
 
     // Check if Twilio Verify is configured
     if (!process.env.TWILIO_VERIFY_SID || !process.env.TWILIO_AUTH_TOKEN) {
-        // Development fallback — no real SMS sent
-        console.log(`[DEV MODE] OTP for ${phone}: 123456`);
+        // Development fallback — log only in development
+        if (process.env.NODE_ENV !== "production") {
+            console.log(`[DEV MODE] OTP for ${phone}: 123456`);
+        }
         return res.json(new ApiResponse(200, true, "OTP sent (dev mode — use 123456)", { phone }));
     }
 
@@ -91,6 +95,7 @@ const sendPhoneOtp = asyncHandler(async (req, res) => {
         return err(res, 500, "Failed to send OTP. Please check your phone number and try again.");
     }
 });
+
 
 // ─── User: Verify OTP + save phone ───────────────────────────────────────────
 // POST /auth/otp/verify
@@ -214,9 +219,11 @@ const ownerLogin = asyncHandler(async (req, res) => {
 const getAllOwners = asyncHandler(async (req, res) => {
     const owners = await OwnerModel.find({})
         .populate("storeId", "name status location")
-        .select("-password");
+        .select("-password")
+        .lean();
     return res.json(new ApiResponse(200, true, "Owners fetched", owners));
 });
+
 
 // ─── Super Admin: Approve Owner ──────────────────────────────────────────────
 const approveOwner = asyncHandler(async (req, res) => {

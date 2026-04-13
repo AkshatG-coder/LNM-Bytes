@@ -84,5 +84,14 @@ const OrderSchema = new Schema({
 
 }, { timestamps: true })
 
+// ─── Performance Indexes ─────────────────────────────────────────────────────
+// Owner dashboard: filter by store + status, sorted by newest first
+OrderSchema.index({ storeId: 1, status: 1, createdAt: -1 });
+// User "My Orders" page: all orders for a user, newest first
+OrderSchema.index({ userId: 1, createdAt: -1 });
+// QR verification: lookup by qrToken (sparse — only indexed docs that have a token)
+OrderSchema.index({ qrToken: 1 }, { sparse: true });
+// Daily sales analytics: filter by store + date range
+OrderSchema.index({ storeId: 1, createdAt: -1 });
 
-export const OrderModel = mongoose.model("Orders", OrderSchema)
+export const OrderModel = mongoose.model("Orders", OrderSchema);

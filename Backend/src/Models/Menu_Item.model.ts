@@ -59,3 +59,7 @@ const MenuItemSchema = new Schema(
 
 export const MenuItemModel = mongoose.model("MenuItem", MenuItemSchema);
 
+// ─── Performance Index ────────────────────────────────────────────────────────
+// getMenuItemsByStore filters by storeId + isAvailable — compound index = O(log n)
+MenuItemSchema.index({ storeId: 1, isAvailable: 1 });
+

@@ -4,16 +4,40 @@ import { useSearch } from '../Util/useSearch'
 import { useEffect, useState } from 'react'
 import api from '../Util/api'
 
+const CACHE_KEY = 'lnm_stores_cache'
+const CACHE_TTL = 60_000 // 60 seconds
+
+interface StoreCache {
+  data: CanteenStoreInterface[]
+  ts: number
+}
+
 export function CanteenShop() {
-  const [canteenStores, setCanteenStores] = useState([]);
+  const [canteenStores, setCanteenStores] = useState<CanteenStoreInterface[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   async function GetStoreDetails() {
+    // Check sessionStorage cache first (TTL: 60s)
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY)
+      if (cached) {
+        const { data, ts }: StoreCache = JSON.parse(cached)
+        if (Date.now() - ts < CACHE_TTL) {
+          setCanteenStores(data)
+          setIsLoading(false)
+          return
+        }
+      }
+    } catch { /* ignore parse errors */ }
+
     try {
       setIsLoading(true);
       const response = await api.get("/store_handler/");
       if (response.data?.success) {
-        setCanteenStores(response.data.data)
+        const data = response.data.data
+        setCanteenStores(data)
+        // Cache result for 60 seconds — avoids redundant API calls on remount
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() } satisfies StoreCache))
       }
     } catch (error) {
       console.error("Failed to fetch stores:", error);

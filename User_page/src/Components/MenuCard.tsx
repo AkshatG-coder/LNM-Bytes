@@ -5,18 +5,49 @@ import type { MenuCardItemInterface } from "../Util/MenuItemInterface"
 import { useSearch } from "../Util/useSearch"
 import api from "../Util/api"
 
+const CACHE_TTL = 60_000 // 60 seconds
+
+function getCacheKey(storeId: string) {
+  return `lnm_menu_${storeId}`
+}
+
+interface MenuCache {
+  data: MenuCardItemInterface[]
+  ts: number
+}
+
 export function MenuCard() {
   const { id } = useParams<{ id: string }>()
   const [menuItems, setMenuItems] = useState<MenuCardItemInterface[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (!id) return
+
     async function fetchMenuItems() {
       try {
         setIsLoading(true)
+
+        // sessionStorage cache per store (60s TTL)
+        const cacheKey = getCacheKey(id!)
+        try {
+          const cached = sessionStorage.getItem(cacheKey)
+          if (cached) {
+            const { data, ts }: MenuCache = JSON.parse(cached)
+            if (Date.now() - ts < CACHE_TTL) {
+              setMenuItems(data)
+              setIsLoading(false)
+              return
+            }
+          }
+        } catch { /* ignore parse errors */ }
+
         const response = await api.get(`/menu_item/store/${id}`)
         if (response.data?.success) {
-          setMenuItems(response.data.data)
+          const data: MenuCardItemInterface[] = response.data.data
+          setMenuItems(data)
+          // Cache per storeId so navigating between stores always fetches fresh data
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() } satisfies MenuCache))
         }
       } catch (error) {
         console.error("Failed to fetch menu items:", error)
@@ -24,7 +55,8 @@ export function MenuCard() {
         setIsLoading(false)
       }
     }
-    if (id) fetchMenuItems()
+
+    fetchMenuItems()
   }, [id])
 
   const {

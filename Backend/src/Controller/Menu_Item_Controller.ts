@@ -4,24 +4,28 @@ import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 
 const getAllMenuItems = asyncHandler(async (req, res) => {
-    const menu_details = await MenuItemModel.find({});
+    const menu_details = await MenuItemModel.find({}).lean();
     return res.json(new ApiResponse(200, true, "Successfully Fetched the menu details", menu_details));
 });
+
 
 const getMenuItemsByStore = asyncHandler(async (req, res) => {
     const { StoreId } = req.params;
     if (!StoreId) return res.json(new ApiError("StoreId is missing", 404));
-    const menu_details = await MenuItemModel.find({ storeId: StoreId });
+    // .lean() — read-only, returns plain JS objects (2-3x faster than full Mongoose doc)
+    const menu_details = await MenuItemModel.find({ storeId: StoreId }).lean();
     return res.json(new ApiResponse(200, true, "Successfully Fetched the menu details", menu_details));
 });
+
 
 const getMenuItemsById = asyncHandler(async (req, res) => {
     const { Item_Id } = req.params;
     if (!Item_Id) return res.json(new ApiError("ItemId is missing", 404));
-    const Item_Details = await MenuItemModel.findById(Item_Id);
+    const Item_Details = await MenuItemModel.findById(Item_Id).lean();
     if (!Item_Details) return res.json(new ApiError("Item not found", 404));
     return res.json(new ApiResponse(200, true, "Successfully Fetched Item details", Item_Details));
 });
+
 
 const updateMenuItem = asyncHandler(async (req, res) => {
     const { Item_Id } = req.params;

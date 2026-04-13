@@ -5,8 +5,9 @@ import App from './App.tsx'
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { MenuCard } from './Components/MenuCard.tsx'
 import { CanteenShop } from './Components/CanteenShop.tsx'
-import { Provider } from 'react-redux'
+import { Provider, useSelector } from 'react-redux'
 import { store } from './Util/store.ts'
+import type { RootState } from './Util/store.ts'
 import { Cart_Details } from './Components/Cart_Details.tsx'
 import { CanteenStoreAddition } from './Components/SuperAdminStoreAdditon.tsx'
 import ErrorPage from './Components/Error_Page.tsx'
@@ -14,10 +15,12 @@ import LoginPage from './Components/LoginPage.tsx'
 import MyOrders from './Components/MyOrders.tsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
-// Auth guard component — redirect to /login if not authenticated
+/**
+ * Reactive auth guard — uses useSelector so it re-renders and redirects
+ * as soon as logout() fires, unlike store.getState() which is a snapshot.
+ */
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const state = store.getState()
-  const isAuthenticated = state.User.isAuthenticated
+  const isAuthenticated = useSelector((s: RootState) => s.User.isAuthenticated)
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }

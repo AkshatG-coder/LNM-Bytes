@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, memo } from 'react'
 import { useSelector } from 'react-redux'
 import type { RootState } from '../Util/store'
 import api from '../Util/api'
@@ -43,8 +43,9 @@ function timeAgo(iso: string) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m ago`
 }
 
-// ─── QR code display (fetched from backend) ─────────────────────────────────
-function QRDisplay({ orderId }: { orderId: string }) {
+// ─── QR code display (fetched from backend) ──────────────────────────────────
+// memo: only re-renders if orderId changes, not on parent list re-renders
+const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [error, setError] = useState(false)
 
@@ -67,13 +68,14 @@ function QRDisplay({ orderId }: { orderId: string }) {
             <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-400 rounded-full animate-spin" />
           </div>
       }
-      <p className="text-[10px] text-gray-500 font-medium">QR expires 30 minutes after order is ready</p>
+      <p className="text-[10px] text-gray-500 font-medium">QR expires 1 hour after order is ready</p>
     </div>
   )
-}
+})
 
 // ─── Single order card ────────────────────────────────────────────────────────
-function OrderCard({ order }: { order: Order }) {
+// memo: prevents re-rendering all cards when only one order's status changes
+const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending
   const isCancelled = order.status === 'cancelled'
 
@@ -170,14 +172,16 @@ function OrderCard({ order }: { order: Order }) {
       )}
     </div>
   )
-}
+})
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function MyOrders() {
   const user = useSelector((s: RootState) => s.User.user)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [wsConnected, setWsConnected] = useState(false)
   const prevStatuses = useRef<Record<string, OrderStatus>>({})
+  const wsRef = useRef<WebSocket | null>(null)
 
   // Request browser notification permission once
   useEffect(() => {
@@ -192,6 +196,16 @@ export default function MyOrders() {
     }
   }
 
+  const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus, qrCode?: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o._id !== orderId) return o
+      const cfg = STATUS_CONFIG[newStatus]
+      const num = o.orderNumber ? ` #${o.orderNumber}` : ''
+      if (cfg) pushNotification(`LNM Bytes — Order${num}`, `${cfg.icon} ${cfg.label}`)
+      return { ...o, status: newStatus }
+    }))
+  }, [])
+
   const fetchOrders = useCallback(async () => {
     if (!user?.id) return
     try {
@@ -200,7 +214,7 @@ export default function MyOrders() {
         const fetched: Order[] = res.data.data || []
         setOrders(fetched)
 
-        // Fire browser notification on status change
+        // Fire browser notification on status change detected via polling
         fetched.forEach(order => {
           const prev = prevStatuses.current[order._id]
           if (prev && prev !== order.status) {
@@ -218,11 +232,59 @@ export default function MyOrders() {
     }
   }, [user?.id])
 
+  // ─── WebSocket — real-time order status updates ───────────────────────────
+  useEffect(() => {
+    if (!user?.id) return
+
+    const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:8081')
+    const ws = new WebSocket(WS_URL)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      // Register this client so the server can push to this user
+      ws.send(JSON.stringify({ type: 'register', userId: user.id }))
+      setWsConnected(true)
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        // Status-change events pushed by the backend
+        if (data.type === 'orderPreparing' || data.type === 'orderReady' ||
+            data.type === 'orderDelivered' || data.type === 'orderCancelled') {
+          const statusMap: Record<string, OrderStatus> = {
+            orderPreparing: 'preparing',
+            orderReady:     'ready',
+            orderDelivered: 'delivered',
+            orderCancelled: 'cancelled',
+          }
+          const newStatus = statusMap[data.type]
+          if (newStatus && data.orderId) {
+            updateOrderStatus(String(data.orderId), newStatus, data.qrCode)
+          }
+        }
+      } catch {
+        // Non-JSON messages — ignore
+      }
+    }
+
+    ws.onclose = () => setWsConnected(false)
+    ws.onerror = () => setWsConnected(false)
+
+    return () => {
+      ws.close()
+      wsRef.current = null
+    }
+  }, [user?.id, updateOrderStatus])
+
+  // ─── Polling — fallback when WS is disconnected; slower cadence when connected
   useEffect(() => {
     fetchOrders()
-    const interval = setInterval(fetchOrders, 10_000)   // poll every 10s
+    // Poll every 10s when WS is down, every 30s when WS is live (safety net)
+    const intervalMs = wsConnected ? 30_000 : 10_000
+    const interval = setInterval(fetchOrders, intervalMs)
     return () => clearInterval(interval)
-  }, [fetchOrders])
+  }, [fetchOrders, wsConnected])
 
   const active    = orders.filter(o => !['cancelled', 'delivered'].includes(o.status))
   const completed = orders.filter(o => ['cancelled', 'delivered'].includes(o.status))
@@ -233,7 +295,9 @@ export default function MyOrders() {
         <div>
           <h1 className="text-2xl font-black" style={{ color: 'var(--text-main)' }}>My Orders</h1>
           <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Live updates every 10s · QR code shown when ready
+            {wsConnected
+              ? '🟢 Live updates active · QR code shown when ready'
+              : '🟡 Polling every 10s · QR code shown when ready'}
           </p>
         </div>
         <button
