@@ -13,12 +13,15 @@ import { Order_Router } from './Routers/Order_Router'
 const app = express()
 
 // ─── Security & Perf middleware ───────────────────────────────────────────────
-app.use(helmet())
+app.use(helmet({ 
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "unsafe-none" }
+}))
 app.use(compression())
 
 // ─── CORS — locked to allowed origins from env (falls back to * in dev) ───────
 const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(",").map(o => o.trim())
+    ? process.env.CORS_ORIGINS.split(",").map(o => o.trim().replace(/\/$/, ""))
     : ["*"];
 
 app.use(cors({
