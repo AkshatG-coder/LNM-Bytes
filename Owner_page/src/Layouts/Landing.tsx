@@ -248,23 +248,38 @@ function Landing(): React.JSX.Element {
           {/* ── REGISTER FORM ── */}
           {mode === 'register' && (
             <form onSubmit={handleRegister} className="space-y-4">
-              <Field label="Your Full Name" placeholder="e.g. Rahul Sharma"
-                value={name} onChange={setName} />
-              <Field label="Store / Canteen Name" placeholder="e.g. LNM Bytes Canteen"
-                value={storeName} onChange={setStoreName} />
-              <Field label="Phone Number" type="tel" placeholder="10-digit mobile number"
-                value={phone} onChange={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
-                error={phone.length > 0 && phone.length !== 10} />
-              <Field label="Business Email" type="email" placeholder="owner@lnmbytes.com"
-                value={email} onChange={setEmail} error={!!error} />
-              <Field label="Password (min 6 chars)" type="password" placeholder="••••••••"
-                value={password} onChange={setPassword} />
-              <Field label="Confirm Password" type="password" placeholder="••••••••"
-                value={confirmPw} onChange={setConfirmPw}
-                error={password !== confirmPw && confirmPw.length > 0} />
+              
+              {/* Row 1: Name & Store */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Your Full Name" placeholder="e.g. Rahul Sharma"
+                  value={name} onChange={setName} />
+                <Field label="Store / Canteen Name" placeholder="e.g. LNM Bytes Canteen"
+                  value={storeName} onChange={setStoreName} />
+              </div>
 
-              <Field label="Cashfree / UPI Vendor ID (Optional)" placeholder="e.g. storename@ybl"
-                value={upiId} onChange={setUpiId} />
+              {/* Row 2: Email & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Business Email" type="email" placeholder="owner@lnmbytes.com"
+                  value={email} onChange={setEmail} error={!!error && error.toLowerCase().includes('email')} />
+                <Field label="Phone Number" type="tel" placeholder="10-digit number"
+                  value={phone} onChange={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
+                  error={phone.length > 0 && phone.length !== 10} />
+              </div>
+
+              {/* Row 3: Passwords */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cursor-text">
+                <Field label="Password (min 6 chars)" type="password" placeholder="••••••••"
+                  value={password} onChange={setPassword} />
+                <Field label="Confirm Password" type="password" placeholder="••••••••"
+                  value={confirmPw} onChange={setConfirmPw}
+                  error={password !== confirmPw && confirmPw.length > 0} />
+              </div>
+
+              {/* Row 4: Cashfree Single Column */}
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
+                <Field label="Cashfree Vendor ID (Optional)" placeholder="Strictly alphanumeric, e.g. storename99"
+                  value={upiId} onChange={setUpiId} />
+              </div>
 
               <p className="text-[11px] text-gray-400 font-medium px-1">
                 🏪 Your store will be created automatically. Phone is used as your store contact number.
