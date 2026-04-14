@@ -11,8 +11,8 @@ export default defineConfig({
   },
 
   build: {
-    // Smaller, faster bundles in production
-    minify: 'terser',
+    // Smaller, faster bundles in production using default esbuild
+    minify: 'esbuild',
     sourcemap: false,
     // Split code into logical chunks — avoids one monolithic JS file
     rollupOptions: {
