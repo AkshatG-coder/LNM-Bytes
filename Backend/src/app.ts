@@ -20,18 +20,8 @@ app.use(helmet({
 app.use(compression())
 
 // ─── CORS — locked to allowed origins from env (falls back to * in dev) ───────
-const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(",").map(o => o.trim().replace(/\/$/, ""))
-    : ["*"];
-
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (server-to-server, curl, Postman)
-        if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
+    origin: true, // Automatically reflect the request origin
     credentials: true,
 }))
 
