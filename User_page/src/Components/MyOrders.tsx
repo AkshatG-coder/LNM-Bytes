@@ -319,7 +319,7 @@ export default function MyOrders() {
           }
           const newStatus = statusMap[data.type]
           if (newStatus && data.orderId) {
-            updateOrderStatus(String(data.orderId), newStatus, data.qrCode)
+            updateOrderStatus(String(data.orderId), newStatus)
           }
         }
       } catch {
