@@ -12,18 +12,29 @@ import { Order_Router } from './Routers/Order_Router'
 
 const app = express()
 
+// ─── Bulletproof CORS & Preflight Handler ───────────────────────────────────────
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // Intercept OPTIONS method universally
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 // ─── Security & Perf middleware ───────────────────────────────────────────────
 app.use(helmet({ 
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }))
 app.use(compression())
-
-// ─── CORS — locked to allowed origins from env (falls back to * in dev) ───────
-app.use(cors({
-    origin: true, // Automatically reflect the request origin
-    credentials: true,
-}))
 
 // ─── Body parsing (Express 5 built-in, body-parser is deprecated) ─────────────
 app.use(express.json({ limit: '100kb' }))
