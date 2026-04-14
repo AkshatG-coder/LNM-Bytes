@@ -234,7 +234,7 @@ export default function MyOrders() {
     }
   }
 
-  const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus, qrCode?: string) => {
+  const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus) => {
     setOrders(prev => prev.map(o => {
       if (o._id !== orderId) return o
       if (o.status !== newStatus) {
