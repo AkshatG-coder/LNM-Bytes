@@ -103,7 +103,9 @@ export const useOrders = () => {
       Notification.requestPermission();
     }
 
-    const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8081";
+    // Automatically derive WS_URL from VITE_API_URL to ensure wss:// on https://
+    const apiHost = import.meta.env.VITE_API_URL || "http://localhost:8081";
+    const WS_URL = apiHost.replace(/^http/, "ws");
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {

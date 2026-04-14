@@ -295,7 +295,9 @@ export default function MyOrders() {
   useEffect(() => {
     if (!user?.id) return
 
-    const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:8081')
+    // Automatically derive WS_URL from API_URL to ensure secure WebSockets (wss) on HTTPS
+    const apiHost = (import.meta.env.VITE_API_URL || 'http://localhost:8081')
+    const WS_URL = apiHost.replace(/^http/, 'ws')
     const ws = new WebSocket(WS_URL)
     wsRef.current = ws
 
