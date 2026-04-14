@@ -108,6 +108,8 @@ export const useAuth = () => {
           ownerName: owner.name,
           isApproved: false,
           role: "owner",
+          ownerId: owner.id || "",
+          phone: "",
         };
         // Persist minimal info so waiting screen can show
         localStorage.setItem("OWNER_NAME", owner.name);
