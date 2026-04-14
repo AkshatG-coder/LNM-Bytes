@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { RootState } from '../Util/store'
 import { add_item } from '../Util/CartReducer'
 import api from '../Util/api'
@@ -204,6 +204,8 @@ export default function MyOrders() {
   const prevStatuses = useRef<Record<string, OrderStatus>>({})
   const wsRef = useRef<WebSocket | null>(null)
 
+  const [searchParams, setSearchParams] = useSearchParams()
+
   // ─── Reorder handler ─────────────────────────────────────────────────────
   const handleReorder = useCallback((order: Order) => {
     order.items.forEach((item) => {
@@ -235,9 +237,12 @@ export default function MyOrders() {
   const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus, qrCode?: string) => {
     setOrders(prev => prev.map(o => {
       if (o._id !== orderId) return o
-      const cfg = STATUS_CONFIG[newStatus]
-      const num = o.orderNumber ? ` #${o.orderNumber}` : ''
-      if (cfg) pushNotification(`LNM Bytes — Order${num}`, `${cfg.icon} ${cfg.label}`)
+      if (o.status !== newStatus) {
+        const cfg = STATUS_CONFIG[newStatus]
+        const num = o.orderNumber ? ` #${o.orderNumber}` : ''
+        if (cfg) pushNotification(`LNM Bytes — Order${num}`, `${cfg.icon} ${cfg.label}`)
+        prevStatuses.current[o._id] = newStatus
+      }
       return { ...o, status: newStatus }
     }))
   }, [])
@@ -267,6 +272,24 @@ export default function MyOrders() {
       setLoading(false)
     }
   }, [user?.id])
+
+  // ─── Verify Online Payment when returning from Cashfree ──────────────────
+  useEffect(() => {
+    const orderIdToVerify = searchParams.get('order_id')
+    if (orderIdToVerify) {
+      // Promptly remove from URL so it doesn't trigger again on refresh
+      setSearchParams({})
+      api.post(`/order/verify-payment/${orderIdToVerify}`)
+        .then(() => {
+           // Payment matched and verified
+           fetchOrders()
+        })
+        .catch(err => {
+           console.error("Payment verification failed", err)
+           alert("Your online payment verification failed or is pending. Please check with the counter.")
+        })
+    }
+  }, [searchParams, setSearchParams, fetchOrders])
 
   // ─── WebSocket — real-time order status updates ───────────────────────────
   useEffect(() => {

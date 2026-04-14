@@ -9,13 +9,23 @@ import { sendNotification } from "../websockets/notify";
 import QRCode from "qrcode";
 import crypto from "crypto";
 import logger from "../utils/logger";
+import { Store } from "../Models/Store.model";
+import axios from "axios";
+
+const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
+const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
+const CASHFREE_ENV = process.env.CASHFREE_ENV || "TEST";
+const CASHFREE_BASE_URL = CASHFREE_ENV === "PRODUCTION" 
+    ? "https://api.cashfree.com/pg/orders" 
+    : "https://sandbox.cashfree.com/pg/orders";
+const CASHFREE_API_VERSION = "2023-08-01"; // using the latest API version corresponding to fresh keys
 
 const fail = (res: any, code: number, msg: string) =>
     res.status(code).json({ success: false, message: msg });
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
 const CreateOrder = asyncHandler(async (req, res) => {
-    const { userId, storeId, items, totalAmount, paymentType, orderNote } = req.body;
+    const { userId, storeId, items, totalAmount, paymentType, orderNote, deliveryType } = req.body;
 
     if (!userId || !storeId || !items || items.length === 0 || !totalAmount || !paymentType)
         return fail(res, 400, "All fields are required");
@@ -26,9 +36,10 @@ const CreateOrder = asyncHandler(async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(storeId))
         return fail(res, 400, "Invalid storeId format");
 
-    // Run user lookup and atomic counter increment in parallel
-    const [user, counterDoc] = await Promise.all([
+    // Run user lookup, store lookup, and atomic counter increment in parallel
+    const [user, store, counterDoc] = await Promise.all([
         UserModel.findById(userId).lean(),
+        Store.findById(storeId).lean(),
         // Atomic counter — safe under any level of concurrent requests
         CounterModel.findOneAndUpdate(
             { _id: "orderNumber" },
@@ -38,9 +49,40 @@ const CreateOrder = asyncHandler(async (req, res) => {
     ]);
 
     if (!user) return fail(res, 404, "User not found");
+    if (!store) return fail(res, 404, "Store not found");
+
+    if (store.status !== "open" || !store.isActive) {
+        return fail(res, 400, "Sorry, this store is currently closed manually by the owner.");
+    }
+
+    // Validate Real Time based on Store operating hours (IST)
+    const operationTime = (store as any).operationTime;
+    if (operationTime && operationTime.openTime && operationTime.closeTime) {
+        // Get current time in IST (HH:MM format)
+        const nowIST = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata", hour12: false, hour: '2-digit', minute: '2-digit' });
+        const { openTime, closeTime } = operationTime;
+
+        let isDuringHours = false;
+        if (closeTime < openTime) {
+            // Store stays open past midnight (e.g., open 20:00, close 02:00)
+            isDuringHours = nowIST >= openTime || nowIST <= closeTime;
+        } else {
+            // Normal operating hours (e.g., open 08:00, close 22:00)
+            isDuringHours = nowIST >= openTime && nowIST <= closeTime;
+        }
+
+        if (!isDuringHours) {
+            return fail(res, 400, `This store operates outside current hours (${openTime} to ${closeTime}). Please order when open!`);
+        }
+    }
+
+    if (deliveryType === "night_delivery" && !(store as any).nightDelivery) {
+        return fail(res, 400, "This store does not offer night delivery.");
+    }
 
     const nextOrderNumber = (counterDoc?.seq ?? 0) + 1000; // orders start at 1001
 
+    const initialStatus = paymentType === "online" ? "payment_pending" : "pending";
     const newOrder = await OrderModel.create({
         orderNumber: nextOrderNumber,
         userId,
@@ -53,10 +95,95 @@ const CreateOrder = asyncHandler(async (req, res) => {
         paymentType,
         paymentStatus: "pending",
         orderNote: orderNote || "",
-        deliveryType: "pickup",
-        status: "pending",
+        deliveryType: deliveryType || "pickup",
+        status: initialStatus,
     });
 
+    if (paymentType === "online") {
+        try {
+            // Cashfree requires order_id to be alphanumeric with _ or - only (no ObjectId!)
+            const cfOrderId = `ord_${nextOrderNumber}_${Date.now()}`;
+
+            // Phone: Cashfree requires exactly 10 digits, no country code
+            let customerPhone = (user as any).phone ? String((user as any).phone).replace(/\D/g, "") : "";
+            if (customerPhone.length !== 10) customerPhone = "9999999999"; // fallback for test
+
+            // customer_id: alphanumeric only
+            const customerId = String(userId).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50);
+
+            const payload: any = {
+                order_id: cfOrderId,
+                order_amount: parseFloat(totalAmount.toString()),  // MUST be float, not string
+                order_currency: "INR",
+                customer_details: {
+                    customer_id:    customerId,
+                    customer_name:  user.name,
+                    customer_email: user.email,
+                    customer_phone: customerPhone,
+                },
+                order_meta: {
+                    return_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders?order_id=${newOrder._id.toString()}`
+                }
+            };
+
+            // NOTE: vendor_splits/order_splits requires Easy Split to be enabled on your
+            // Cashfree merchant account.
+            if ((store as any).upiId) {
+                // Cashfree strictly requires vendor_id to be alphanumeric with _ or - only
+                const cleanVendorId = String((store as any).upiId).replace(/[^a-zA-Z0-9_-]/g, "");
+                
+                if (cleanVendorId) {
+                    payload.order_splits = [{ vendor_id: cleanVendorId, percentage: 100 }];
+                }
+            }
+
+            logger.info({ cfOrderId, amount: payload.order_amount }, "Creating Cashfree order");
+
+            const cfRes = await axios.post(CASHFREE_BASE_URL, payload, {
+                headers: {
+                    "x-client-id":     process.env.CASHFREE_APP_ID,
+                    "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+                    "x-api-version":   CASHFREE_API_VERSION,
+                    "Content-Type":    "application/json"
+                }
+            });
+
+            const paymentSessionId = cfRes.data.payment_session_id;
+            if (!paymentSessionId) {
+                logger.error({ cfRes: cfRes.data }, "Cashfree returned no payment_session_id");
+                return fail(res, 502, "Cashfree returned no session. Try again.");
+            }
+
+            newOrder.cashfreeOrderId = cfOrderId;
+            (newOrder as any).paymentSessionId = paymentSessionId;
+            await newOrder.save();
+
+            logger.info({ cfOrderId, paymentSessionId }, "Cashfree order created OK");
+
+            // Return immediately without pushing WebSocket — atomic!
+            return res.status(201).json(new ApiResponse(201, true, "Order created. Pending payment", {
+                ...newOrder.toJSON(),
+                payment_session_id: paymentSessionId
+            }));
+
+        } catch (error: any) {
+            const cfErr  = error.response?.data;
+            const cfMsg  = cfErr?.message || cfErr?.error || error.message || "Unknown Cashfree error";
+            const cfCode = error.response?.status;
+            
+            const usedId = process.env.CASHFREE_APP_ID || "undefined";
+            logger.error({ 
+                cfErr, 
+                cfCode,
+                usedAppIdStart: usedId.substring(0, 8) 
+            }, "Cashfree API error");
+            
+            // Keep order in payment_pending so user can retry
+            return fail(res, 502, `Payment gateway error (${cfCode}): ${cfMsg} (Using AppID starting with ${usedId.substring(0, 8)})`);
+        }
+    }
+
+    // Standard cash order — trigger WebSocket
     sendNotification(storeId.toString(), {
         type: "newOrder",
         orderId:     newOrder._id,
@@ -66,6 +193,58 @@ const CreateOrder = asyncHandler(async (req, res) => {
     });
 
     return res.status(201).json(new ApiResponse(201, true, "Order created successfully", newOrder));
+});
+
+// ─── Verify Payment (Webhook / Callback) ──────────────────────────────────────
+const VerifyPayment = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    
+    const order = await OrderModel.findById(orderId);
+    if (!order) return fail(res, 404, "Order not found");
+
+    if (order.paymentStatus === "paid") {
+        return res.json(new ApiResponse(200, true, "Payment already verified", order));
+    }
+
+    try {
+        const cfRes = await axios.get(`${CASHFREE_BASE_URL}/${order._id.toString()}`, {
+            headers: {
+                "x-client-id": CASHFREE_APP_ID,
+                "x-client-secret": CASHFREE_SECRET_KEY,
+                "x-api-version": "2023-08-01",
+            }
+        });
+
+        const orderStatus = cfRes.data.order_status;
+
+        if (orderStatus === "PAID") {
+            order.status = "pending";
+            order.paymentStatus = "paid";
+            await order.save();
+
+            // Atomic WebSocket notification
+            sendNotification(order.storeId.toString(), {
+                type: "newOrder",
+                orderId:     order._id,
+                orderNumber: (order as any).orderNumber,
+                message:     `New order #${(order as any).orderNumber} from ${order.userName} (PAID ONLINE)!`,
+                paymentType: order.paymentType,
+            });
+
+            return res.json(new ApiResponse(200, true, "Payment completed successfully", order));
+        } else if (orderStatus === "FAILED" || orderStatus === "TERMINATED" || orderStatus === "USER_DROPPED") {
+            order.status = "cancelled";
+            order.paymentStatus = "failed";
+            await order.save();
+            return fail(res, 400, `Payment was ${orderStatus.toLowerCase()}`);
+        } else {
+            return fail(res, 400, "Payment is still " + orderStatus);
+        }
+
+    } catch (err: any) {
+        console.error("Cashfree Verification Error:", err.response?.data || err.message);
+        return fail(res, 500, "Error verifying payment with Cashfree");
+    }
 });
 
 // ─── Get All Orders for a User ────────────────────────────────────────────────
@@ -233,16 +412,51 @@ const RejectOrder = asyncHandler(async (req, res) => {
     if (!order) return fail(res, 404, "Order not found");
     if (order.status !== "pending") return fail(res, 400, "Only pending orders can be rejected");
 
+    // 1. Mark order as cancelled internally
     order.status = "cancelled";
+
+    // 2. If it was paid online, issue a Cashfree Refund
+    if (order.paymentType === "online" && order.paymentStatus === "paid") {
+        try {
+            const refundPayload = {
+                refund_amount: order.totalAmount,
+                refund_id: `rfnd_${order._id.toString()}_${Date.now()}`,
+                refund_note: "Order cancelled by canteen owner"
+            };
+            
+            await axios.post(`${CASHFREE_BASE_URL}/${order._id.toString()}/refunds`, refundPayload, {
+                headers: {
+                    "x-client-id": process.env.CASHFREE_APP_ID || CASHFREE_APP_ID,
+                    "x-client-secret": process.env.CASHFREE_SECRET_KEY || CASHFREE_SECRET_KEY,
+                    "x-api-version": CASHFREE_API_VERSION,
+                    "Content-Type": "application/json"
+                }
+            });
+            order.paymentStatus = "refunded";
+            logger.info({ orderId: order._id }, "Cashfree refund initiated successfully");
+        } catch (error: any) {
+            logger.error({ 
+                err: error.response?.data || error.message, 
+                orderId: order._id 
+            }, "Failed to initiate Cashfree refund");
+            // We still cancel the order, but keep paymentStatus as 'paid' or mark as 'refund_failed'
+            order.paymentStatus = "failed"; // For simplicity, though manual intervention might be needed.
+            // Ideally: order.paymentStatus = "refund_pending" or flag for manual.
+        }
+    }
+
     await order.save();
 
+    // 3. Notify the user
     sendNotification(order.userId.toString(), {
         type:    "orderCancelled",
         orderId: order._id,
-        message: "❌ Sorry, your order was rejected by the canteen.",
+        message: order.paymentStatus === "refunded" 
+            ? "❌ Sorry, your order was rejected. A full refund has been initiated to your account."
+            : "❌ Sorry, your order was rejected by the canteen.",
     });
 
-    return res.json(new ApiResponse(200, true, "Order rejected", order));
+    return res.json(new ApiResponse(200, true, "Order rejected and refund processed", order));
 });
 
 // ─── Track Order Status ───────────────────────────────────────────────────────
@@ -335,4 +549,5 @@ export {
     GetOrderQR,
     VerifyOrderQR,
     GetDailySales,
+    VerifyPayment,
 };

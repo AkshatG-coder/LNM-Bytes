@@ -57,6 +57,11 @@ const CanteenSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    upiId: {
+      type: String,
+      required: false,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

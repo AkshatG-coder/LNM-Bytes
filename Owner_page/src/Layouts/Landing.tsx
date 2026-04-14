@@ -49,6 +49,7 @@ function Landing(): React.JSX.Element {
   const [storeName, setStoreName] = useState('');
   const [phone, setPhone]         = useState('');
   const [confirmPw, setConfirmPw] = useState('');
+  const [upiId, setUpiId]         = useState('');
 
   const switchMode = (m: Mode) => {
     setMode(m);
@@ -83,7 +84,7 @@ function Landing(): React.JSX.Element {
     }
     if (password !== confirmPw) { setError('Passwords do not match.'); return; }
     if (password.length < 6)   { setError('Password must be at least 6 characters.'); return; }
-    const auth = await register(name, email, password, storeName, phone);
+    const auth = await register(name, email, password, storeName, phone, upiId);
     if (auth) navigate('/admin');
   };
 
@@ -261,6 +262,9 @@ function Landing(): React.JSX.Element {
               <Field label="Confirm Password" type="password" placeholder="••••••••"
                 value={confirmPw} onChange={setConfirmPw}
                 error={password !== confirmPw && confirmPw.length > 0} />
+
+              <Field label="Cashfree / UPI Vendor ID (Optional)" placeholder="e.g. storename@ybl"
+                value={upiId} onChange={setUpiId} />
 
               <p className="text-[11px] text-gray-400 font-medium px-1">
                 🏪 Your store will be created automatically. Phone is used as your store contact number.

@@ -10,6 +10,7 @@ export function Cart_Details() {
   const user = useSelector((state) => state.User.user)
   const dispatch = useAppDispatch()
   const [placing, setPlacing] = useState(false)
+  const [isNightDelivery, setIsNightDelivery] = useState(false)
 
   const total = cart_details.reduce((acc, item) => acc + item.price * item.qty, 0)
 
@@ -38,23 +39,40 @@ export function Cart_Details() {
         storeId: cart_details[0].canteen_id,
         items,
         totalAmount: total,
+        deliveryType: isNightDelivery ? 'night_delivery' : 'pickup',
         paymentType,
       })
 
       if (response.data?.success) {
-        dispatch(clear_all_item())
         if (paymentType === 'cash') {
-          alert("✅ Order placed! Please pick it up at the counter after it's ready.")
+          dispatch(clear_all_item())
+          if (isNightDelivery) {
+            alert("✅ Night Delivery order placed! Your food will be delivered to you soon. 🌙")
+          } else {
+            alert("✅ Order placed! Please pick it up at the counter after it's ready.")
+          }
         } else {
-          // Cashfree integration placeholder
-          alert("✅ Order placed! Pay at the counter when ready (online payment coming soon).")
+          // Cashfree flow
+          const sessionId = response.data.data?.payment_session_id;
+          if (sessionId && window.Cashfree) {
+            dispatch(clear_all_item())
+            const cashfree = window.Cashfree({ mode: "sandbox" });
+            cashfree.checkout({ paymentSessionId: sessionId });
+            // On success, Cashfree redirects back to /orders?order_id=...
+          } else if (sessionId && !window.Cashfree) {
+            alert("⚠️ Cashfree SDK not loaded. Please refresh and try again.");
+          } else {
+            alert("⚠️ No payment session returned. Please try again.");
+          }
         }
       } else {
-        alert("Failed to place order. Please try again.")
+        const errMsg = response.data?.message || "Failed to place order.";
+        alert(`❌ ${errMsg}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert("Failed to place order. Please try again.")
+      const msg = err.response?.data?.message || "Failed to place order. Please try again."
+      alert(`❌ ${msg}`)
     } finally {
       setPlacing(false)
     }
@@ -132,8 +150,23 @@ export function Cart_Details() {
           }}
         >
           <div className="max-w-3xl mx-auto space-y-3">
+            {/* Night Delivery Toggle */}
+            <div className="flex justify-between items-center px-1 py-1">
+              <label htmlFor="nightDelivery" className="font-bold flex items-center gap-2 cursor-pointer" style={{ color: 'var(--text-muted)' }}>
+                <input
+                  id="nightDelivery"
+                  type="checkbox"
+                  checked={isNightDelivery}
+                  onChange={(e) => setIsNightDelivery(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                🌙 Night Delivery
+              </label>
+              <span className="text-xs font-bold text-gray-400 dark:text-gray-500">(If available)</span>
+            </div>
+
             {/* Total */}
-            <div className="flex justify-between items-center px-1">
+            <div className="flex justify-between items-center px-1 mb-1">
               <span className="font-bold" style={{ color: 'var(--text-muted)' }}>Total</span>
               <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
             </div>

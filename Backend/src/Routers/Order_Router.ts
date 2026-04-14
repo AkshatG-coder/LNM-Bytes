@@ -13,6 +13,7 @@ import {
     GetOrderQR,
     VerifyOrderQR,
     GetDailySales,
+    VerifyPayment,
 } from "../Controller/Order_Controller";
 import { verifyUserToken, verifyOwnerToken } from "../middleware/verifyToken";
 
@@ -20,6 +21,7 @@ const Order_Router = Router();
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 Order_Router.post("/create", verifyUserToken, CreateOrder);
+Order_Router.post("/verify-payment/:orderId", verifyUserToken, VerifyPayment);
 
 // ─── User & Store order lists ─────────────────────────────────────────────────
 Order_Router.get("/user/:userId",          verifyUserToken, GetUserAll_Orders);

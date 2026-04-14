@@ -4,6 +4,7 @@ export function CanteenStoreAddition() {
   const [storeName, setStoreName] = useState("");
   const [openingTime, setOpeningTime] = useState("");
   const [closingTime, setClosingTime] = useState("");
+  const [upiId, setUpiId] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,6 +33,7 @@ export function CanteenStoreAddition() {
       storeName,
       openingTime,
       closingTime,
+      upiId,
     };
 
     console.log("Store Added:", payload);
@@ -40,6 +42,7 @@ export function CanteenStoreAddition() {
     setStoreName("");
     setOpeningTime("");
     setClosingTime("");
+    setUpiId("");
   };
 
   return (
@@ -91,7 +94,7 @@ export function CanteenStoreAddition() {
         </div>
 
         {/* Closing Time */}
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Closing Time
           </label>
@@ -99,6 +102,20 @@ export function CanteenStoreAddition() {
             type="time"
             value={closingTime}
             onChange={(e) => setClosingTime(e.target.value)}
+            className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* UPI ID / Cashfree Vendor ID */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Cashfree Vendor UPI ID (Optional)
+          </label>
+          <input
+            type="text"
+            value={upiId}
+            onChange={(e) => setUpiId(e.target.value)}
+            placeholder="e.g. store@ybl or vendor-123"
             className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>

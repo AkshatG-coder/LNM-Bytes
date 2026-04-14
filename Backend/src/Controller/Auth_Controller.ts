@@ -140,7 +140,7 @@ const updatePhone = asyncHandler(async (req, res) => {
 
 // ─── Owner: Register ─────────────────────────────────────────────────────────
 const ownerRegister = asyncHandler(async (req, res) => {
-    const { name, email, password, storeName, phone } = req.body;
+    const { name, email, password, storeName, phone, upiId } = req.body;
 
     if (!name || !email || !password || !storeName || !phone)
         return err(res, 400, "All fields are required — name, phone, email, password, and store name");
@@ -164,6 +164,7 @@ const ownerRegister = asyncHandler(async (req, res) => {
         operationTime: { openTime: "08:00", closeTime: "22:00" },
         isActive: false,
         status: "closed",
+        ...(upiId ? { upiId: upiId.trim() } : {}),
     });
 
     const owner = await OwnerModel.create({
@@ -251,6 +252,17 @@ const revokeOwner = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Owner revoked successfully", owner));
 });
 
+// ─── Super Admin: Reject Owner ───────────────────────────────────────────────
+const rejectOwner = asyncHandler(async (req, res) => {
+    const { ownerId } = req.params;
+    const owner = await OwnerModel.findByIdAndDelete(ownerId);
+    if (!owner) return err(res, 404, "Owner not found");
+    if (owner.storeId) {
+        await Store.findByIdAndDelete(owner.storeId);
+    }
+    return res.json(new ApiResponse(200, true, "Owner request rejected and deleted successfully", owner));
+});
+
 // ─── Owner: Update Phone ──────────────────────────────────────────────────────
 // PATCH /auth/owner/phone/:ownerId
 const updateOwnerPhone = asyncHandler(async (req, res) => {
@@ -285,4 +297,5 @@ export {
     getAllOwners,
     approveOwner,
     revokeOwner,
+    rejectOwner,
 };

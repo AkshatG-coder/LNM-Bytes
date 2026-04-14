@@ -91,12 +91,13 @@ export const useAuth = () => {
     email: string,
     password: string,
     storeName: string,
-    phone: string
+    phone: string,
+    upiId?: string
   ): Promise<AuthState | null> => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.post("/auth/owner/register", { name, email, password, storeName, phone });
+      const res = await api.post("/auth/owner/register", { name, email, password, storeName, phone, upiId });
       if (res.data?.success) {
         const { owner, store } = res.data.data;
         // After register, owner is not yet approved — persist with isApproved: false

@@ -11,6 +11,7 @@ import {
     getAllOwners,
     approveOwner,
     revokeOwner,
+    rejectOwner,
 } from "../Controller/Auth_Controller";
 
 
@@ -34,5 +35,6 @@ Auth_Router.patch("/owner/phone/:ownerId", updateOwnerPhone);  // update owner p
 Auth_Router.get("/superadmin/owners", getAllOwners);
 Auth_Router.patch("/superadmin/approve/:ownerId", approveOwner);
 Auth_Router.patch("/superadmin/revoke/:ownerId", revokeOwner);
+Auth_Router.delete("/superadmin/reject/:ownerId", rejectOwner);
 
 export { Auth_Router };

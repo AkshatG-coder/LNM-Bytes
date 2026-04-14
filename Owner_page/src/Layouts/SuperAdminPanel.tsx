@@ -58,6 +58,20 @@ function SuperAdminPanel() {
     }
   };
 
+  const reject = async (owner: OwnerRecord) => {
+    if (!window.confirm(`Are you sure you want to reject the request for ${owner.name}? Their data will be deleted.`)) return;
+    try {
+      setActionId(owner._id);
+      await api.delete(`/auth/superadmin/reject/${owner._id}`);
+      await fetchOwners();
+      showToast(`🗑️ ${owner.name}'s request rejected and deleted.`);
+    } catch {
+      showToast('Failed to reject.', 'error');
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const pending  = owners.filter(o => !o.isApproved && o.role !== 'superadmin');
   const approved = owners.filter(o =>  o.isApproved && o.role !== 'superadmin');
   const list = activeTab === 'pending' ? pending : approved;
@@ -180,15 +194,24 @@ function SuperAdminPanel() {
               </div>
 
               {/* Action */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex items-center gap-2">
                 {!owner.isApproved ? (
-                  <button
-                    onClick={() => approve(owner)}
-                    disabled={actionId === owner._id}
-                    className="px-6 py-2.5 rounded-xl text-sm font-black text-white bg-green-600 hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {actionId === owner._id ? '⏳' : '✅ Approve'}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => reject(owner)}
+                      disabled={actionId === owner._id}
+                      className="px-4 py-2.5 rounded-xl text-sm font-black text-red-500 hover:text-white hover:bg-red-600 border border-red-500/30 hover:border-transparent transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {actionId === owner._id ? '⏳' : '❌ Reject'}
+                    </button>
+                    <button
+                      onClick={() => approve(owner)}
+                      disabled={actionId === owner._id}
+                      className="px-6 py-2.5 rounded-xl text-sm font-black text-white bg-green-600 hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {actionId === owner._id ? '⏳' : '✅ Approve'}
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={() => revoke(owner)}

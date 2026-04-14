@@ -13,6 +13,7 @@ export interface MenuCardItemInterface {
   isVeg?: boolean
   category?: string
   storeId: string
+  storeStatus?: string // added to check if store is open
 }
 
 export function MenuItemCard({
@@ -26,6 +27,7 @@ export function MenuItemCard({
   isVeg,
   category,
   storeId,
+  storeStatus = "open", // default to open to not break existing usage
 }: MenuCardItemInterface) {
   const dispatch = useAppDispatch()
   const cart_items = useAppSelector((state) => state.Cart.items)
@@ -41,6 +43,10 @@ export function MenuItemCard({
   const qty = cartItem?.qty ?? 0
 
   function handleAdd() {
+    if (storeStatus !== "open") {
+       alert("Sorry, this shop is currently closed 🚫");
+       return;
+    }
     if (cart_items.length === 0) {
       dispatch(add_item({ id: _id, item_name: name, price: selectedPrice, qty: 1, canteen_id: storeId, portionSize: selectedPortion }))
       return

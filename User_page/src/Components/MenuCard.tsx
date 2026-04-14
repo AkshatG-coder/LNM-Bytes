@@ -19,16 +19,25 @@ interface MenuCache {
 export function MenuCard() {
   const { id } = useParams<{ id: string }>()
   const [menuItems, setMenuItems] = useState<MenuCardItemInterface[]>([])
+  const [storeStatus, setStoreStatus] = useState<string>("open")
+  const [storeName, setStoreName] = useState<string>("Today's Special")
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
 
-    async function fetchMenuItems() {
+    async function fetchData() {
       try {
         setIsLoading(true)
 
-        // sessionStorage cache per store (60s TTL)
+        // 1. Fetch Store Details
+        const storeRes = await api.get(`/store_handler/${id}`)
+        if (storeRes.data?.success) {
+          setStoreStatus(storeRes.data.data.status)
+          setStoreName(storeRes.data.data.name)
+        }
+
+        // 2. Fetch Menu Items (Check Cache)
         const cacheKey = getCacheKey(id!)
         try {
           const cached = sessionStorage.getItem(cacheKey)
@@ -50,13 +59,13 @@ export function MenuCard() {
           sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() } satisfies MenuCache))
         }
       } catch (error) {
-        console.error("Failed to fetch menu items:", error)
+        console.error("Failed to fetch menu items/store info:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchMenuItems()
+    fetchData()
   }, [id])
 
   const {
@@ -69,6 +78,17 @@ export function MenuCard() {
     (item, search) => item.name.toLowerCase().includes(search.toLowerCase())
   )
 
+  // Group items by category
+  const groupedByCategory = filteredData.reduce((acc, item) => {
+    const cat = item.category || "Uncategorized";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {} as Record<string, MenuCardItemInterface[]>);
+
+  // Sort categories (you can customize the order if needed)
+  const categories = Object.keys(groupedByCategory).sort();
+
   return (
     <section
       className="min-h-screen py-10 px-4 transition-colors duration-300"
@@ -76,14 +96,21 @@ export function MenuCard() {
     >
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-10 text-center md:text-left">
-        <h2
-          className="text-3xl font-black tracking-tight"
-          style={{ color: 'var(--text-main)' }}
-        >
-          Today's Special <span className="text-primary">Menu</span>
-        </h2>
-        <p className="mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>
-          Freshly prepared items available at LNMIIT canteens
+        <div className="flex items-center gap-3 justify-center md:justify-start mb-2">
+          <h2
+            className="text-3xl font-black tracking-tight"
+            style={{ color: 'var(--text-main)' }}
+          >
+            {storeName} <span className="text-primary">Menu</span>
+          </h2>
+          {storeStatus === "closed" && (
+            <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold text-sm">
+              Closed
+            </span>
+          )}
+        </div>
+        <p className="font-medium" style={{ color: 'var(--text-muted)' }}>
+          Freshly prepared items available here
         </p>
 
         <div className="mt-8 flex flex-col md:flex-row items-center gap-4">
@@ -115,20 +142,34 @@ export function MenuCard() {
           <p className="text-primary font-bold animate-pulse">Loading menu...</p>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {filteredData.length > 0 ? (
-            filteredData.map((item) => (
-              <MenuItemCard
-                key={item._id}
-                _id={item._id}
-                storeId={item.storeId}
-                name={item.name}
-                price={item.price}
-                image={item.image}
-                isAvailable={item.isAvailable}
-                isVeg={item.isVeg}
-                category={item.category}
-              />
+        <div className="max-w-7xl mx-auto flex flex-col gap-12">
+          {categories.length > 0 ? (
+            categories.map(cat => (
+              <div key={cat} className="space-y-6">
+                <h3 className="text-2xl font-black uppercase tracking-wider relative inline-block" style={{ color: 'var(--text-main)' }}>
+                  {cat}
+                  <div className="absolute -bottom-2 left-0 w-12 h-1 bg-primary rounded-full"></div>
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 pt-4">
+                  {groupedByCategory[cat].map((item) => (
+                    <MenuItemCard
+                      key={item._id}
+                      _id={item._id}
+                      storeId={item.storeId}
+                      name={item.name}
+                      price={item.price}
+                      halfPrice={item.halfPrice}
+                      hasHalf={item.hasHalf}
+                      image={item.image}
+                      isAvailable={item.isAvailable}
+                      isVeg={item.isVeg}
+                      category={item.category}
+                      storeStatus={storeStatus}
+                    />
+                  ))}
+                </div>
+              </div>
             ))
           ) : (
             <div

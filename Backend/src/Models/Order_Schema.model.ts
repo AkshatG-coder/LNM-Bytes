@@ -63,7 +63,7 @@ const OrderSchema = new Schema({
     // ─── Status ───────────────────────────────────────────────────────────────
     status: {
         type: String,
-        enum: ["pending", "accepted", "preparing", "ready", "delivered", "cancelled"],
+        enum: ["payment_pending", "pending", "accepted", "preparing", "ready", "delivered", "cancelled"],
         default: "pending",
     },
 
@@ -74,7 +74,7 @@ const OrderSchema = new Schema({
 
     // ─── Misc ─────────────────────────────────────────────────────────────────
     orderNote:    { type: String, default: "" },
-    deliveryType: { type: String, enum: ["pickup"], default: "pickup" },
+    deliveryType: { type: String, enum: ["pickup", "night_delivery"], default: "pickup" },
 
     // ─── QR Code (generated when order is marked Ready) ──────────────────────
     qrToken:      { type: String, default: null },
