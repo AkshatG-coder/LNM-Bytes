@@ -159,7 +159,7 @@ const UserAccordion = ({
           </div>
 
           {/* Action buttons — 2-step flow: pending → preparing → ready */}
-          <div className="mt-5 flex justify-end gap-3 pt-4 border-t border-gray-700/50">
+          <div className="mt-5 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-700/50">
 
             {status === 'pending' && (
               <>

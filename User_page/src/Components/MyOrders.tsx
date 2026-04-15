@@ -365,11 +365,10 @@ export default function MyOrders() {
   // ─── Polling — fallback when WS is disconnected; slower cadence when connected
   useEffect(() => {
     fetchOrders()
-    // Poll every 10s when WS is down, every 30s when WS is live (safety net)
-    const intervalMs = wsConnected ? 30_000 : 10_000
-    const interval = setInterval(fetchOrders, intervalMs)
+    // Poll every 30s as requested
+    const interval = setInterval(fetchOrders, 30_000)
     return () => clearInterval(interval)
-  }, [fetchOrders, wsConnected])
+  }, [fetchOrders])
 
   const active    = orders.filter(o => !['cancelled', 'delivered'].includes(o.status))
   const completed = orders.filter(o => ['cancelled', 'delivered'].includes(o.status))

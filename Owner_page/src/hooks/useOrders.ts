@@ -24,9 +24,9 @@ export const useOrders = () => {
   // ── Core fetch ──────────────────────────────────────────────────────────────
   // Defined as a plain function — NOT useCallback — so it never changes identity.
   // Called from interval and WS message handler via ref.
-  const fetchRef = useRef(async () => {
+  const fetchRef = useRef(async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError(null);
       const response = await api.get(`/order/store/${getStoreId()}`);
       if (!response.data?.success) { setUsers([]); return; }
@@ -78,19 +78,20 @@ export const useOrders = () => {
       setError("Could not connect to the server");
       setUsers([]);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   });
 
-  // Stable public handle for other callers (Refresh button, WS push)
-  const fetchOrders = () => fetchRef.current();
+  // Stable public handle for other callers (Refresh button manual click)
+  const fetchOrders = () => fetchRef.current(false);
 
   // ── Polling — single interval, never recreated ──────────────────────────────
   useEffect(() => {
-    fetchRef.current();                               // initial load
+    // Poll unconditionally every 30s as safety net/refresh
+    fetchRef.current(false);                          // initial load shows spinner
     const id = setInterval(() => {
-      fetchRef.current();
-    }, wsConnectedRef.current ? 40_000 : 30_000);
+      fetchRef.current(true);                         // background poll silent
+    }, 30_000);
     return () => clearInterval(id);
   }, []); // ← empty deps: runs ONCE, no loops
 
@@ -119,7 +120,7 @@ export const useOrders = () => {
         const data = JSON.parse(event.data);
         if (data.type === "newOrder") {
           playRef.current();        // instant alert on push
-          fetchRef.current();       // refresh list
+          fetchRef.current(true);   // background refresh list
         }
       } catch { /* ignore */ }
     };
@@ -134,7 +135,7 @@ export const useOrders = () => {
   const callEndpoint = async (action: string, orderId: string) => {
     try {
       await api.patch(`/order/${action}/${orderId}`);
-      fetchRef.current();
+      fetchRef.current(true); // silent refresh after action
     } catch (err) {
       console.error(`Failed to call /order/${action}:`, err);
     }
