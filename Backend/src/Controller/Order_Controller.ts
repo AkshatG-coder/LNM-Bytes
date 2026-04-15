@@ -207,7 +207,9 @@ const VerifyPayment = asyncHandler(async (req, res) => {
     }
 
     try {
-        const cfRes = await axios.get(`${CASHFREE_BASE_URL}/${order._id.toString()}`, {
+        // IMPORTANT: must use the Cashfree-assigned order ID, not our MongoDB _id
+        const cfLookupId = order.cashfreeOrderId || order._id.toString();
+        const cfRes = await axios.get(`${CASHFREE_BASE_URL}/${cfLookupId}`, {
             headers: {
                 "x-client-id": CASHFREE_APP_ID,
                 "x-client-secret": CASHFREE_SECRET_KEY,

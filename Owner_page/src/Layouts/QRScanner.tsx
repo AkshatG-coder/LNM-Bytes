@@ -18,30 +18,32 @@ type ScannedOrder = {
 
 type ScanState = "idle" | "scanning" | "loading" | "success" | "error" | "already_used" | "expired";
 
-// Format time
 function fmt(iso: string) {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function QRScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const [scanState, setScanState]     = useState<ScanState>("idle");
-  const [order, setOrder]             = useState<ScannedOrder | null>(null);
-  const [errorMsg, setErrorMsg]       = useState("");
+  const [scanState, setScanState]         = useState<ScanState>("idle");
+  const [order, setOrder]                 = useState<ScannedOrder | null>(null);
+  const [errorMsg, setErrorMsg]           = useState("");
   const [cameraStarted, setCameraStarted] = useState(false);
   const SCANNER_ID = "qr-reader";
 
   // ── Start camera ────────────────────────────────────────────────────────────
   async function startScanner() {
-    setScanState("scanning");
     setOrder(null);
     setErrorMsg("");
+    setScanState("scanning");
 
-    if (!scannerRef.current) {
-      scannerRef.current = new Html5Qrcode(SCANNER_ID);
-    }
+    // Tiny delay so React can commit the DOM update that makes #qr-reader visible
+    // before Html5Qrcode tries to attach to it.
+    await new Promise((res) => setTimeout(res, 80));
 
     try {
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode(SCANNER_ID);
+      }
       await scannerRef.current.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -59,9 +61,7 @@ export default function QRScanner() {
   // ── Stop camera ─────────────────────────────────────────────────────────────
   async function stopScanner() {
     if (scannerRef.current && cameraStarted) {
-      try {
-        await scannerRef.current.stop();
-      } catch (_) {}
+      try { await scannerRef.current.stop(); } catch (_) {}
       setCameraStarted(false);
     }
   }
@@ -74,11 +74,9 @@ export default function QRScanner() {
     try {
       const parsed = JSON.parse(rawText);
       const token: string = parsed.token;
-
       if (!token) throw new Error("Invalid QR format");
 
       const res = await api.post("/order/verify-qr", { token });
-
       if (res.data?.success) {
         setOrder(res.data.data);
         setScanState("success");
@@ -98,7 +96,6 @@ export default function QRScanner() {
     }
   }
 
-  // ── Reset ────────────────────────────────────────────────────────────────
   function reset() {
     setOrder(null);
     setErrorMsg("");
@@ -107,10 +104,11 @@ export default function QRScanner() {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      stopScanner();
-    };
+    return () => { stopScanner(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const isScanning = scanState === "scanning";
 
   return (
     <div className="animate-fade-in">
@@ -148,12 +146,8 @@ export default function QRScanner() {
         )}
 
         {/* ── SCANNING ── */}
-        {scanState === "scanning" && (
+        {isScanning && (
           <div className="flex flex-col items-center gap-4">
-            <div
-              id={SCANNER_ID}
-              className="w-full rounded-2xl overflow-hidden border-2 border-primary/30 shadow-xl"
-            />
             <p className="text-sm font-bold text-primary animate-pulse">🔍 Point camera at QR code…</p>
             <button
               onClick={() => { stopScanner(); reset(); }}
@@ -163,6 +157,12 @@ export default function QRScanner() {
             </button>
           </div>
         )}
+
+        {/* ── The scanner div is ALWAYS in the DOM; visibility controlled by CSS ── */}
+        <div
+          id={SCANNER_ID}
+          className={`w-full rounded-2xl overflow-hidden border-2 border-primary/30 shadow-xl mt-4 ${isScanning ? "block" : "hidden"}`}
+        />
 
         {/* ── LOADING ── */}
         {scanState === "loading" && (
@@ -184,8 +184,17 @@ export default function QRScanner() {
               </div>
             </div>
 
-            {/* Order details */}
             <div className="p-6 space-y-4">
+              {/* Token number — bold & prominent */}
+              {order.orderNumber && (
+                <div className="flex flex-col items-center py-4">
+                  <p className="text-[10px] uppercase tracking-widest font-black text-gray-500 mb-2">Token Number</p>
+                  <div className="bg-green-500 text-white font-black text-5xl px-10 py-4 rounded-2xl shadow-lg shadow-green-500/30 tracking-wider">
+                    #{order.orderNumber}
+                  </div>
+                </div>
+              )}
+
               {/* Student info */}
               <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700/50 space-y-2">
                 <p className="text-[10px] uppercase tracking-widest font-black text-gray-500">Student</p>
@@ -196,14 +205,7 @@ export default function QRScanner() {
 
               {/* Order summary */}
               <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-widest font-black text-gray-500">Order</p>
-                  {order.orderNumber && (
-                    <span className="font-mono font-black text-orange-400 text-lg">#{order.orderNumber}</span>
-                  )}
-                </div>
-
-                {/* Items */}
+                <p className="text-[10px] uppercase tracking-widest font-black text-gray-500">Items</p>
                 <div className="space-y-1.5">
                   {order.items.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
@@ -217,12 +219,10 @@ export default function QRScanner() {
                     </div>
                   ))}
                 </div>
-
                 <div className="border-t border-gray-700 pt-2 flex justify-between items-center">
                   <span className="text-xs font-black text-gray-400 uppercase">Total</span>
                   <span className="font-black text-orange-400 text-xl">₹{order.totalAmount}</span>
                 </div>
-
                 <div className="flex justify-between text-xs text-gray-500">
                   <span className="font-medium">
                     {order.paymentType === "cash" ? "💵 Cash" : "💳 Online"} ·{" "}
@@ -266,7 +266,7 @@ export default function QRScanner() {
           <div className="rounded-2xl border-2 border-orange-500/40 bg-orange-900/10 p-8 flex flex-col items-center gap-4 text-center">
             <span className="text-5xl">⏰</span>
             <p className="font-black text-orange-400 text-xl">QR Code Expired</p>
-            <p className="text-orange-500/80 text-sm font-medium">This QR code is older than 30 minutes. Ask the student to refresh their order page.</p>
+            <p className="text-orange-500/80 text-sm font-medium">This QR code is older than 1 hour. Ask the student to refresh their order page.</p>
             <button onClick={reset} className="px-6 py-2.5 rounded-xl bg-orange-500/20 text-orange-300 font-black text-sm border border-orange-500/30 hover:bg-orange-500/30 transition-all">
               Scan Another
             </button>
@@ -286,11 +286,6 @@ export default function QRScanner() {
         )}
 
       </div>
-
-      {/* Hidden scanner div — only rendered when scanning is active */}
-      {scanState !== "scanning" && (
-        <div id={SCANNER_ID} className="hidden" />
-      )}
     </div>
   );
 }

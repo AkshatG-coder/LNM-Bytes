@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, memo } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { RootState } from '../Util/store'
-import { add_item } from '../Util/CartReducer'
+import { add_item, clear_all_item } from '../Util/CartReducer'
 import api from '../Util/api'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered'
@@ -49,11 +49,15 @@ function timeAgo(iso: string) {
 // memo: only re-renders if orderId changes, not on parent list re-renders
 const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
   const [qrCode, setQrCode] = useState<string | null>(null)
+  const [orderNumber, setOrderNumber] = useState<number | null>(null)
   const [error, setError] = useState(false)
 
   useEffect(() => {
     api.get(`/order/${orderId}/qr`)
-      .then(r => setQrCode(r.data?.data?.qrCode ?? null))
+      .then(r => {
+        setQrCode(r.data?.data?.qrCode ?? null)
+        setOrderNumber(r.data?.data?.orderNumber ?? null)
+      })
       .catch(() => setError(true))
   }, [orderId])
 
@@ -62,11 +66,25 @@ const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
   )
 
   return (
-    <div className="mt-4 flex flex-col items-center gap-2">
+    <div className="mt-4 flex flex-col items-center gap-3">
       <p className="text-xs font-bold text-green-400 uppercase tracking-widest">Show this at the counter</p>
+
+      {/* ── Bold Token Number ── */}
+      {orderNumber ? (
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Token Number</p>
+          <div className="bg-green-500 text-white font-black text-4xl px-8 py-3 rounded-2xl shadow-lg shadow-green-500/30 tracking-wider">
+            #{orderNumber}
+          </div>
+        </div>
+      ) : (
+        <div className="w-24 h-14 rounded-xl bg-green-900/20 animate-pulse" />
+      )}
+
+      {/* ── QR Code ── */}
       {qrCode
-        ? <img src={qrCode} alt="Order QR Code" className="w-40 h-40 rounded-xl border-4 border-green-500/30 bg-white p-1" />
-        : <div className="w-40 h-40 rounded-xl border-2 border-green-500/20 bg-green-900/10 flex items-center justify-center">
+        ? <img src={qrCode} alt="Order QR Code" className="w-44 h-44 rounded-xl border-4 border-green-500/40 bg-white p-1 shadow-xl" />
+        : <div className="w-44 h-44 rounded-xl border-2 border-green-500/20 bg-green-900/10 flex items-center justify-center">
             <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-400 rounded-full animate-spin" />
           </div>
       }
@@ -74,6 +92,7 @@ const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
     </div>
   )
 })
+
 
 // ─── Single order card ────────────────────────────────────────────────────────
 // memo: prevents re-rendering all cards when only one order's status changes
@@ -277,19 +296,24 @@ export default function MyOrders() {
   useEffect(() => {
     const orderIdToVerify = searchParams.get('order_id')
     if (orderIdToVerify) {
-      // Promptly remove from URL so it doesn't trigger again on refresh
+      // Remove from URL immediately so refresh doesn't re-trigger
       setSearchParams({})
       api.post(`/order/verify-payment/${orderIdToVerify}`)
-        .then(() => {
-           // Payment matched and verified
-           fetchOrders()
+        .then((res) => {
+          if (res.data?.success) {
+            // Payment verified — NOW it is safe to clear the cart
+            dispatch(clear_all_item())
+            fetchOrders()
+          } else {
+            alert("⚠️ Payment could not be verified. Please show your order ID at the counter.")
+          }
         })
         .catch(err => {
            console.error("Payment verification failed", err)
            alert("Your online payment verification failed or is pending. Please check with the counter.")
         })
     }
-  }, [searchParams, setSearchParams, fetchOrders])
+  }, [searchParams, setSearchParams, fetchOrders, dispatch])
 
   // ─── WebSocket — real-time order status updates ───────────────────────────
   useEffect(() => {
@@ -351,10 +375,10 @@ export default function MyOrders() {
   const completed = orders.filter(o => ['cancelled', 'delivered'].includes(o.status))
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: 'var(--text-main)' }}>My Orders</h1>
+          <h1 className="text-xl sm:text-2xl font-black" style={{ color: 'var(--text-main)' }}>My Orders</h1>
           <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {wsConnected
               ? '🟢 Live updates active · QR code shown when ready'
@@ -363,7 +387,7 @@ export default function MyOrders() {
         </div>
         <button
           onClick={fetchOrders}
-          className="px-4 py-2 rounded-xl text-sm font-black border transition-all hover:border-primary/40 hover:text-primary"
+          className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black border transition-all hover:border-primary/40 hover:text-primary"
           style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
         >
           🔄 Refresh

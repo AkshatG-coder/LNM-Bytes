@@ -21,7 +21,7 @@ export function CanteenStoreCard({
         }}
       >
         {/* Header accent */}
-        <div className="h-32 bg-gradient-to-br from-primary-light/10 to-primary/5 flex items-center justify-center border-b"
+        <div className="h-24 sm:h-32 bg-gradient-to-br from-primary-light/10 to-primary/5 flex items-center justify-center border-b"
           style={{ borderColor: 'var(--border)' }}
         >
           <div
@@ -33,11 +33,11 @@ export function CanteenStoreCard({
         </div>
 
         {/* Content */}
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
 
           {/* Name */}
           <h2
-            className="text-xl font-black tracking-tight group-hover:text-primary transition-colors"
+            className="text-base sm:text-xl font-black tracking-tight group-hover:text-primary transition-colors"
             style={{ color: 'var(--text-main)' }}
           >
             {name}

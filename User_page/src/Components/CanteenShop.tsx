@@ -67,19 +67,19 @@ export function CanteenShop() {
 
   return (
     <section
-      className="min-h-screen py-16 px-4 transition-colors duration-300"
+      className="min-h-screen py-8 sm:py-16 px-4 transition-colors duration-300"
       style={{ backgroundColor: 'var(--bg)' }}
     >
-      <div className="max-w-7xl mx-auto mb-12 text-center">
+      <div className="max-w-7xl mx-auto mb-8 sm:mb-12 text-center">
         <h1
-          className="text-4xl md:text-5xl font-black tracking-tighter uppercase transition-colors duration-300"
+          className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase transition-colors duration-300"
           style={{ color: 'var(--text-main)' }}
         >
           LNMIIT <span className="text-primary border-b-4 border-secondary pb-1">Canteen</span> Services
         </h1>
 
         <p
-          className="mt-6 font-bold max-w-2xl mx-auto text-lg leading-relaxed"
+          className="mt-3 sm:mt-6 font-bold max-w-2xl mx-auto text-sm sm:text-lg leading-relaxed"
           style={{ color: 'var(--text-muted)' }}
         >
           The heart of campus flavors. Explore food courts, cafes, and late-night snacks across the LNMIIT campus.

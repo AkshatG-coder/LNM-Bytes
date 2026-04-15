@@ -91,36 +91,36 @@ export function MenuCard() {
 
   return (
     <section
-      className="min-h-screen py-10 px-4 transition-colors duration-300"
+      className="min-h-screen py-6 sm:py-10 px-3 sm:px-4 transition-colors duration-300"
       style={{ backgroundColor: 'var(--bg)' }}
     >
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-10 text-center md:text-left">
-        <div className="flex items-center gap-3 justify-center md:justify-start mb-2">
+      <div className="max-w-7xl mx-auto mb-6 sm:mb-10">
+        <div className="flex items-center gap-2 sm:gap-3 mb-1">
           <h2
-            className="text-3xl font-black tracking-tight"
+            className="text-2xl sm:text-3xl font-black tracking-tight"
             style={{ color: 'var(--text-main)' }}
           >
             {storeName} <span className="text-primary">Menu</span>
           </h2>
           {storeStatus === "closed" && (
-            <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold text-sm">
+            <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold text-xs">
               Closed
             </span>
           )}
         </div>
-        <p className="font-medium" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
           Freshly prepared items available here
         </p>
 
-        <div className="mt-8 flex flex-col md:flex-row items-center gap-4">
+        <div className="mt-5 sm:mt-8">
           <div className="relative w-full max-w-md">
             <input
               type="text"
               value={searchText}
               onChange={(e) => setsearchText(e.target.value)}
               placeholder="What are you craving today?"
-              className="w-full px-5 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+              className="w-full px-4 py-2.5 sm:py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-sm"
               style={{
                 backgroundColor: 'var(--surface)',
                 borderColor: 'var(--border)',
@@ -151,7 +151,7 @@ export function MenuCard() {
                   <div className="absolute -bottom-2 left-0 w-12 h-1 bg-primary rounded-full"></div>
                 </h3>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 pt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 pt-4">
                   {groupedByCategory[cat].map((item) => (
                     <MenuItemCard
                       key={item._id}

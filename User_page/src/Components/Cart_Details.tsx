@@ -52,22 +52,26 @@ export function Cart_Details() {
             alert("✅ Order placed! Please pick it up at the counter after it's ready.")
           }
         } else {
-          // Cashfree flow
-          const sessionId = response.data.data?.payment_session_id;
+          // ── Cashfree online payment flow ──────────────────────────────────
+          // IMPORTANT: Do NOT clear the cart here — if the user cancels or payment
+          // fails, the cart should still be intact. Cart is cleared after the
+          // payment is successfully verified in MyOrders (via /verify-payment).
+          const sessionId = response.data.data?.payment_session_id
+
           if (sessionId && window.Cashfree) {
-            dispatch(clear_all_item())
-            const cashfree = window.Cashfree({ mode: "sandbox" });
-            cashfree.checkout({ paymentSessionId: sessionId });
-            // On success, Cashfree redirects back to /orders?order_id=...
+            const cashfree = window.Cashfree({ mode: "sandbox" })
+            cashfree.checkout({ paymentSessionId: sessionId })
+            // Cashfree redirects back to /orders?order_id=... on success
+            // MyOrders page calls /verify-payment and then clears the cart
           } else if (sessionId && !window.Cashfree) {
-            alert("⚠️ Cashfree SDK not loaded. Please refresh and try again.");
+            alert("⚠️ Cashfree SDK not loaded. Please refresh and try again.")
           } else {
-            alert("⚠️ No payment session returned. Please try again.");
+            alert("⚠️ No payment session returned. Please try again.")
           }
         }
       } else {
-        const errMsg = response.data?.message || "Failed to place order.";
-        alert(`❌ ${errMsg}`);
+        const errMsg = response.data?.message || "Failed to place order."
+        alert(`❌ ${errMsg}`)
       }
     } catch (err: any) {
       console.error(err)
@@ -85,18 +89,15 @@ export function Cart_Details() {
     >
       {/* Header */}
       <div
-        className="border-b px-4 py-5 sticky top-0 z-10 backdrop-blur-sm"
-        style={{
-          backgroundColor: 'var(--surface)',
-          borderColor: 'var(--border)',
-        }}
+        className="border-b px-4 py-4 sticky top-0 z-10 backdrop-blur-sm"
+        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
       >
-        <div className="max-w-3xl mx-auto flex justify-between items-center">
+        <div className="max-w-2xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-black text-primary tracking-tight">
+            <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">
               🛒 Your Cart
             </h1>
-            <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs sm:text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {cart_details.length} item{cart_details.length !== 1 ? 's' : ''} · Review before checkout
             </p>
           </div>
@@ -104,7 +105,7 @@ export function Cart_Details() {
           {cart_details.length > 0 && (
             <button
               onClick={handleClearCart}
-              className="text-sm font-bold text-red-400 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-100"
+              className="text-xs sm:text-sm font-bold text-red-400 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
             >
               Clear
             </button>
@@ -113,7 +114,7 @@ export function Cart_Details() {
       </div>
 
       {/* Cart Items */}
-      <div className="flex-1 px-4 py-6 space-y-4 max-w-3xl mx-auto w-full">
+      <div className="flex-1 px-3 sm:px-4 py-4 sm:py-6 space-y-3 max-w-2xl mx-auto w-full">
         {cart_details.length > 0 ? (
           cart_details.map((item, index) => (
             <CartItemCard
@@ -127,15 +128,14 @@ export function Cart_Details() {
           ))
         ) : (
           <div
-            className="flex flex-col items-center justify-center py-32 rounded-3xl border-2 border-dashed"
-            style={{
-              backgroundColor: 'var(--surface)',
-              borderColor: 'var(--border)',
-            }}
+            className="flex flex-col items-center justify-center py-24 rounded-3xl border-2 border-dashed"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
           >
-            <span className="text-6xl mb-4 opacity-50">🛒</span>
-            <h3 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>Cart is empty</h3>
-            <p className="mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>Browse canteens and add some delicious items!</p>
+            <span className="text-5xl sm:text-6xl mb-4 opacity-50">🛒</span>
+            <h3 className="text-lg sm:text-xl font-black" style={{ color: 'var(--text-main)' }}>Cart is empty</h3>
+            <p className="mt-2 font-medium text-center px-4" style={{ color: 'var(--text-muted)' }}>
+              Browse canteens and add some delicious items!
+            </p>
           </div>
         )}
       </div>
@@ -143,16 +143,13 @@ export function Cart_Details() {
       {/* Checkout Bar */}
       {cart_details.length > 0 && (
         <div
-          className="sticky bottom-0 border-t px-4 py-4 backdrop-blur-sm"
-          style={{
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--border)',
-          }}
+          className="sticky bottom-0 border-t px-3 sm:px-4 py-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
         >
-          <div className="max-w-3xl mx-auto space-y-3">
+          <div className="max-w-2xl mx-auto space-y-3">
             {/* Night Delivery Toggle */}
-            <div className="flex justify-between items-center px-1 py-1">
-              <label htmlFor="nightDelivery" className="font-bold flex items-center gap-2 cursor-pointer" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex justify-between items-center px-1">
+              <label htmlFor="nightDelivery" className="font-bold flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-muted)' }}>
                 <input
                   id="nightDelivery"
                   type="checkbox"
@@ -166,7 +163,7 @@ export function Cart_Details() {
             </div>
 
             {/* Total */}
-            <div className="flex justify-between items-center px-1 mb-1">
+            <div className="flex justify-between items-center px-1">
               <span className="font-bold" style={{ color: 'var(--text-muted)' }}>Total</span>
               <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
             </div>
@@ -175,7 +172,7 @@ export function Cart_Details() {
             <button
               onClick={() => placeOrder('online')}
               disabled={placing}
-              className="w-full bg-primary text-white py-4 rounded-xl font-black text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-60"
+              className="w-full bg-primary text-white py-4 rounded-xl font-black text-sm sm:text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-60"
             >
               {placing ? '⏳ Placing...' : `💳 Pay Online ₹${total.toFixed(2)}`}
             </button>
@@ -184,7 +181,7 @@ export function Cart_Details() {
             <button
               onClick={() => placeOrder('cash')}
               disabled={placing}
-              className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-60"
+              className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-sm sm:text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-60"
             >
               {placing ? '⏳ Placing...' : `💵 Pay at Counter · ₹${total.toFixed(2)}`}
             </button>

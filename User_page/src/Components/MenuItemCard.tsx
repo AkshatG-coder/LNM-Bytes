@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { add_item, increase_item, decrease_item } from "../Util/CartReducer"
+import { useFoodImage } from "../Util/useFoodImage"
 
 export interface MenuCardItemInterface {
   _id: string
@@ -27,12 +28,11 @@ export function MenuItemCard({
   isVeg,
   category,
   storeId,
-  storeStatus = "open", // default to open to not break existing usage
+  storeStatus = "open",
 }: MenuCardItemInterface) {
   const dispatch = useAppDispatch()
   const cart_items = useAppSelector((state) => state.Cart.items)
 
-  // Default to full portion
   const [selectedPortion, setSelectedPortion] = useState<'full' | 'half'>('full')
 
   const selectedPrice = selectedPortion === 'half' && halfPrice ? halfPrice : price
@@ -42,10 +42,14 @@ export function MenuItemCard({
   )
   const qty = cartItem?.qty ?? 0
 
+  // Fetch Pexels image only when no manual image is supplied
+  const pexelsImage = useFoodImage(image ? "" : name)
+  const displayImage = image || pexelsImage
+
   function handleAdd() {
     if (storeStatus !== "open") {
-       alert("Sorry, this shop is currently closed 🚫");
-       return;
+      alert("Sorry, this shop is currently closed 🚫")
+      return
     }
     if (cart_items.length === 0) {
       dispatch(add_item({ id: _id, item_name: name, price: selectedPrice, qty: 1, canteen_id: storeId, portionSize: selectedPortion }))
@@ -68,19 +72,25 @@ export function MenuItemCard({
 
   return (
     <div
-      className="rounded-xl overflow-hidden border shadow-lg hover:shadow-xl transition-all duration-300 group"
+      className="rounded-xl overflow-hidden border shadow-md hover:shadow-xl transition-all duration-300 group"
       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
     >
       {/* Image */}
-      <div className="h-40 relative overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-        <img
-          src={image ?? `https://picsum.photos/seed/${_id}/400/300`}
-          alt={name}
-          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+      <div className="h-32 sm:h-40 relative overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={name}
+            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          /* Shimmer skeleton while Pexels loads */
+          <div className="h-full w-full animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700" />
+        )}
+
         {!isAvailable && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-white/90 text-red-600 px-3 py-1 rounded-full font-bold text-sm shadow-sm">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <span className="bg-white/90 text-red-600 px-3 py-1 rounded-full font-bold text-xs shadow-sm">
               Sold Out
             </span>
           </div>
@@ -95,9 +105,9 @@ export function MenuItemCard({
       </div>
 
       {/* Content */}
-      <div className="p-4 flex flex-col gap-3">
+      <div className="p-3 sm:p-4 flex flex-col gap-2 sm:gap-3">
         <div>
-          <h2 className="text-base font-bold line-clamp-1" style={{ color: 'var(--text-main)' }}>
+          <h2 className="text-sm sm:text-base font-bold line-clamp-1" style={{ color: 'var(--text-main)' }}>
             {name}
           </h2>
           {category && (
@@ -115,32 +125,32 @@ export function MenuItemCard({
           >
             <button
               onClick={() => setSelectedPortion('full')}
-              className={`flex-1 py-1.5 rounded-md text-xs font-black transition-all ${
+              className={`flex-1 py-1 rounded-md text-[11px] font-black transition-all ${
                 selectedPortion === 'full'
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              🍱 Full · ₹{price}
+              Full · ₹{price}
             </button>
             <button
               onClick={() => setSelectedPortion('half')}
-              className={`flex-1 py-1.5 rounded-md text-xs font-black transition-all ${
+              className={`flex-1 py-1 rounded-md text-[11px] font-black transition-all ${
                 selectedPortion === 'half'
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              🍜 Half · ₹{halfPrice}
+              Half · ₹{halfPrice}
             </button>
           </div>
         )}
 
         {/* Price row */}
         <div className="flex justify-between items-center">
-          <span className="text-primary font-extrabold text-xl">₹{selectedPrice}</span>
+          <span className="text-primary font-extrabold text-lg sm:text-xl">₹{selectedPrice}</span>
           {isAvailable && (
-            <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-md bg-green-100 text-green-700 font-bold border border-green-200">
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-green-100 text-green-700 font-bold border border-green-200">
               In Stock
             </span>
           )}
@@ -149,7 +159,7 @@ export function MenuItemCard({
         {/* Quantity Controls */}
         {isAvailable && (
           <div
-            className="flex items-center justify-between rounded-lg p-2 mt-1"
+            className="flex items-center justify-between rounded-lg p-1.5 sm:p-2 mt-0.5"
             style={{ backgroundColor: 'var(--bg)' }}
           >
             <button
