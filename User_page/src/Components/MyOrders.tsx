@@ -5,7 +5,7 @@ import type { RootState } from '../Util/store'
 import { add_item, clear_all_item } from '../Util/CartReducer'
 import api from '../Util/api'
 
-type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered'
+type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered' | 'payment_pending'
 
 interface OrderItem {
   name: string
@@ -33,6 +33,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: s
   ready:     { label: 'Ready for Pickup', icon: '🛎️', color: 'text-green-400',  bg: 'bg-green-500/10  border-green-500/30',  step: 3 },
   delivered: { label: 'Delivered',        icon: '✅', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30', step: 4 },
   cancelled: { label: 'Cancelled',        icon: '❌', color: 'text-red-400',    bg: 'bg-red-500/10   border-red-500/30',     step: 0 },
+  payment_pending: { label: 'Payment Pending', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0 },
 }
 
 const STEPS: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered']
@@ -103,8 +104,15 @@ const OrderCard = memo(function OrderCard({
   order: Order
   onReorder: (order: Order) => void
 }) {
-  const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending
-  const isCancelled = order.status === 'cancelled'
+  let cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending
+  const isCancelled = order.status === 'cancelled' || order.status === 'payment_pending'
+  const isPaymentFailed = order.status === 'cancelled' && order.paymentStatus === 'failed'
+
+  if (isPaymentFailed) {
+    cfg = { label: 'Payment Failed', icon: '❌', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30', step: 0 }
+  } else if (order.status === 'payment_pending') {
+    cfg = { label: 'Payment Incomplete', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0 }
+  }
 
   return (
     <div className={`rounded-2xl border p-5 mb-4 transition-all ${cfg.bg}`}
@@ -147,12 +155,12 @@ const OrderCard = memo(function OrderCard({
               <div key={s} className="flex items-center flex-1">
                 <div className={`w-3 h-3 rounded-full flex-shrink-0 border-2 transition-all ${
                   isCurrent  ? `border-current ${cfg.color} bg-current scale-125` :
-                  isActive   ? `border-current ${cfg.color} bg-current opacity-60` :
+                  isActive   ? `border-current ${cfg.color} bg-current` :
                                'border-gray-600 bg-gray-800'
                 }`} title={sCfg.label} />
                 {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-0.5 transition-all ${
-                    isActive && STEPS[i + 1] <= order.status ? `${cfg.color} bg-current` : 'bg-gray-700'
+                  <div className={`flex-1 h-1 transition-all ${
+                    isActive && STATUS_CONFIG[STEPS[i + 1]].step <= cfg.step ? `${cfg.color} bg-current` : 'bg-gray-700'
                   }`} />
                 )}
               </div>
@@ -184,10 +192,19 @@ const OrderCard = memo(function OrderCard({
         </div>
       )}
 
-      {/* Cancelled */}
+      {/* Cancelled / Failed */}
       {order.status === 'cancelled' && (
-        <div className="mt-3 p-3 rounded-xl bg-red-900/10 border border-red-700/20 text-center">
-          <p className="text-red-400 font-bold text-sm">Order cancelled. Contact the canteen if needed.</p>
+        <div className={`mt-3 p-3 rounded-xl text-center border ${isPaymentFailed ? 'bg-red-900/10 border-red-700/30' : 'bg-red-900/10 border-red-700/20'}`}>
+          <p className="text-red-400 font-bold text-sm">
+            {isPaymentFailed ? 'Payment failed and order was cancelled.' : 'Order cancelled. Contact the canteen if needed.'}
+          </p>
+        </div>
+      )}
+
+      {/* Payment Pending */}
+      {order.status === 'payment_pending' && (
+        <div className="mt-3 p-3 rounded-xl bg-yellow-900/10 border border-yellow-700/30 text-center">
+          <p className="text-yellow-500 font-bold text-sm">Online payment did not complete.</p>
         </div>
       )}
 
@@ -199,13 +216,13 @@ const OrderCard = memo(function OrderCard({
       )}
 
       {/* Reorder button — shown on completed orders */}
-      {(order.status === 'delivered' || order.status === 'cancelled') && (
+      {(order.status === 'delivered' || order.status === 'cancelled' || order.status === 'payment_pending') && (
         <button
           onClick={() => onReorder(order)}
           className="mt-3 w-full py-2.5 rounded-xl text-sm font-black border-2 border-primary/30 text-primary
             hover:bg-primary hover:text-white transition-all active:scale-[0.98]"
         >
-          🔁 Reorder
+          🔁 {isPaymentFailed || order.status === 'payment_pending' ? 'Try Ordering Again' : 'Reorder'}
         </button>
       )}
     </div>
@@ -306,11 +323,13 @@ export default function MyOrders() {
             fetchOrders()
           } else {
             alert("⚠️ Payment could not be verified. Please show your order ID at the counter.")
+            fetchOrders() // Refresh to show failure/cancelled state
           }
         })
         .catch(err => {
            console.error("Payment verification failed", err)
            alert("Your online payment verification failed or is pending. Please check with the counter.")
+           fetchOrders() // Refresh to show failure/cancelled state
         })
     }
   }, [searchParams, setSearchParams, fetchOrders, dispatch])
@@ -370,8 +389,8 @@ export default function MyOrders() {
     return () => clearInterval(interval)
   }, [fetchOrders])
 
-  const active    = orders.filter(o => !['cancelled', 'delivered'].includes(o.status))
-  const completed = orders.filter(o => ['cancelled', 'delivered'].includes(o.status))
+  const active    = orders.filter(o => !['cancelled', 'delivered', 'payment_pending'].includes(o.status))
+  const completed = orders.filter(o => ['cancelled', 'delivered', 'payment_pending'].includes(o.status))
 
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
@@ -379,9 +398,7 @@ export default function MyOrders() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black" style={{ color: 'var(--text-main)' }}>My Orders</h1>
           <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {wsConnected
-              ? '🟢 Live updates active · QR code shown when ready'
-              : '🟡 Polling every 10s · QR code shown when ready'}
+            Track the live status of your orders
           </p>
         </div>
         <button
@@ -396,7 +413,7 @@ export default function MyOrders() {
       {loading ? (
         <div className="flex flex-col items-center py-20 gap-3">
           <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-sm font-bold text-primary animate-pulse">Loading your orders...</p>
+          <p className="text-primary font-black tracking-widest animate-pulse uppercase text-sm">Finding the best food for you...</p>
         </div>
       ) : orders.length === 0 ? (
         <div className="text-center py-20">

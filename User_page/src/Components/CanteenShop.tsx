@@ -113,7 +113,7 @@ export function CanteenShop() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="w-16 h-16 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-          <p className="text-primary font-black tracking-widest animate-pulse uppercase text-sm">Initializing Flavor Radar...</p>
+          <p className="text-primary font-black tracking-widest animate-pulse uppercase text-sm">Finding the best food for you...</p>
         </div>
       ) : (
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">

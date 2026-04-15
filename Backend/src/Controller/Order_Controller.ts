@@ -55,6 +55,10 @@ const CreateOrder = asyncHandler(async (req, res) => {
         return fail(res, 400, "Sorry, this store is currently closed manually by the owner.");
     }
 
+    if (!(store as any).isOnlineOrderAvailable) {
+        return fail(res, 400, "App ordering is currently paused by this canteen. Please try again later or visit the counter.");
+    }
+
     // Validate Real Time based on Store operating hours (IST)
     const operationTime = (store as any).operationTime;
     if (operationTime && operationTime.openTime && operationTime.closeTime) {

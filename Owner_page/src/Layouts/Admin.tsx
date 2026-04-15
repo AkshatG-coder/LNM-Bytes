@@ -8,10 +8,10 @@ import { type OrderStatus } from '../types';
 
 // "accepted" tab removed — flow is: pending → preparing → ready
 const TABS: { status: OrderStatus; label: string; icon: string }[] = [
-  { status: 'pending',   label: 'New Orders', icon: '🔥' },
-  { status: 'preparing', label: 'Preparing',  icon: '🍳' },
-  { status: 'ready',     label: 'Ready',      icon: '✅' },
-  { status: 'cancelled', label: 'Cancelled',  icon: '❌' },
+  { status: 'pending', label: 'New Orders', icon: '🔥' },
+  { status: 'preparing', label: 'Preparing', icon: '🍳' },
+  { status: 'ready', label: 'Ready', icon: '✅' },
+  { status: 'cancelled', label: 'Cancelled', icon: '❌' },
 ];
 
 function Admin() {
@@ -40,9 +40,7 @@ function Admin() {
             Kitchen Dashboard
           </h1>
           <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 font-medium">
-            {wsConnected
-              ? '🟢 Live alerts active — sound + notification on new order'
-              : '🟡 Polling every 8s — sound alert on new order'}
+            Monitor and manage your kitchen orders in real-time
           </p>
         </div>
         <button
@@ -63,10 +61,10 @@ function Admin() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatsCard title="New Orders"  value={count('pending')}   icon="🔥" color="text-secondary-dark" bg="bg-secondary-light/10"  borderColor="border-secondary-light/20" />
-        <StatsCard title="Preparing"   value={count('preparing')} icon="🍳" color="text-primary"        bg="bg-primary-light/10"    borderColor="border-primary-light/20"   />
-        <StatsCard title="Ready"       value={count('ready')}     icon="✅" color="text-green-600"      bg="bg-green-50"            borderColor="border-green-100"           />
-        <StatsCard title="Revenue"     value={`₹${revenue}`}      icon="💰" color="text-white"          bg="bg-gradient-to-r from-primary to-primary-dark" borderColor="border-primary-dark/20" />
+        <StatsCard title="New Orders" value={count('pending')} icon="🔥" color="text-secondary-dark" bg="bg-secondary-light/10" borderColor="border-secondary-light/20" />
+        <StatsCard title="Preparing" value={count('preparing')} icon="🍳" color="text-primary" bg="bg-primary-light/10" borderColor="border-primary-light/20" />
+        <StatsCard title="Ready" value={count('ready')} icon="✅" color="text-green-600" bg="bg-green-50" borderColor="border-green-100" />
+        <StatsCard title="Revenue" value={`₹${revenue}`} icon="💰" color="text-white" bg="bg-gradient-to-r from-primary to-primary-dark" borderColor="border-primary-dark/20" />
       </div>
 
       {/* Tabs */}

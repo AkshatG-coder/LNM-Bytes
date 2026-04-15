@@ -11,6 +11,24 @@ export function Cart_Details() {
   const dispatch = useAppDispatch()
   const [placing, setPlacing] = useState(false)
   const [isNightDelivery, setIsNightDelivery] = useState(false)
+  const [storeStatus, setStoreStatus] = useState({ open: true, onlineAvailable: true })
+
+  // Fetch store status for the canteen in cart
+  const canteenId = cart_details[0]?.canteen_id
+  useEffect(() => {
+    if (canteenId) {
+      api.get(`/store_handler/${canteenId}`)
+        .then(res => {
+          if (res.data?.success) {
+            setStoreStatus({
+              open: res.data.data.status === 'open',
+              onlineAvailable: res.data.data.isOnlineOrderAvailable ?? true
+            })
+          }
+        })
+        .catch(() => {})
+    }
+  }, [canteenId])
 
   const total = cart_details.reduce((acc, item) => acc + item.price * item.qty, 0)
 
@@ -168,11 +186,21 @@ export function Cart_Details() {
               <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
             </div>
 
+            {/* Paused Banner */}
+            {(!storeStatus.onlineAvailable || !storeStatus.open) && (
+              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-center">
+                <p className="text-yellow-600 font-bold text-xs">
+                  {!storeStatus.open ? '🔴 Canteen is currently CLOSED' : '⚠️ App Ordering is Paused'}
+                </p>
+                <p className="text-gray-500 text-[10px] mt-0.5">The kitchen is not accepting new app orders right now.</p>
+              </div>
+            )}
+
             {/* Pay Online */}
             <button
               onClick={() => placeOrder('online')}
-              disabled={placing}
-              className="w-full bg-primary text-white py-4 rounded-xl font-black text-sm sm:text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-60"
+              disabled={placing || !storeStatus.onlineAvailable || !storeStatus.open}
+              className="w-full bg-primary text-white py-4 rounded-xl font-black text-sm sm:text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:grayscale-[0.5]"
             >
               {placing ? '⏳ Placing...' : `💳 Pay Online ₹${total.toFixed(2)}`}
             </button>
@@ -180,8 +208,8 @@ export function Cart_Details() {
             {/* Pay at Counter */}
             <button
               onClick={() => placeOrder('cash')}
-              disabled={placing}
-              className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-sm sm:text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-60"
+              disabled={placing || !storeStatus.onlineAvailable || !storeStatus.open}
+              className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-sm sm:text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-40"
             >
               {placing ? '⏳ Placing...' : `💵 Pay at Counter · ₹${total.toFixed(2)}`}
             </button>
