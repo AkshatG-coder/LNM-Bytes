@@ -90,7 +90,7 @@ export const useOrders = () => {
     fetchRef.current();                               // initial load
     const id = setInterval(() => {
       fetchRef.current();
-    }, wsConnectedRef.current ? 15_000 : 8_000);
+    }, wsConnectedRef.current ? 40_000 : 30_000);
     return () => clearInterval(id);
   }, []); // ← empty deps: runs ONCE, no loops
 
