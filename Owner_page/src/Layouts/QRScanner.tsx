@@ -28,6 +28,7 @@ export default function QRScanner() {
   const [order, setOrder]                 = useState<ScannedOrder | null>(null);
   const [errorMsg, setErrorMsg]           = useState("");
   const [cameraStarted, setCameraStarted] = useState(false);
+  const processingRef                     = useRef(false);
   const SCANNER_ID = "qr-reader";
 
   // ── Start camera ────────────────────────────────────────────────────────────
@@ -68,6 +69,9 @@ export default function QRScanner() {
 
   // ── On QR decoded ─────────────────────────────────────────────────────────
   async function handleScan(rawText: string) {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    
     await stopScanner();
     setScanState("loading");
 
@@ -97,6 +101,7 @@ export default function QRScanner() {
   }
 
   function reset() {
+    processingRef.current = false;
     setOrder(null);
     setErrorMsg("");
     setScanState("idle");
@@ -192,6 +197,22 @@ export default function QRScanner() {
                   <div className="bg-green-500 text-white font-black text-5xl px-10 py-4 rounded-2xl shadow-lg shadow-green-500/30 tracking-wider">
                     #{order.orderNumber}
                   </div>
+                </div>
+              )}
+
+              {/* Cash collection banner */}
+              {order.paymentType === "cash" && order.paymentStatus === "pending" && (
+                <div className="p-5 bg-yellow-500/20 border-2 border-yellow-500/50 rounded-xl mb-4 text-center animate-pulse">
+                  <p className="text-xs font-black text-yellow-500 uppercase tracking-widest mb-1">Cash Collection Required</p>
+                  <p className="text-3xl font-black text-yellow-400">Collect ₹{order.totalAmount}</p>
+                </div>
+              )}
+              
+              {/* Online payment banner */}
+              {order.paymentType === "online" && order.paymentStatus === "paid" && (
+                <div className="p-4 bg-green-500/20 border-2 border-green-500/40 rounded-xl mb-4 text-center">
+                  <p className="text-xs font-black text-green-400 uppercase tracking-widest mb-1">Paid Online ✅</p>
+                  <p className="text-lg font-black text-green-500">No cash collection required</p>
                 </div>
               )}
 

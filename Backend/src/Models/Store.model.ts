@@ -59,7 +59,7 @@ const CanteenSchema = new Schema(
     },
     upiId: {
       type: String,
-      required: false,
+      required: true,
       trim: true,
     },
   },
