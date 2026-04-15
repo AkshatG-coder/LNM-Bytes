@@ -15,6 +15,7 @@ export interface MenuCardItemInterface {
   category?: string
   storeId: string
   storeStatus?: string // added to check if store is open
+  isOnlineOrderAvailable?: boolean
 }
 
 export function MenuItemCard({
@@ -29,6 +30,7 @@ export function MenuItemCard({
   category,
   storeId,
   storeStatus = "open",
+  isOnlineOrderAvailable = true,
 }: MenuCardItemInterface) {
   const dispatch = useAppDispatch()
   const cart_items = useAppSelector((state) => state.Cart.items)
@@ -49,6 +51,10 @@ export function MenuItemCard({
   function handleAdd() {
     if (storeStatus !== "open") {
       alert("Sorry, this shop is currently closed 🚫")
+      return
+    }
+    if (!isOnlineOrderAvailable) {
+      alert("App orders are currently paused for this shop ⏸️")
       return
     }
     if (cart_items.length === 0) {
@@ -156,28 +162,36 @@ export function MenuItemCard({
           )}
         </div>
 
-        {/* Quantity Controls */}
+        {/* Quantity Controls or Paused Badge */}
         {isAvailable && (
-          <div
-            className="flex items-center justify-between rounded-lg p-1.5 sm:p-2 mt-0.5"
-            style={{ backgroundColor: 'var(--bg)' }}
-          >
-            <button
-              onClick={handleRemove}
-              disabled={qty === 0}
-              className="w-8 h-8 rounded-md border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed font-bold text-lg transition-colors"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
+          isOnlineOrderAvailable ? (
+            <div
+              className="flex items-center justify-between rounded-lg p-1.5 sm:p-2 mt-0.5"
+              style={{ backgroundColor: 'var(--bg)' }}
             >
-              −
-            </button>
-            <span className="font-bold text-base" style={{ color: 'var(--text-main)' }}>{qty}</span>
-            <button
-              onClick={handleAdd}
-              className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors shadow-sm font-bold text-lg"
-            >
-              +
-            </button>
-          </div>
+              <button
+                onClick={handleRemove}
+                disabled={qty === 0}
+                className="w-8 h-8 rounded-md border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed font-bold text-lg transition-colors"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
+              >
+                −
+              </button>
+              <span className="font-bold text-base" style={{ color: 'var(--text-main)' }}>{qty}</span>
+              <button
+                onClick={handleAdd}
+                className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors shadow-sm font-bold text-lg"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center rounded-lg p-3 mt-0.5 border border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50">
+              <span className="font-bold text-xs text-gray-400 uppercase tracking-widest">
+                ⏸️ Orders Paused
+              </span>
+            </div>
+          )
         )}
       </div>
     </div>

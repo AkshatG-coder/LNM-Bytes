@@ -20,6 +20,7 @@ export function MenuCard() {
   const { id } = useParams<{ id: string }>()
   const [menuItems, setMenuItems] = useState<MenuCardItemInterface[]>([])
   const [storeStatus, setStoreStatus] = useState<string>("open")
+  const [isOnlineOrderAvailable, setIsOnlineOrderAvailable] = useState<boolean>(true)
   const [storeName, setStoreName] = useState<string>("Today's Special")
   const [isLoading, setIsLoading] = useState(true)
 
@@ -35,6 +36,7 @@ export function MenuCard() {
         if (storeRes.data?.success) {
           setStoreStatus(storeRes.data.data.status)
           setStoreName(storeRes.data.data.name)
+          setIsOnlineOrderAvailable(storeRes.data.data.isOnlineOrderAvailable ?? true)
         }
 
         // 2. Fetch Menu Items (Check Cache)
@@ -113,6 +115,19 @@ export function MenuCard() {
           Freshly prepared items available here
         </p>
 
+        {/* Global Pause Alert */}
+        {!isOnlineOrderAvailable && storeStatus === "open" && (
+          <div className="mt-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-yellow-600 text-xl">⚠️</span>
+            <div>
+              <h4 className="text-sm font-black text-yellow-700 dark:text-yellow-500">App Orders Paused</h4>
+              <p className="text-xs font-semibold text-yellow-600/80 dark:text-yellow-500/80 mt-0.5">
+                The kitchen is currently busy. You can browse the menu but cannot place orders through the app right now.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mt-5 sm:mt-8">
           <div className="relative w-full max-w-md">
             <input
@@ -166,6 +181,7 @@ export function MenuCard() {
                       isVeg={item.isVeg}
                       category={item.category}
                       storeStatus={storeStatus}
+                      isOnlineOrderAvailable={isOnlineOrderAvailable}
                     />
                   ))}
                 </div>

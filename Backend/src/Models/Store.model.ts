@@ -51,7 +51,7 @@ const CanteenSchema = new Schema(
     },
     isOnlineOrderAvailable: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     isActive: {
       type: Boolean,

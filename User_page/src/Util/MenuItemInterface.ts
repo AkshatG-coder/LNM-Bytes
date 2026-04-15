@@ -11,6 +11,7 @@ export interface MenuCardItemInterface {
   isAvailable: boolean
   storeId: string
   storeStatus?: string // Added
+  isOnlineOrderAvailable?: boolean // Controls app ordering
   // Legacy aliases kept for backwards compat
   item_name?: string
   photo?: string
