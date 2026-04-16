@@ -186,8 +186,8 @@ function ShopSettings() {
             <button
               onClick={handleToggleStatus}
               disabled={saving}
-              className={`px-6 py-3 rounded-xl font-black text-sm text-white transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
-                store.status === 'open' ? 'bg-red-500 hover:bg-red-600 shadow-red-200' : 'bg-green-600 hover:bg-green-700 shadow-green-200'
+              className={`px-6 py-3 rounded-xl font-black text-sm text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
+                store.status === 'open' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
               }`}
             >
               {saving ? '⏳...' : store.status === 'open' ? 'Close Shop' : 'Open Shop'}
