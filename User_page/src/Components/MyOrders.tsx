@@ -40,12 +40,15 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: s
 
 const STEPS: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered']
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`
+function formatDateTime(iso: string) {
+  const date = new Date(iso)
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date)
 }
 
 // ─── QR code display (fetched from backend) ──────────────────────────────────
@@ -140,7 +143,7 @@ const OrderCard = memo(function OrderCard({
               </span>
             )}
             <span className="text-xs font-medium text-gray-500">
-              {timeAgo(order.createdAt)}
+              {formatDateTime(order.createdAt)}
             </span>
           </div>
         </div>
