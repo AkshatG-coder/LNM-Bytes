@@ -261,9 +261,23 @@ const GetUserAll_Orders = asyncHandler(async (req, res) => {
     // Covered by index: { userId: 1, createdAt: -1 }
     const order = await OrderModel.aggregate([
         { $match: { userId: new mongoose.Types.ObjectId(String(userId)) } },
-        { $addFields: { pendingPriority: { $cond: [{ $eq: ["$status", "pending"] }, 0, 1] } } },
+        {
+            $lookup: {
+                from: "stores",
+                localField: "storeId",
+                foreignField: "_id",
+                as: "storeDetails"
+            }
+        },
+        { $unwind: { path: "$storeDetails", preserveNullAndEmptyArrays: true } },
+        { 
+            $addFields: { 
+                pendingPriority: { $cond: [{ $eq: ["$status", "pending"] }, 0, 1] },
+                storeName: { $ifNull: ["$storeDetails.name", "Unknown Store"] }
+            } 
+        },
         { $sort: { pendingPriority: 1, createdAt: -1 } },
-        { $project: { pendingPriority: 0 } },
+        { $project: { pendingPriority: 0, storeDetails: 0 } },
     ]);
     return res.json(new ApiResponse(200, true, "User Orders fetched Successfully", order));
 });

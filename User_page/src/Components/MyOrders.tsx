@@ -24,6 +24,7 @@ interface Order {
   createdAt: string
   items: OrderItem[]
   storeId: string
+  storeName?: string // Populated from backend
   orderNote?: string
 }
 
@@ -134,6 +135,11 @@ const OrderCard = memo(function OrderCard({
                 style={{ color: 'var(--text-main)', backgroundColor: 'var(--surface)' }}
               >
                 # {order.orderNumber}
+              </span>
+            )}
+            {order.storeName && (
+              <span className="text-xs font-bold text-primary/80">
+                • {order.storeName}
               </span>
             )}
             <span className="text-xs font-medium text-gray-500">

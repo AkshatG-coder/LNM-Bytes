@@ -20,17 +20,6 @@ export function CanteenStoreCard({
           borderColor: 'var(--border)',
         }}
       >
-        {/* Header accent */}
-        <div className="h-24 sm:h-32 bg-gradient-to-br from-primary-light/10 to-primary/5 flex items-center justify-center border-b"
-          style={{ borderColor: 'var(--border)' }}
-        >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-primary text-3xl font-black shadow-md"
-            style={{ backgroundColor: 'var(--surface)' }}
-          >
-            {name.charAt(0)}
-          </div>
-        </div>
 
         {/* Content */}
         <div className="p-4 sm:p-5">
