@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { add_item, increase_item, decrease_item } from "../Util/CartReducer"
 import { useFoodImage } from "../Util/useFoodImage"
+import toast from "react-hot-toast"
 
 export interface MenuCardItemInterface {
   _id: string
@@ -50,11 +51,11 @@ export function MenuItemCard({
 
   function handleAdd() {
     if (storeStatus !== "open") {
-      alert("Sorry, this shop is currently closed 🚫")
+      toast.error("Sorry, this shop is currently closed 🚫")
       return
     }
     if (!isOnlineOrderAvailable) {
-      alert("App orders are currently paused for this shop ⏸️")
+      toast.error("App orders are currently paused for this shop ⏸️")
       return
     }
     if (cart_items.length === 0) {
@@ -62,7 +63,7 @@ export function MenuItemCard({
       return
     }
     if (cart_items[0].canteen_id !== storeId) {
-      alert("You can only add items from the same canteen 🍽️")
+      toast.error("You can only add items from the same canteen 🍽️")
       return
     }
     if (cartItem) {

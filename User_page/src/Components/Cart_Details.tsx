@@ -4,6 +4,7 @@ import { clear_all_item } from "../Util/CartReducer"
 import { useAppSelector as useSelector } from "../Util/hook"
 import api from "../Util/api"
 import { useState, useEffect } from "react"
+import toast from "react-hot-toast"
 
 export function Cart_Details() {
   const cart_details = useAppSelector((state) => state.Cart.items)
@@ -38,7 +39,7 @@ export function Cart_Details() {
 
   async function placeOrder(paymentType: 'cash' | 'online') {
     if (!user) {
-      alert("Please login to place an order!")
+      toast.error("Please login to place an order!")
       return
     }
 
@@ -65,9 +66,9 @@ export function Cart_Details() {
         if (paymentType === 'cash') {
           dispatch(clear_all_item())
           if (isNightDelivery) {
-            alert("✅ Night Delivery order placed! Your food will be delivered to you soon. 🌙")
+            toast.success("Night Delivery order placed! Your food will be delivered to you soon. 🌙")
           } else {
-            alert("✅ Order placed! Please pick it up at the counter after it's ready.")
+            toast.success("Order placed! Please pick it up at the counter after it's ready.")
           }
         } else {
           // ── Cashfree online payment flow ──────────────────────────────────
@@ -82,19 +83,19 @@ export function Cart_Details() {
             // Cashfree redirects back to /orders?order_id=... on success
             // MyOrders page calls /verify-payment and then clears the cart
           } else if (sessionId && !window.Cashfree) {
-            alert("⚠️ Cashfree SDK not loaded. Please refresh and try again.")
+            toast.error("Cashfree SDK not loaded. Please refresh and try again.")
           } else {
-            alert("⚠️ No payment session returned. Please try again.")
+            toast.error("No payment session returned. Please try again.")
           }
         }
       } else {
         const errMsg = response.data?.message || "Failed to place order."
-        alert(`❌ ${errMsg}`)
+        toast.error(errMsg)
       }
     } catch (err: any) {
       console.error(err)
       const msg = err.response?.data?.message || "Failed to place order. Please try again."
-      alert(`❌ ${msg}`)
+      toast.error(msg)
     } finally {
       setPlacing(false)
     }

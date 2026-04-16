@@ -18,7 +18,7 @@ async function fetchPexelsImage(query: string): Promise<string> {
       { headers: { Authorization: PEXELS_KEY } }
     );
     if (!res.ok) return FALLBACK_IMAGE;
-    
+
     const data = await res.json();
     return data?.photos?.[0]?.src?.medium || FALLBACK_IMAGE;
   } catch (error) {

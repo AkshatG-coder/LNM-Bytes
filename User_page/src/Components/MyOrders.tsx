@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { RootState } from '../Util/store'
 import { add_item, clear_all_item } from '../Util/CartReducer'
 import api from '../Util/api'
+import toast from 'react-hot-toast'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered' | 'payment_pending'
 
@@ -28,13 +29,13 @@ interface Order {
   orderNote?: string
 }
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: string; bg: string; step: number }> = {
-  pending:   { label: 'Order Placed',     icon: '🕐', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 1 },
-  preparing: { label: 'Being Prepared',   icon: '🍳', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30', step: 2 },
-  ready:     { label: 'Ready for Pickup', icon: '🛎️', color: 'text-green-400',  bg: 'bg-green-500/10  border-green-500/30',  step: 3 },
-  delivered: { label: 'Delivered',        icon: '✅', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30', step: 4 },
-  cancelled: { label: 'Cancelled',        icon: '❌', color: 'text-red-400',    bg: 'bg-red-500/10   border-red-500/30',     step: 0 },
-  payment_pending: { label: 'Payment Pending', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0 },
+const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: string; bg: string; step: number; fill: string; border: string }> = {
+  pending:   { label: 'Order Placed',     icon: '🕐', color: 'text-yellow-500', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 1, fill: 'bg-yellow-500', border: 'border-yellow-500' },
+  preparing: { label: 'Being Prepared',   icon: '🍳', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/30', step: 2, fill: 'bg-orange-500', border: 'border-orange-500' },
+  ready:     { label: 'Ready for Pickup', icon: '🛎️', color: 'text-green-500',  bg: 'bg-green-500/10  border-green-500/30',  step: 3, fill: 'bg-green-500', border: 'border-green-500' },
+  delivered: { label: 'Delivered',        icon: '✅', color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/30', step: 4, fill: 'bg-purple-500', border: 'border-purple-500' },
+  cancelled: { label: 'Cancelled',        icon: '❌', color: 'text-red-500',    bg: 'bg-red-500/10   border-red-500/30',     step: 0, fill: 'bg-red-500', border: 'border-red-500' },
+  payment_pending: { label: 'Payment Pending', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0, fill: 'bg-yellow-600', border: 'border-yellow-600' },
 }
 
 const STEPS: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered']
@@ -110,9 +111,9 @@ const OrderCard = memo(function OrderCard({
   const isPaymentFailed = order.status === 'cancelled' && order.paymentStatus === 'failed'
 
   if (isPaymentFailed) {
-    cfg = { label: 'Payment Failed', icon: '❌', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30', step: 0 }
+    cfg = { label: 'Payment Failed', icon: '❌', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30', step: 0, fill: 'bg-red-500', border: 'border-red-500' }
   } else if (order.status === 'payment_pending') {
-    cfg = { label: 'Payment Incomplete', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0 }
+    cfg = { label: 'Payment Incomplete', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0, fill: 'bg-yellow-600', border: 'border-yellow-600' }
   }
 
   return (
@@ -122,13 +123,9 @@ const OrderCard = memo(function OrderCard({
     >
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 gap-2">
+      <div className="flex items-start justify-between mb-2 gap-2">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xl">{cfg.icon}</span>
-            <span className={`text-base font-black ${cfg.color}`}>{cfg.label}</span>
-          </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap pb-1">
             {order.orderNumber && (
               <span
                 className="text-xs font-black px-2 py-0.5 rounded-full"
@@ -155,28 +152,49 @@ const OrderCard = memo(function OrderCard({
         </div>
       </div>
 
-      {/* Progress stepper */}
+      {/* Swiggy-style Stepper UI */}
       {!isCancelled && (
-        <div className="flex items-center mb-4" role="progressbar">
-          {STEPS.map((s, i) => {
-            const sCfg = STATUS_CONFIG[s]
-            const isActive  = sCfg.step <= cfg.step
-            const isCurrent = s === order.status
-            return (
-              <div key={s} className="flex items-center flex-1">
-                <div className={`w-3 h-3 rounded-full flex-shrink-0 border-2 transition-all ${
-                  isCurrent  ? `border-current ${cfg.color} bg-current scale-125` :
-                  isActive   ? `border-current ${cfg.color} bg-current` :
-                               'border-gray-600 bg-gray-800'
-                }`} title={sCfg.label} />
-                {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-1 transition-all ${
-                    isActive && STATUS_CONFIG[STEPS[i + 1]].step <= cfg.step ? `${cfg.color} bg-current` : 'bg-gray-700'
-                  }`} />
-                )}
-              </div>
-            )
-          })}
+        <div className="mt-5 mb-5 px-1">
+          <div className="flex items-center justify-between relative w-full" role="progressbar">
+            {/* Background Path */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 dark:bg-gray-700/50 rounded-full z-0" />
+            
+            {/* Active Path Fill */}
+            <div 
+               className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-full transition-all duration-700 ease-in-out ${cfg.fill} z-0`}
+               style={{ width: `${Math.max(0, (cfg.step - 1) / (STEPS.length - 1) * 100)}%` }}
+            />
+
+            {STEPS.map((s) => {
+              const sCfg = STATUS_CONFIG[s]
+              const isActive = sCfg.step <= cfg.step
+              const isCurrent = s === order.status
+
+              return (
+                <div key={s} className="relative flex flex-col items-center z-10 w-16 group">
+                  {/* Step Node */}
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base border-[3px] transition-all duration-500 bg-white dark:bg-[#0f172a] ${
+                    isCurrent ? `${cfg.border} ${cfg.color} shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)] scale-110` :
+                    isActive ? `${sCfg.border} text-white ${sCfg.fill}` :
+                    'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
+                  }`}>
+                    <span className={`transition-all duration-500 ${isCurrent ? 'animate-pulse' : ''}`}>
+                      {isActive && !isCurrent ? '✓' : sCfg.icon}
+                    </span>
+                  </div>
+                  
+                  {/* Step Label */}
+                  <span className={`absolute top-full mt-2 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-center transition-colors duration-300 w-20 ${
+                    isCurrent ? cfg.color :
+                    isActive ? 'text-gray-700 dark:text-gray-300' :
+                    'text-gray-400 dark:text-gray-600'
+                  }`}>
+                    {sCfg.label.replace('for Pickup', '').trim()}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -334,13 +352,13 @@ export default function MyOrders() {
             dispatch(clear_all_item())
             fetchOrders()
           } else {
-            alert("⚠️ Payment could not be verified. Please show your order ID at the counter.")
+            toast.error("⚠️ Payment could not be verified. Please show your order ID at the counter.")
             fetchOrders() // Refresh to show failure/cancelled state
           }
         })
         .catch(err => {
            console.error("Payment verification failed", err)
-           alert("Your online payment verification failed or is pending. Please check with the counter.")
+           toast.error("Your online payment verification failed or is pending. Please check with the counter.")
            fetchOrders() // Refresh to show failure/cancelled state
         })
     }
