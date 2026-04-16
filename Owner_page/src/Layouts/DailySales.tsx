@@ -197,34 +197,6 @@ function DailySales() {
           </div>
         )}
       </div>
-
-      {/* ── Revenue breakdown by status ── */}
-      {!loading && data.orders.length > 0 && (
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          {(["ready", "preparing", "cancelled"] as const).map((status) => {
-            const cfg = STATUS_CONFIG[status];
-            const count = data.orders.filter((o) => o.status === status).length;
-            const revenue = data.orders
-              .filter((o) => o.status === status)
-              .reduce((acc, o) => acc + o.totalAmount, 0);
-            return (
-              <div
-                key={status}
-                className={`rounded-2xl border p-4 flex flex-col gap-1 ${cfg.bg}`}
-                style={{ borderColor: 'var(--color-border)' }}
-              >
-                <span className={`text-[10px] font-black uppercase tracking-widest opacity-80 ${cfg.text}`}>
-                  {cfg.label}
-                </span>
-                <span className={`text-xl font-black ${cfg.text}`}>{count} orders</span>
-                <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)', visibility: status === 'cancelled' ? 'hidden' : 'visible' }}>
-                  ₹{fmt(revenue)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

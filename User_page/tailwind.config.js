@@ -9,9 +9,9 @@ export default {
     extend: {
       colors: {
         primary: {
-          light: '#fbbf24',  /* amber-400 */
-          DEFAULT: '#ea580c', /* orange-600 (Food Tech Orange) */
-          dark: '#c2410c',   /* orange-700 */
+          light: '#818cf8',
+          DEFAULT: '#4f46e5',
+          dark: '#3730a3',
         },
         secondary: {
           light: '#fbbf24',
