@@ -18,9 +18,12 @@ function ToggleSwitch({
   size?: 'normal' | 'large';
 }) {
   return (
-    <div className={`flex items-center justify-between ${size === 'large' ? 'p-5' : 'p-4'} bg-white rounded-2xl border border-gray-100 hover:border-gray-200 transition-all`}>
+    <div
+      className={`flex items-center justify-between ${size === 'large' ? 'p-5' : 'p-4'} rounded-2xl border hover:border-gray-300 dark:hover:border-gray-500 transition-all`}
+      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+    >
       <div>
-        <p className={`font-black text-gray-800 ${size === 'large' ? 'text-base' : 'text-sm'}`}>{label}</p>
+        <p className={`font-black ${size === 'large' ? 'text-base' : 'text-sm'}`} style={{ color: 'var(--color-text-main)' }}>{label}</p>
         {sublabel && <p className="text-xs font-medium text-gray-400 mt-0.5">{sublabel}</p>}
       </div>
       <button
@@ -123,13 +126,13 @@ function ShopSettings() {
 
       {/* Header */}
       <header className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight text-gray-800">Shop Settings</h1>
+        <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--color-text-main)' }}>Shop Settings</h1>
         <p className="text-gray-500 text-sm mt-1 font-medium">Manage your store configuration</p>
       </header>
 
       {/* Error Banner */}
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 font-bold text-sm">
+        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 text-red-700 dark:text-red-400 font-bold text-sm">
           ⚠️ {error}
         </div>
       )}
@@ -137,18 +140,21 @@ function ShopSettings() {
       {/* Store Info */}
       <section className="mb-6">
         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Store Info</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div
+          className="rounded-2xl border p-5"
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+        >
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-2xl shadow-inner">
               {store.name.charAt(0)}
             </div>
             <div>
-              <h3 className="text-lg font-black text-gray-800">{store.name}</h3>
+              <h3 className="text-lg font-black" style={{ color: 'var(--color-text-main)' }}>{store.name}</h3>
               <p className="text-sm text-gray-500 font-medium">Owner: {store.ownerName}</p>
               <p className="text-xs text-gray-400 mt-1 font-medium">{store.location}</p>
             </div>
           </div>
-          <p className="mt-4 text-sm text-gray-500 font-medium leading-relaxed border-t border-gray-50 pt-4">{store.description}</p>
+          <p className="mt-4 text-sm text-gray-500 font-medium leading-relaxed border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>{store.description}</p>
         </div>
       </section>
 
@@ -156,13 +162,21 @@ function ShopSettings() {
       {/* 🔴/🟢 Shop Open/Close — Big Toggle */}
       <section className="mb-6">
         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Shop Status</h2>
-        <div className={`p-6 rounded-2xl border-2 transition-all ${store.status === 'open' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+        <div className={`p-6 rounded-2xl border-2 transition-all ${
+          store.status === 'open'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/50'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className={`text-lg font-black ${store.status === 'open' ? 'text-green-700' : 'text-red-600'}`}>
+              <p className={`text-lg font-black ${
+                store.status === 'open'
+                  ? 'text-green-700 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
                 {store.status === 'open' ? '🟢 Shop is OPEN' : '🔴 Shop is CLOSED'}
               </p>
-              <p className="text-sm font-medium mt-1 opacity-70 text-gray-700">
+              <p className="text-sm font-medium mt-1 opacity-70" style={{ color: 'var(--color-text-main)' }}>
                 {store.status === 'open' ? 'Customers can browse and order from your store' : 'Orders are paused — no new orders'}
               </p>
             </div>
@@ -182,7 +196,10 @@ function ShopSettings() {
       {/* Contact & Hours */}
       <section className="mb-6">
         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Contact & Hours</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div
+          className="rounded-2xl border p-5 space-y-4"
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+        >
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
             <input
@@ -193,7 +210,8 @@ function ShopSettings() {
                 setPhone(sanitized);
               }}
               placeholder="+91 99999 99999"
-              className="mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              className="mt-2 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
+              style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -203,7 +221,8 @@ function ShopSettings() {
                 type="time"
                 value={openTime}
                 onChange={(e) => setOpenTime(e.target.value)}
-                className="mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                className="mt-2 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
+                style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
               />
             </div>
             <div>
@@ -212,7 +231,8 @@ function ShopSettings() {
                 type="time"
                 value={closeTime}
                 onChange={(e) => setCloseTime(e.target.value)}
-                className="mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                className="mt-2 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
+                style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
               />
             </div>
           </div>
@@ -263,8 +283,9 @@ function ShopSettings() {
                     : type === 'non-veg'
                     ? 'bg-red-100 text-red-700 border-red-300 shadow-md'
                     : 'bg-orange-100 text-orange-700 border-orange-300 shadow-md'
-                  : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'
+                  : 'text-gray-400 border-gray-200 hover:border-gray-300'
               }`}
+              style={store.foodType !== type ? { backgroundColor: 'var(--color-surface)' } : {}}
             >
               {type === 'veg' ? '🥦 Veg Only' : type === 'non-veg' ? '🍗 Non-Veg' : '🍱 Both'}
             </button>

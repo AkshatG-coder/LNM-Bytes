@@ -115,8 +115,10 @@ const OrderCard = memo(function OrderCard({
   }
 
   return (
-    <div className={`rounded-2xl border p-5 mb-4 transition-all ${cfg.bg}`}
-      style={{ backgroundColor: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+    <div
+      className={`rounded-2xl border p-5 mb-4 transition-all ${cfg.bg}`}
+      style={{ backgroundColor: 'var(--surface)', backdropFilter: 'blur(4px)' }}
+    >
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4 gap-2">
@@ -127,7 +129,10 @@ const OrderCard = memo(function OrderCard({
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             {order.orderNumber && (
-              <span className="text-xs font-black text-white bg-gray-700 px-2 py-0.5 rounded-full">
+              <span
+                className="text-xs font-black px-2 py-0.5 rounded-full"
+                style={{ color: 'var(--text-main)', backgroundColor: 'var(--surface)' }}
+              >
                 # {order.orderNumber}
               </span>
             )}
@@ -137,7 +142,7 @@ const OrderCard = memo(function OrderCard({
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-xl font-black text-white">₹{order.totalAmount}</div>
+          <div className="text-xl font-black" style={{ color: 'var(--text-main)' }}>₹{order.totalAmount}</div>
           <div className="text-xs font-medium text-gray-500">
             {order.paymentType === 'cash' ? '💵 Pay at Counter' : '💳 Online'}
           </div>
@@ -172,14 +177,14 @@ const OrderCard = memo(function OrderCard({
       {/* Items */}
       <div className="space-y-1.5 mb-1">
         {order.items.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm text-gray-400">
-            <span className="font-medium text-gray-300">
+          <div key={i} className="flex justify-between text-sm" style={{ color: 'var(--text-muted)' }}>
+            <span className="font-medium" style={{ color: 'var(--text-main)' }}>
               {item.name}
               {item.portionSize === 'half' && (
-                <span className="ml-1.5 text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full">Half</span>
+                <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Half</span>
               )}
             </span>
-            <span className="text-gray-500 font-bold">×{item.quantity} · ₹{item.price * item.quantity}</span>
+            <span className="font-bold" style={{ color: 'var(--text-muted)' }}>×{item.quantity} · ₹{item.price * item.quantity}</span>
           </div>
         ))}
       </div>
@@ -236,6 +241,7 @@ export default function MyOrders() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active')
   const [wsConnected, setWsConnected] = useState(false)
   const prevStatuses = useRef<Record<string, OrderStatus>>({})
   const wsRef = useRef<WebSocket | null>(null)
@@ -423,22 +429,60 @@ export default function MyOrders() {
         </div>
       ) : (
         <>
-          {active.length > 0 && (
-            <section>
-              <h2 className="text-xs font-black uppercase tracking-widest mb-3 text-red-400">
-                🔴 Active Orders ({active.length})
-              </h2>
-              {active.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)}
-            </section>
-          )}
-          {completed.length > 0 && (
-            <section className="mt-6">
-              <h2 className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
-                Past Orders
-              </h2>
-              {completed.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)}
-            </section>
-          )}
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`pb-3 px-2 text-sm font-black transition-colors relative ${
+                activeTab === 'active' ? 'text-primary' : 'text-gray-400 hover:text-gray-300'
+              }`}
+              style={activeTab !== 'active' ? { color: 'var(--text-muted)' } : {}}
+            >
+              Active ({active.length})
+              {activeTab === 'active' && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`pb-3 px-2 text-sm font-black transition-colors relative ${
+                activeTab === 'completed' ? 'text-primary' : 'text-gray-400 hover:text-gray-300'
+              }`}
+              style={activeTab !== 'completed' ? { color: 'var(--text-muted)' } : {}}
+            >
+              Completed ({completed.length})
+              {activeTab === 'completed' && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />
+              )}
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div>
+            {activeTab === 'active' && (
+              active.length > 0 ? (
+                active.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)
+              ) : (
+                <div className="text-center py-10">
+                  <p className="font-bold border-2 border-dashed p-8 rounded-2xl" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
+                    No active orders.
+                  </p>
+                </div>
+              )
+            )}
+
+            {activeTab === 'completed' && (
+              completed.length > 0 ? (
+                completed.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)
+              ) : (
+                <div className="text-center py-10">
+                  <p className="font-bold border-2 border-dashed p-8 rounded-2xl" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
+                    No completed orders.
+                  </p>
+                </div>
+              )
+            )}
+          </div>
         </>
       )}
     </div>

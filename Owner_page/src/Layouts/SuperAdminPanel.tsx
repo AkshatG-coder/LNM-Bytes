@@ -110,12 +110,18 @@ function SuperAdminPanel() {
         <button
           onClick={() => setActiveTab('pending')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm transition-all ${
-            activeTab === 'pending' ? 'bg-yellow-500 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'
+            activeTab === 'pending'
+              ? 'bg-yellow-500 text-white shadow-lg'
+              : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
           }`}
         >
           ⏳ Pending
           {pending.length > 0 && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${activeTab === 'pending' ? 'bg-white/25' : 'bg-yellow-500/20 text-yellow-400'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+              activeTab === 'pending'
+                ? 'bg-white/25'
+                : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
+            }`}>
               {pending.length}
             </span>
           )}
@@ -123,7 +129,9 @@ function SuperAdminPanel() {
         <button
           onClick={() => setActiveTab('approved')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm transition-all ${
-            activeTab === 'approved' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'
+            activeTab === 'approved'
+              ? 'bg-green-600 text-white shadow-lg'
+              : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
           }`}
         >
           ✅ Approved ({approved.length})
@@ -131,7 +139,7 @@ function SuperAdminPanel() {
         <button
           onClick={fetchOwners}
           disabled={loading}
-          className="ml-auto px-4 py-2.5 rounded-xl text-sm font-black text-gray-400 hover:bg-gray-800 transition-all disabled:opacity-50"
+          className="ml-auto px-4 py-2.5 rounded-xl text-sm font-black text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all disabled:opacity-50"
         >
           {loading ? '⏳' : '🔄'} Refresh
         </button>
@@ -150,9 +158,12 @@ function SuperAdminPanel() {
           <p className="text-yellow-400 font-black text-sm uppercase tracking-widest animate-pulse">Loading...</p>
         </div>
       ) : list.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 rounded-3xl border-2 border-dashed border-gray-700">
+        <div
+          className="flex flex-col items-center justify-center py-24 rounded-3xl border-2 border-dashed"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
           <span className="text-5xl mb-4 opacity-40">{activeTab === 'pending' ? '✅' : '🏪'}</span>
-          <p className="font-black text-gray-400">
+          <p className="font-black" style={{ color: 'var(--color-text-muted)' }}>
             {activeTab === 'pending' ? 'No pending requests — you\'re all caught up!' : 'No approved stores yet'}
           </p>
         </div>
@@ -172,23 +183,23 @@ function SuperAdminPanel() {
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-gray-100">{owner.name}</span>
+                  <span className="font-black" style={{ color: 'var(--color-text-main)' }}>{owner.name}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
                     owner.isApproved
-                      ? 'bg-green-900/40 text-green-300 border-green-700/40'
-                      : 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40'
+                      ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/40'
+                      : 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700/40'
                   }`}>
                     {owner.isApproved ? '✅ Active' : '⏳ Pending'}
                   </span>
                 </div>
-                <div className="text-xs text-blue-400 font-medium mt-0.5 truncate">{owner.email}</div>
+                <div className="text-xs text-blue-500 dark:text-blue-400 font-medium mt-0.5 truncate">{owner.email}</div>
                 {owner.storeId && (
-                  <div className="text-xs font-medium mt-0.5" style={{ color: '#94a3b8' }}>
-                    🏪 <span className="font-bold text-gray-300">{owner.storeId.name}</span>
-                    {owner.storeId.location && <span className="text-gray-500"> · {owner.storeId.location}</span>}
+                  <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    🏪 <span className="font-bold" style={{ color: 'var(--color-text-main)' }}>{owner.storeId.name}</span>
+                    {owner.storeId.location && <span className="opacity-60"> · {owner.storeId.location}</span>}
                   </div>
                 )}
-                <div className="text-[10px] text-gray-600 mt-0.5">
+                <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)', opacity: 0.7 }}>
                   Registered {new Date(owner.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
               </div>

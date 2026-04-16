@@ -9,11 +9,19 @@ interface TabButtonProps {
 const TabButton = ({ label, count = 0, active, onClick }: TabButtonProps) => (
     <button 
         onClick={onClick}
-        className={`relative pb-3 text-sm font-medium transition-colors whitespace-nowrap px-1 ${active ? 'text-[#fc8019]' : 'text-gray-500 hover:text-gray-300'}`}
+        className={`relative pb-3 text-sm font-medium transition-colors whitespace-nowrap px-1 ${
+          active
+            ? 'text-[#fc8019]'
+            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+        }`}
     >
         {label}
         {count > 0 && (
-            <span className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-full ${active ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-800 text-gray-400'}`}>
+            <span className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-full ${
+              active
+                ? 'bg-orange-500/20 text-orange-500 dark:text-orange-400'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            }`}>
                 {count}
             </span>
         )}

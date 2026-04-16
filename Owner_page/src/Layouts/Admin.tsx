@@ -36,7 +36,7 @@ function Admin() {
       {/* Header */}
       <header className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--color-text-main)' }}>
             Kitchen Dashboard
           </h1>
           <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 font-medium">
@@ -47,7 +47,7 @@ function Admin() {
           onClick={refreshOrders}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all shadow-sm disabled:opacity-50 border"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--border)', color: 'inherit' }}
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
         >
           {loading ? '⏳' : '🔄'} Refresh
         </button>
@@ -63,14 +63,14 @@ function Admin() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard title="New Orders" value={count('pending')} icon="🔥" color="text-secondary-dark" bg="bg-secondary-light/10" borderColor="border-secondary-light/20" />
         <StatsCard title="Preparing" value={count('preparing')} icon="🍳" color="text-primary" bg="bg-primary-light/10" borderColor="border-primary-light/20" />
-        <StatsCard title="Ready" value={count('ready')} icon="✅" color="text-green-600" bg="bg-green-50" borderColor="border-green-100" />
+        <StatsCard title="Ready" value={count('ready')} icon="✅" color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-900/20" borderColor="border-green-200 dark:border-green-800/30" />
         <StatsCard title="Revenue" value={`₹${revenue}`} icon="💰" color="text-white" bg="bg-gradient-to-r from-primary to-primary-dark" borderColor="border-primary-dark/20" />
       </div>
 
       {/* Tabs */}
       <div
         className="mb-6 border-b sticky top-0 backdrop-blur z-10 pt-2 transition-colors duration-300"
-        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--color-background)', opacity: 0.97 }}
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-background)', opacity: 0.97 }}
       >
         <div className="flex space-x-2 overflow-x-auto pb-2 no-scrollbar">
           {TABS.map(t => (

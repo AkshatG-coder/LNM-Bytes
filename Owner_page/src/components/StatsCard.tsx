@@ -13,10 +13,10 @@ export const StatsCard = ({ title, value, icon, color, bg, borderColor }: StatsC
         <div className={`p-5 rounded-2xl border ${borderColor} ${bg} backdrop-blur-sm transition-transform hover:scale-[1.02]`}>
             <div className="flex justify-between items-start">
                 <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400 mb-1">{title}</p>
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">{title}</p>
                     <h3 className={`text-2xl font-bold ${color}`}>{value}</h3>
                 </div>
-                <div className={`p-2 rounded-lg bg-white/5 text-lg border border-white/5`}>{icon}</div>
+                <div className="p-2 rounded-lg text-lg border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5">{icon}</div>
             </div>
         </div>
     );

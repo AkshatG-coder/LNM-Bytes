@@ -217,37 +217,43 @@ export default function QRScanner() {
               )}
 
               {/* Student info */}
-              <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700/50 space-y-2">
-                <p className="text-[10px] uppercase tracking-widest font-black text-gray-500">Student</p>
-                <p className="font-black text-white text-lg">{order.userName}</p>
-                <p className="text-blue-400 text-sm">✉️ {order.userEmail}</p>
-                {order.userPhone && <p className="text-green-400 text-sm">📞 +91 {order.userPhone}</p>}
+              <div
+                className="p-4 rounded-xl border space-y-2"
+                style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
+              >
+                <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">Student</p>
+                <p className="font-black text-lg" style={{ color: 'var(--color-text-main)' }}>{order.userName}</p>
+                <p className="text-blue-500 dark:text-blue-400 text-sm">✉️ {order.userEmail}</p>
+                {order.userPhone && <p className="text-green-600 dark:text-green-400 text-sm">📞 +91 {order.userPhone}</p>}
               </div>
 
               {/* Order summary */}
-              <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700/50 space-y-3">
-                <p className="text-[10px] uppercase tracking-widest font-black text-gray-500">Items</p>
+              <div
+                className="p-4 rounded-xl border space-y-3"
+                style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
+              >
+                <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">Items</p>
                 <div className="space-y-1.5">
                   {order.items.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-300 font-medium">
+                      <span className="font-medium" style={{ color: 'var(--color-text-main)' }}>
                         {item.name}
                         {item.portionSize === "half" && (
-                          <span className="ml-1 text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full">Half</span>
+                          <span className="ml-1 text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Half</span>
                         )}
                       </span>
-                      <span className="text-gray-500">×{item.quantity} · ₹{item.price * item.quantity}</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>×{item.quantity} · ₹{item.price * item.quantity}</span>
                     </div>
                   ))}
                 </div>
-                <div className="border-t border-gray-700 pt-2 flex justify-between items-center">
+                <div className="border-t pt-2 flex justify-between items-center" style={{ borderColor: 'var(--color-border)' }}>
                   <span className="text-xs font-black text-gray-400 uppercase">Total</span>
-                  <span className="font-black text-orange-400 text-xl">₹{order.totalAmount}</span>
+                  <span className="font-black text-orange-500 text-xl">₹{order.totalAmount}</span>
                 </div>
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-muted)' }}>
                   <span className="font-medium">
                     {order.paymentType === "cash" ? "💵 Cash" : "💳 Online"} ·{" "}
-                    <span className={order.paymentStatus === "paid" ? "text-green-400" : "text-yellow-400"}>
+                    <span className={order.paymentStatus === "paid" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}>
                       {order.paymentStatus === "paid" ? "Paid" : "Pending"}
                     </span>
                   </span>
