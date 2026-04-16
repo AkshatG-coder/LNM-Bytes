@@ -7,16 +7,24 @@ const inFlight = new Map<string, Promise<string>>();
 
 const PEXELS_KEY = import.meta.env.VITE_PEXELS_API_KEY as string | undefined;
 
-async function fetchPexelsImage(query: string): Promise<string> {
-  if (!PEXELS_KEY) return "";
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80"; // Generic food placeholder
 
-  const res = await fetch(
-    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + " food dish")}&per_page=1&orientation=landscape`,
-    { headers: { Authorization: PEXELS_KEY } }
-  );
-  if (!res.ok) return "";
-  const data = await res.json();
-  return data?.photos?.[0]?.src?.medium ?? "";
+async function fetchPexelsImage(query: string): Promise<string> {
+  if (!PEXELS_KEY) return FALLBACK_IMAGE;
+
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + " food dish")}&per_page=1&orientation=landscape`,
+      { headers: { Authorization: PEXELS_KEY } }
+    );
+    if (!res.ok) return FALLBACK_IMAGE;
+    
+    const data = await res.json();
+    return data?.photos?.[0]?.src?.medium || FALLBACK_IMAGE;
+  } catch (error) {
+    console.error("Failed to fetch Pexels image:", error);
+    return FALLBACK_IMAGE;
+  }
 }
 
 import { useEffect, useState } from "react";
@@ -37,11 +45,16 @@ export function useFoodImage(itemName: string): string {
 
     // Deduplicate concurrent requests for same item
     if (!inFlight.has(itemName)) {
-      const promise = fetchPexelsImage(itemName).then((imgUrl) => {
-        cache.set(itemName, imgUrl);
-        inFlight.delete(itemName);
-        return imgUrl;
-      });
+      const promise = fetchPexelsImage(itemName)
+        .then((imgUrl) => {
+          cache.set(itemName, imgUrl);
+          inFlight.delete(itemName);
+          return imgUrl;
+        })
+        .catch(() => {
+          inFlight.delete(itemName);
+          return FALLBACK_IMAGE;
+        });
       inFlight.set(itemName, promise);
     }
 
