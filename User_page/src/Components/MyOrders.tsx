@@ -157,7 +157,7 @@ const OrderCard = memo(function OrderCard({
 
       {/* Swiggy-style Stepper UI */}
       {!isCancelled && (
-        <div className="mt-5 mb-5 px-1">
+        <div className="mt-5 mb-2 px-1 pb-8">
           <div className="flex items-center justify-between relative w-full" role="progressbar">
             {/* Background Path */}
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 dark:bg-gray-700/50 rounded-full z-0" />

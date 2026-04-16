@@ -12,7 +12,7 @@ export function Cart_Details() {
   const dispatch = useAppDispatch()
   const [placing, setPlacing] = useState(false)
   const [isNightDelivery, setIsNightDelivery] = useState(false)
-  const [storeStatus, setStoreStatus] = useState({ open: true, onlineAvailable: true, nightDeliveryCharge: 10 })
+  const [storeStatus, setStoreStatus] = useState({ open: true, onlineAvailable: true, nightDeliveryCharge: 10, nightDeliveryEnabled: false })
 
   // Fetch store status for the canteen in cart
   const canteenId = cart_details[0]?.canteen_id
@@ -24,7 +24,8 @@ export function Cart_Details() {
             setStoreStatus({
               open: res.data.data.status === 'open',
               onlineAvailable: res.data.data.isOnlineOrderAvailable ?? true,
-              nightDeliveryCharge: res.data.data.nightDeliveryCharge ?? 10
+              nightDeliveryCharge: res.data.data.nightDeliveryCharge ?? 10,
+              nightDeliveryEnabled: res.data.data.nightDelivery ?? false
             })
           }
         })
@@ -208,19 +209,23 @@ export function Cart_Details() {
             </div>
 
             {/* Paused Banner */}
-            {(!storeStatus.onlineAvailable || !storeStatus.open) && (
+            {(!storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))) && (
               <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-center">
                 <p className="text-yellow-600 font-bold text-xs">
                   {!storeStatus.open ? '🔴 Canteen is currently CLOSED' : '⚠️ App Ordering is Paused'}
                 </p>
-                <p className="text-gray-500 text-[10px] mt-0.5">The kitchen is not accepting new app orders right now.</p>
+                <p className="text-gray-500 text-[10px] mt-0.5">
+                  {!storeStatus.open && storeStatus.nightDeliveryEnabled
+                    ? 'Check "Night Delivery" above to order after-hours!'
+                    : 'The kitchen is not accepting new app orders right now.'}
+                </p>
               </div>
             )}
 
             {/* Pay Online */}
             <button
               onClick={() => placeOrder('online')}
-              disabled={placing || !storeStatus.onlineAvailable || !storeStatus.open}
+              disabled={placing || !storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))}
               className="w-full bg-primary text-white py-4 rounded-xl font-black text-sm sm:text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:grayscale-[0.5]"
             >
               {placing ? '⏳ Placing...' : `💳 Pay Online ₹${total.toFixed(2)}`}
@@ -229,7 +234,7 @@ export function Cart_Details() {
             {/* Pay at Counter */}
             <button
               onClick={() => placeOrder('cash')}
-              disabled={placing || !storeStatus.onlineAvailable || !storeStatus.open}
+              disabled={placing || !storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))}
               className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-sm sm:text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-40"
             >
               {placing ? '⏳ Placing...' : `💵 Pay at Counter · ₹${total.toFixed(2)}`}
