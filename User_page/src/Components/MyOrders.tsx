@@ -176,10 +176,10 @@ const OrderCard = memo(function OrderCard({
               return (
                 <div key={s} className="relative flex flex-col items-center z-10 w-16 group">
                   {/* Step Node */}
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base border-[3px] transition-all duration-500 bg-white dark:bg-[#0f172a] ${
-                    isCurrent ? `${cfg.border} ${cfg.color} shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)] scale-110` :
-                    isActive ? `${sCfg.border} text-white ${sCfg.fill}` :
-                    'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base border-[2px] sm:border-[3px] transition-all duration-500 z-10 ${
+                    isCurrent ? `${cfg.border} ${cfg.color} bg-white dark:bg-dark-surface shadow-lg scale-110` :
+                    isActive ? `${sCfg.border} ${sCfg.fill} text-white` :
+                    'border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-surface text-gray-400 dark:text-gray-500'
                   }`}>
                     <span className={`transition-all duration-500 ${isCurrent ? 'animate-pulse' : ''}`}>
                       {isActive && !isCurrent ? '✓' : sCfg.icon}

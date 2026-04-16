@@ -2,8 +2,22 @@
 // Fetches a relevant food image from Pexels based on the menu item name.
 // Results are cached in a module-level Map so repeated renders don't re-hit the API.
 
-const cache = new Map<string, string>();
+let initialCache: [string, string][] = [];
+try {
+  const stored = localStorage.getItem('PEXELS_IMAGE_CACHE');
+  if (stored) initialCache = JSON.parse(stored);
+} catch (e) {
+  // ignore
+}
+
+const cache = new Map<string, string>(initialCache);
 const inFlight = new Map<string, Promise<string>>();
+
+function persistCache() {
+  try {
+    localStorage.setItem('PEXELS_IMAGE_CACHE', JSON.stringify(Array.from(cache.entries())));
+  } catch (e) {}
+}
 
 const PEXELS_KEY = import.meta.env.VITE_PEXELS_API_KEY as string | undefined;
 
@@ -48,6 +62,7 @@ export function useFoodImage(itemName: string): string {
       const promise = fetchPexelsImage(itemName)
         .then((imgUrl) => {
           cache.set(itemName, imgUrl);
+          persistCache();
           inFlight.delete(itemName);
           return imgUrl;
         })
