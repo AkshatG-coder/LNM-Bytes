@@ -242,7 +242,7 @@ export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active')
-  const [wsConnected, setWsConnected] = useState(false)
+  const [, setWsConnected] = useState(false)
   const prevStatuses = useRef<Record<string, OrderStatus>>({})
   const wsRef = useRef<WebSocket | null>(null)
 

@@ -3,7 +3,7 @@ import { CartItemCard } from "./Cart_ItemCard"
 import { clear_all_item } from "../Util/CartReducer"
 import { useAppSelector as useSelector } from "../Util/hook"
 import api from "../Util/api"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function Cart_Details() {
   const cart_details = useAppSelector((state) => state.Cart.items)

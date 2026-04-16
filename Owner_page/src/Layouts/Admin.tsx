@@ -18,7 +18,7 @@ function Admin() {
   const {
     users, loading, error,
     acceptOrder, rejectOrder, markReady,
-    refreshOrders, wsConnected,
+    refreshOrders,
   } = useOrders();
 
   const [activeTab, setActiveTab] = useState<OrderStatus>('pending');
