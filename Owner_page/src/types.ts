@@ -62,6 +62,7 @@ export type Store = {
   location: string;
   operationTime: OperationTime;
   nightDelivery: boolean;
+  nightDeliveryCharge: number;
   foodType: 'veg' | 'non-veg' | 'both';
   isOnlineOrderAvailable: boolean;
   isActive: boolean;

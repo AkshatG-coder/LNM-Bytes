@@ -41,6 +41,7 @@ function ShopSettings() {
   const [phone, setPhone] = useState('');
   const [openTime, setOpenTime] = useState('');
   const [closeTime, setCloseTime] = useState('');
+  const [deliveryCharge, setDeliveryCharge] = useState(10);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -50,6 +51,7 @@ function ShopSettings() {
       setPhone(store.phone || '');
       setOpenTime(store.operationTime?.openTime || '');
       setCloseTime(store.operationTime?.closeTime || '');
+      setDeliveryCharge(store.nightDeliveryCharge ?? 10);
       setInitialized(true);
     }
   }, [store, initialized]);
@@ -68,6 +70,7 @@ function ShopSettings() {
     const ok = await updateStore({
       phone,
       operationTime: { openTime, closeTime },
+      nightDeliveryCharge: deliveryCharge,
     });
     if (ok) showToast('Settings saved!');
     else showToast('Failed to save', 'error');
@@ -264,6 +267,36 @@ function ShopSettings() {
             onChange={() => handleToggle('isOnlineOrderAvailable')}
             colorClass="bg-primary"
           />
+
+          {store.nightDelivery && (
+            <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-black text-sm" style={{ color: 'var(--color-text-main)' }}>Night Delivery Charge (₹)</p>
+                  <p className="text-xs font-medium text-gray-400 mt-0.5">Amount added to cart for night delivery</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 font-bold">₹</span>
+                  <input
+                    type="number"
+                    value={deliveryCharge}
+                    onChange={(e) => setDeliveryCharge(Number(e.target.value))}
+                    min="0"
+                    max="500"
+                    className="w-20 px-3 py-2 rounded-xl text-center font-black focus:outline-none focus:ring-2 focus:ring-primary/20 border"
+                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveContact}
+                disabled={saving}
+                className="mt-4 w-full py-2.5 bg-primary/10 text-primary rounded-xl font-black text-xs hover:bg-primary/20 transition-all active:scale-[0.98]"
+              >
+                💾 Save Charge
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

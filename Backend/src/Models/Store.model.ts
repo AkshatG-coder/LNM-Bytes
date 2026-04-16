@@ -44,6 +44,10 @@ const CanteenSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    nightDeliveryCharge: {
+      type: Number,
+      default: 10,
+    },
     foodType: {
       type: String,
       enum: ["veg", "non-veg", "both"],

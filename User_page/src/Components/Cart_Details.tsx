@@ -12,7 +12,7 @@ export function Cart_Details() {
   const dispatch = useAppDispatch()
   const [placing, setPlacing] = useState(false)
   const [isNightDelivery, setIsNightDelivery] = useState(false)
-  const [storeStatus, setStoreStatus] = useState({ open: true, onlineAvailable: true })
+  const [storeStatus, setStoreStatus] = useState({ open: true, onlineAvailable: true, nightDeliveryCharge: 10 })
 
   // Fetch store status for the canteen in cart
   const canteenId = cart_details[0]?.canteen_id
@@ -23,7 +23,8 @@ export function Cart_Details() {
           if (res.data?.success) {
             setStoreStatus({
               open: res.data.data.status === 'open',
-              onlineAvailable: res.data.data.isOnlineOrderAvailable ?? true
+              onlineAvailable: res.data.data.isOnlineOrderAvailable ?? true,
+              nightDeliveryCharge: res.data.data.nightDeliveryCharge ?? 10
             })
           }
         })
@@ -31,7 +32,9 @@ export function Cart_Details() {
     }
   }, [canteenId])
 
-  const total = cart_details.reduce((acc, item) => acc + item.price * item.qty, 0)
+  const subtotal = cart_details.reduce((acc, item) => acc + item.price * item.qty, 0)
+  const deliveryCharge = isNightDelivery ? storeStatus.nightDeliveryCharge : 0
+  const total = subtotal + deliveryCharge
 
   function handleClearCart() {
     dispatch(clear_all_item())
@@ -181,9 +184,26 @@ export function Cart_Details() {
               <span className="text-xs font-bold text-gray-400 dark:text-gray-500">(If available)</span>
             </div>
 
+            {/* Subtotal (Optional but good if fee applies) */}
+            {isNightDelivery && (
+              <>
+                <div className="flex justify-between items-center px-1">
+                  <span className="font-bold text-sm" style={{ color: 'var(--text-muted)' }}>Items Subtotal</span>
+                  <span className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center px-1 mb-1">
+                  <span className="font-bold text-sm flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                    <span>Delivery Charge</span>
+                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">Night</span>
+                  </span>
+                  <span className="font-black text-sm text-primary">+ ₹{deliveryCharge.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+
             {/* Total */}
-            <div className="flex justify-between items-center px-1">
-              <span className="font-bold" style={{ color: 'var(--text-muted)' }}>Total</span>
+            <div className="flex justify-between items-center px-1 border-t pt-2" style={{ borderColor: 'var(--border)' }}>
+              <span className="font-black" style={{ color: 'var(--text-main)' }}>Grand Total</span>
               <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
             </div>
 

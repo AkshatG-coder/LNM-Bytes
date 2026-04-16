@@ -89,15 +89,27 @@ function Landing(): React.JSX.Element {
   };
 
   // ─── Auth state from localStorage ──────────────────────────────────────────
-  const existingAuth = (() => {
+  const existingAuth = React.useMemo(() => {
     try {
       const token = localStorage.getItem('OWNER_TOKEN');
       const isApproved = localStorage.getItem('OWNER_IS_APPROVED') === 'true';
       const ownerName = localStorage.getItem('OWNER_NAME') || '';
       const storeName = localStorage.getItem('OWNER_STORE_NAME') || '';
-      return token ? { isApproved, ownerName, storeName } : null;
+      const role = localStorage.getItem('OWNER_ROLE') || '';
+      return token ? { isApproved, ownerName, storeName, role, token } : null;
     } catch { return null; }
-  })();
+  }, []);
+
+  // ─── Auto-redirect if fully logged in ────────────────────────────────────
+  React.useEffect(() => {
+    if (existingAuth && existingAuth.isApproved && existingAuth.token && existingAuth.token !== 'pending') {
+      if (existingAuth.role === 'superadmin') {
+        navigate('/superadmin');
+      } else {
+        navigate('/admin');
+      }
+    }
+  }, [existingAuth, navigate]);
 
   // ─── Waiting screen for unapproved owners ────────────────────────────────
   if (existingAuth && !existingAuth.isApproved) {
