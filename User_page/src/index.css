@@ -5,12 +5,12 @@
 @tailwind utilities;
 /* ─── Light mode CSS variables ────────────────────────────────────────────── */
 :root {
-  --bg: #f5f6f8; /* Soft cool-gray premium background */
-  --surface: #ffffff; /* Crisp white for cards */
-  --border: #eaebed; /* Much softer aesthetic border */
-  --text-main: #18191c; /* Stark contrast black */
-  --text-muted: #686b78; /* Clean Swiggy-style gray */
-  --shadow: 0 4px 20px -2px rgb(0 0 0 / 0.04); /* Wider, softer glow */
+  --bg: #fafafa; /* Brighter, Apple-like neutral gray for background */
+  --surface: #ffffff; /* Stark white cards */
+  --border: #f0f0f0; /* Ultra soft neutral border */
+  --text-main: #171717; /* Very rich dark neutral (Tailwind neutral-900) */
+  --text-muted: #737373; /* Elegant readable gray (Tailwind neutral-500) */
+  --shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08); /* High end floating shadow */
 }
 
 /* ─── Dark mode CSS variable overrides ────────────────────────────────────── */
