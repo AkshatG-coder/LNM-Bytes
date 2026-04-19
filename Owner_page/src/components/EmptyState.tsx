@@ -1,5 +1,3 @@
-
-
 const EmptyState = ({ message = "No orders in this category" }) => {
     return (
         <div

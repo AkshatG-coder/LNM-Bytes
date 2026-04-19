@@ -34,6 +34,7 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }))
+
 app.use(compression())
 
 // ─── Body parsing (Express 5 built-in, body-parser is deprecated) ─────────────

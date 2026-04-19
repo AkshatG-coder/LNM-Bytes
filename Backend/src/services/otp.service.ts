@@ -1,13 +1,3 @@
-/**
- * Twilio Verify OTP Service
- * Uses Twilio Verify, NOT regular SMS — works internationally even on trial.
- *
- * Setup:
- * 1. Go to: https://console.twilio.com/us1/develop/verify/services
- * 2. Create a new Verify Service → copy the Service SID (starts with VA...)
- * 3. Fill TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SID in .env
- */
-
 import twilio from "twilio";
 
 function getClient() {

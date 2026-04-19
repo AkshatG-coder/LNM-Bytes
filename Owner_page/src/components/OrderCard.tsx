@@ -1,5 +1,3 @@
-
-
 type OrderCardProps = {
   id: number;
   itemName: string;
