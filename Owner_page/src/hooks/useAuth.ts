@@ -149,5 +149,56 @@ export const useAuth = () => {
     }
   };
 
-  return { login, register, resetPassword, loading, error, setError };
+  // ── Forgot Password: Step 1 — Send OTP to email ────────────────────────────
+  const forgotSendOtp = async (email: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.post("/auth/owner/forgot/send-otp", { email });
+      if (res.data?.success) return true;
+      setError(res.data?.message || "Failed to send OTP.");
+      return false;
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Could not connect to server.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Forgot Password: Step 2 — Verify OTP → get resetToken ─────────────────
+  const forgotVerifyOtp = async (email: string, otp: string): Promise<string | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.post("/auth/owner/forgot/verify-otp", { email, otp });
+      if (res.data?.success) return res.data.data.resetToken as string;
+      setError(res.data?.message || "OTP verification failed.");
+      return null;
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Could not connect to server.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Forgot Password: Step 3 — Set new password ─────────────────────────────
+  const forgotResetPassword = async (resetToken: string, newPassword: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.post("/auth/owner/forgot/reset", { resetToken, newPassword });
+      if (res.data?.success) return true;
+      setError(res.data?.message || "Password reset failed.");
+      return false;
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Could not connect to server.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { login, register, resetPassword, forgotSendOtp, forgotVerifyOtp, forgotResetPassword, loading, error, setError };
 };

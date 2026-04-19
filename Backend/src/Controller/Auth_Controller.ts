@@ -2,10 +2,12 @@ import asyncHandler from "../utils/AsyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { UserModel } from "../Models/User.model";
 import { OwnerModel } from "../Models/Owner.model";
 import { Store } from "../Models/Store.model";
 import { sendOtp, verifyOtp } from "../services/otp.service";
+import { sendOtpEmail } from "../services/email.service";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -316,6 +318,105 @@ const updateOwnerPhone = asyncHandler(async (req, res) => {
     }));
 });
 
+// ─── Owner: Forgot Password — Step 1: Send OTP to email ────────────────────
+// POST /auth/owner/forgot/send-otp
+// Body: { email }
+const forgotPasswordSendOtp = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) return err(res, 400, "Email is required.");
+
+    const owner = await OwnerModel.findOne({ email })
+        .select("+passwordResetOtp +passwordResetExpiry");
+    if (!owner)
+        return err(res, 404, `No account found with email: ${email}.`);
+
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    owner.passwordResetOtp    = hashedOtp;
+    owner.passwordResetExpiry = expiry;
+    await owner.save({ validateBeforeSave: false });
+
+    try {
+        await sendOtpEmail(email, otp, owner.name);
+    } catch (e) {
+        // Rollback OTP if email fails
+        owner.passwordResetOtp    = null as any;
+        owner.passwordResetExpiry = null as any;
+        await owner.save({ validateBeforeSave: false });
+        return err(res, 500, "Failed to send OTP email. Please check the SMTP configuration.");
+    }
+
+    return res.json(new ApiResponse(200, true,
+        `OTP sent to ${email}. It expires in 10 minutes.`, { email }));
+});
+
+// ─── Owner: Forgot Password — Step 2: Verify OTP ─────────────────────────────
+// POST /auth/owner/forgot/verify-otp
+// Body: { email, otp }
+const forgotPasswordVerifyOtp = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) return err(res, 400, "Email and OTP are required.");
+
+    const owner = await OwnerModel.findOne({ email })
+        .select("+passwordResetOtp +passwordResetExpiry");
+
+    if (!owner || !owner.passwordResetOtp || !owner.passwordResetExpiry)
+        return err(res, 400, "No OTP request found. Please request a new OTP.");
+
+    if (owner.passwordResetExpiry < new Date())
+        return err(res, 400, "OTP has expired. Please request a new one.");
+
+    const isValid = await bcrypt.compare(otp, owner.passwordResetOtp);
+    if (!isValid)
+        return err(res, 400, "Incorrect OTP. Please try again.");
+
+    // Issue a short-lived reset token (10 min) — frontend sends this in step 3
+    const resetToken = jwt.sign(
+        { ownerId: owner._id, purpose: "pw-reset" },
+        process.env.JWT_SECRET as string,
+        { expiresIn: "10m" }
+    );
+
+    return res.json(new ApiResponse(200, true, "OTP verified successfully.", { resetToken }));
+});
+
+// ─── Owner: Forgot Password — Step 3: Set New Password ───────────────────────
+// POST /auth/owner/forgot/reset
+// Body: { resetToken, newPassword }
+const forgotPasswordReset = asyncHandler(async (req, res) => {
+    const { resetToken, newPassword } = req.body;
+    if (!resetToken || !newPassword) return err(res, 400, "Reset token and new password are required.");
+
+    if (newPassword.length < 6)
+        return err(res, 400, "Password must be at least 6 characters.");
+
+    let payload: any;
+    try {
+        payload = jwt.verify(resetToken, process.env.JWT_SECRET as string);
+    } catch {
+        return err(res, 401, "Reset link has expired or is invalid. Please start again.");
+    }
+
+    if (payload.purpose !== "pw-reset")
+        return err(res, 401, "Invalid reset token.");
+
+    const owner = await OwnerModel.findById(payload.ownerId)
+        .select("+password +passwordResetOtp +passwordResetExpiry");
+    if (!owner) return err(res, 404, "Owner not found.");
+
+    // Set new password — pre-save hook will hash it
+    owner.password            = newPassword;
+    owner.passwordResetOtp    = null as any;
+    owner.passwordResetExpiry = null as any;
+    await owner.save();
+
+    return res.json(new ApiResponse(200, true,
+        "Password updated successfully. Please log in with your new password.", null));
+});
+
 export {
     googleLogin,
     updatePhone,
@@ -329,4 +430,7 @@ export {
     approveOwner,
     revokeOwner,
     rejectOwner,
+    forgotPasswordSendOtp,
+    forgotPasswordVerifyOtp,
+    forgotPasswordReset,
 };

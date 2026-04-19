@@ -80,7 +80,7 @@ function PasswordField({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 function Landing(): React.JSX.Element {
   const navigate = useNavigate();
-  const { login, register, resetPassword, loading, error, setError } = useAuth();
+  const { login, register, resetPassword, forgotSendOtp, forgotVerifyOtp, forgotResetPassword, loading, error, setError } = useAuth();
   const { isDark, toggle } = useTheme();
 
   const [mode, setMode] = useState<Mode>('login');
@@ -98,11 +98,21 @@ function Landing(): React.JSX.Element {
   const [confirmPw, setConfirmPw] = useState('');
   const [upiId, setUpiId]         = useState('');
 
-  // Forgot-password form
-  const [fpEmail, setFpEmail]         = useState('');
-  const [fpCurrentPw, setFpCurrentPw] = useState('');
-  const [fpNewPw, setFpNewPw]         = useState('');
-  const [fpConfirmPw, setFpConfirmPw] = useState('');
+  // ── Forgot-password 3-step wizard state ──────────────────────────────────
+  const [fpStep, setFpStep]               = useState<1 | 2 | 3>(1);
+  const [fpEmail, setFpEmail]             = useState('');
+  const [fpOtp, setFpOtp]                 = useState(['', '', '', '', '', '']);
+  const [otpResetToken, setOtpResetToken] = useState('');
+  const [fpNewPw, setFpNewPw]             = useState('');
+  const [fpConfirmPw, setFpConfirmPw]     = useState('');
+  const [fpTimer, setFpTimer]             = useState(0);
+
+  // Timer countdown after OTP is sent
+  React.useEffect(() => {
+    if (fpTimer <= 0) return;
+    const t = setTimeout(() => setFpTimer(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [fpTimer]);
 
   const switchMode = (m: Mode) => {
     setMode(m);
@@ -113,12 +123,15 @@ function Landing(): React.JSX.Element {
 
   const openForgot = () => {
     setShowForgot(true);
-    setError(null);
-    setResetSuccess(false);
-    setFpEmail(email); // pre-fill from login form if already typed
-    setFpCurrentPw('');
+    setFpStep(1);
+    setFpEmail(email);
+    setFpOtp(['', '', '', '', '', '']);
+    setOtpResetToken('');
     setFpNewPw('');
     setFpConfirmPw('');
+    setFpTimer(0);
+    setError(null);
+    setResetSuccess(false);
   };
 
   const closeForgot = () => {
@@ -151,21 +164,39 @@ function Landing(): React.JSX.Element {
     if (auth) navigate('/admin');
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  // ── Forgot Step 1: send OTP ──────────────────────────────────────────────
+  const handleFpSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fpEmail || !fpCurrentPw || !fpNewPw || !fpConfirmPw) {
-      setError('All fields are required.'); return;
+    if (!fpEmail) { setError('Please enter your account email.'); return; }
+    const ok = await forgotSendOtp(fpEmail);
+    if (ok) {
+      setFpStep(2);
+      setFpTimer(600); // 10-min countdown
+      setFpOtp(['', '', '', '', '', '']);
     }
-    if (fpNewPw !== fpConfirmPw) {
-      setError('New passwords do not match.'); return;
+  };
+
+  // ── Forgot Step 2: verify OTP ────────────────────────────────────────────
+  const handleFpVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const otpStr = fpOtp.join('');
+    if (otpStr.length < 6) { setError('Please enter all 6 digits of the OTP.'); return; }
+    const token = await forgotVerifyOtp(fpEmail, otpStr);
+    if (token) {
+      setOtpResetToken(token);
+      setFpStep(3);
+      setFpNewPw('');
+      setFpConfirmPw('');
     }
-    if (fpNewPw.length < 6) {
-      setError('New password must be at least 6 characters.'); return;
-    }
-    if (fpCurrentPw === fpNewPw) {
-      setError('New password must be different from your current password.'); return;
-    }
-    const ok = await resetPassword(fpEmail, fpCurrentPw, fpNewPw);
+  };
+
+  // ── Forgot Step 3: reset password ────────────────────────────────────────
+  const handleFpResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fpNewPw || !fpConfirmPw) { setError('Please fill both password fields.'); return; }
+    if (fpNewPw !== fpConfirmPw) { setError('Passwords do not match.'); return; }
+    if (fpNewPw.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    const ok = await forgotResetPassword(otpResetToken, fpNewPw);
     if (ok) {
       setResetSuccess(true);
       setShowForgot(false);
@@ -173,6 +204,34 @@ function Landing(): React.JSX.Element {
       setEmail(fpEmail);
     }
   };
+
+  // ── OTP input box handler ─────────────────────────────────────────────────
+  const handleOtpChange = (index: number, val: string) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...fpOtp];
+    next[index] = val;
+    setFpOtp(next);
+    if (val && index < 5) {
+      document.getElementById(`otp-box-${index + 1}`)?.focus();
+    }
+  };
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !fpOtp[index] && index > 0) {
+      document.getElementById(`otp-box-${index - 1}`)?.focus();
+    }
+  };
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setFpOtp(pasted.split(''));
+      document.getElementById('otp-box-5')?.focus();
+      e.preventDefault();
+    }
+  };
+
+  const fpTimerStr = fpTimer > 0
+    ? `${String(Math.floor(fpTimer / 60)).padStart(2, '0')}:${String(fpTimer % 60).padStart(2, '0')}`
+    : null;
 
   // ─── Auth state from localStorage ──────────────────────────────────────────
   const existingAuth = React.useMemo(() => {
@@ -296,41 +355,118 @@ function Landing(): React.JSX.Element {
                 </button>
                 <div>
                   <h2 className="text-base font-black text-gray-800 dark:text-gray-100">Reset Password</h2>
-                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">Verify your identity to set a new password.</p>
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                    {fpStep === 1 && "We'll send a verification code to your email."}
+                    {fpStep === 2 && "Enter the 6-digit code sent to your email."}
+                    {fpStep === 3 && "Create a new strong password."}
+                  </p>
                 </div>
               </div>
 
               {error && (
-                <div className="mb-5 px-4 py-3 rounded-xl border flex items-start gap-3"
+                <div className="mb-5 px-4 py-3 rounded-xl border flex items-start gap-3 flex-shrink-0"
                   style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fff5f5', borderColor: isDark ? 'rgba(239,68,68,0.3)' : '#fecaca' }}
                 >
-                  <span className="text-lg flex-shrink-0">🔑</span>
-                  <p className="text-sm font-medium text-red-500">{error}</p>
+                  <span className="text-lg flex-shrink-0">⚠️</span>
+                  <p className="text-sm font-medium text-red-500 break-words">{error}</p>
                 </div>
               )}
 
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <Field label="Your Account Email" type="email" placeholder="owner@lnmbytes.com"
-                  value={fpEmail} onChange={setFpEmail} />
-                <PasswordField label="Current Password" placeholder="Your existing password"
-                  value={fpCurrentPw} onChange={setFpCurrentPw} />
-                <div className="pt-2 border-t border-gray-100 dark:border-slate-700 space-y-4">
-                  <PasswordField label="New Password (min 6 chars)" placeholder="Choose a strong password"
-                    value={fpNewPw} onChange={setFpNewPw} />
-                  <PasswordField label="Confirm New Password" placeholder="Type it again"
-                    value={fpConfirmPw} onChange={setFpConfirmPw}
-                    error={fpConfirmPw.length > 0 && fpNewPw !== fpConfirmPw} />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
-                    shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
-                    disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {loading ? '⏳ Resetting...' : 'Set New Password →'}
-                </button>
-              </form>
+              {/* Step 1: Email */}
+              {fpStep === 1 && (
+                <form onSubmit={handleFpSendOtp} className="space-y-4">
+                  <Field label="Your Account Email" type="email" placeholder="owner@lnmbytes.com"
+                    value={fpEmail} onChange={setFpEmail} />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
+                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                      disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loading ? '⏳ Sending OTP...' : 'Send Verification Code →'}
+                  </button>
+                </form>
+              )}
+
+              {/* Step 2: OTP */}
+              {fpStep === 2 && (
+                <form onSubmit={handleFpVerifyOtp} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                      Enter OTP
+                    </label>
+                    <div className="flex gap-2 justify-between" onPaste={handleOtpPaste}>
+                      {fpOtp.map((digit, i) => (
+                        <input
+                          key={i}
+                          id={`otp-box-${i}`}
+                          type="text"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(i, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                          className={`w-full aspect-square text-center text-xl font-black rounded-xl border
+                            focus:outline-none focus:ring-2 transition-all
+                            dark:bg-slate-700 dark:text-white dark:border-slate-600
+                            ${error ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-primary/20 focus:border-primary'}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center px-1 mt-2">
+                      <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className={`${fpTimer > 0 ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full bg-primary opacity-75`}></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                        Expires in {fpTimerStr || '00:00'}
+                      </span>
+                      {fpTimer === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            forgotSendOtp(fpEmail).then(ok => { if (ok) { setFpTimer(600); setFpOtp(['','','','','','']); } });
+                          }}
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          Resend Code
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading || fpTimer === 0}
+                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
+                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                      disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loading ? '⏳ Verifying...' : 'Verify OTP →'}
+                  </button>
+                </form>
+              )}
+
+              {/* Step 3: New Password */}
+              {fpStep === 3 && (
+                <form onSubmit={handleFpResetPassword} className="space-y-4">
+                  <div className="space-y-4">
+                    <PasswordField label="New Password (min 6 chars)" placeholder="Choose a strong password"
+                      value={fpNewPw} onChange={setFpNewPw} />
+                    <PasswordField label="Confirm New Password" placeholder="Type it again"
+                      value={fpConfirmPw} onChange={setFpConfirmPw}
+                      error={fpConfirmPw.length > 0 && fpNewPw !== fpConfirmPw} />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
+                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                      disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loading ? '⏳ Resetting...' : 'Set New Password →'}
+                  </button>
+                </form>
+              )}
             </>
           ) : (
             <>

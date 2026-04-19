@@ -42,6 +42,17 @@ const OwnerSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    // ── Forgot-password OTP (temporary, cleared after reset) ──
+    passwordResetOtp: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    passwordResetExpiry: {
+      type: Date,
+      select: false,
+      default: null,
+    },
   },
   { timestamps: true }
 );

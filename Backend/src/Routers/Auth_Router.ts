@@ -13,6 +13,9 @@ import {
     approveOwner,
     revokeOwner,
     rejectOwner,
+    forgotPasswordSendOtp,
+    forgotPasswordVerifyOtp,
+    forgotPasswordReset,
 } from "../Controller/Auth_Controller";
 
 
@@ -32,6 +35,11 @@ Auth_Router.post("/owner/register", ownerRegister);
 Auth_Router.post("/owner/login", ownerLogin);
 Auth_Router.patch("/owner/reset-password", authLimiter, resetOwnerPassword);  // verify old pw → set new pw
 Auth_Router.patch("/owner/phone/:ownerId", updateOwnerPhone);
+
+// ─── Owner: Forgot Password (OTP via email) ──────────────────────────────────
+Auth_Router.post("/owner/forgot/send-otp",   authLimiter, forgotPasswordSendOtp);   // step 1: send OTP email
+Auth_Router.post("/owner/forgot/verify-otp", authLimiter, forgotPasswordVerifyOtp); // step 2: verify OTP → get resetToken
+Auth_Router.post("/owner/forgot/reset",       authLimiter, forgotPasswordReset);     // step 3: set new password
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Auth_Router.get("/superadmin/owners", getAllOwners);
