@@ -461,12 +461,18 @@ function Landing(): React.JSX.Element {
                   <p className="text-[11px] text-gray-400 font-medium px-1">
                     🏪 Your store will be created automatically. Phone is used as your store contact number.
                   </p>
-                  disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? '⏳ Creating account...' : 'Create Account →'}
-              </button>
-            </form>
-          )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
+                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                      disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loading ? '⏳ Creating account...' : 'Create Account →'}
+                  </button>
+                </form>
+              )}
         </div>
       </div>
     </div>
