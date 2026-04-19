@@ -5,7 +5,7 @@ import asyncHandler from "../utils/AsyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import mongoose from "mongoose";
-import { sendNotification } from "../websockets/notify";
+import { MessageBroker, TOPICS } from "../broker/pubsub";
 import QRCode from "qrcode";
 import crypto from "crypto";
 import logger from "../utils/logger";
@@ -187,13 +187,13 @@ const CreateOrder = asyncHandler(async (req, res) => {
         }
     }
 
-    // Standard cash order — trigger WebSocket
-    sendNotification(storeId.toString(), {
-        type: "newOrder",
-        orderId:     newOrder._id,
-        orderNumber: (newOrder as any).orderNumber,
-        message:     `New order #${(newOrder as any).orderNumber} from ${user.name}!`,
-        paymentType,
+    // Standard cash order — trigger WebSocket via Pub/Sub Event Broker
+    MessageBroker.emit(TOPICS.ORDER_CREATED, { 
+        storeId: storeId.toString(), 
+        orderId: newOrder._id, 
+        orderNumber: (newOrder as any).orderNumber, 
+        userName: user.name, 
+        paymentType 
     });
 
     return res.status(201).json(new ApiResponse(201, true, "Order created successfully", newOrder));
@@ -228,13 +228,13 @@ const VerifyPayment = asyncHandler(async (req, res) => {
             order.paymentStatus = "paid";
             await order.save();
 
-            // Atomic WebSocket notification
-            sendNotification(order.storeId.toString(), {
-                type: "newOrder",
-                orderId:     order._id,
-                orderNumber: (order as any).orderNumber,
-                message:     `New order #${(order as any).orderNumber} from ${order.userName} (PAID ONLINE)!`,
-                paymentType: order.paymentType,
+            // Atomic WebSocket notification via Pub/Sub
+            MessageBroker.emit(TOPICS.ORDER_CREATED, { 
+                storeId: order.storeId.toString(), 
+                orderId: order._id, 
+                orderNumber: (order as any).orderNumber, 
+                userName: order.userName, 
+                paymentType: order.paymentType 
             });
 
             return res.json(new ApiResponse(200, true, "Payment completed successfully", order));
@@ -322,10 +322,9 @@ const CancelOrder = asyncHandler(async (req, res) => {
     order.status = "cancelled";
     await order.save();
 
-    sendNotification(order.userId.toString(), {
-        type: "orderCancelled",
-        orderId: order._id,
-        message: "Your order has been cancelled.",
+    MessageBroker.emit(TOPICS.ORDER_CANCELLED, { 
+        userId: order.userId.toString(), 
+        orderId: order._id 
     });
 
     return res.json(new ApiResponse(200, true, "Order cancelled successfully", order));
@@ -341,11 +340,10 @@ const AcceptOrder = asyncHandler(async (req, res) => {
     order.status = "preparing";
     await order.save();
 
-    sendNotification(order.userId.toString(), {
-        type: "orderPreparing",
-        orderId:     order._id,
-        orderNumber: (order as any).orderNumber,
-        message:     `🍳 Order #${(order as any).orderNumber} accepted and is now being prepared!`,
+    MessageBroker.emit(TOPICS.ORDER_ACCEPTED, { 
+        userId: order.userId.toString(), 
+        orderId: order._id, 
+        orderNumber: (order as any).orderNumber 
     });
 
     return res.json(new ApiResponse(200, true, "Order accepted and now preparing", order));
@@ -371,12 +369,12 @@ const MarkReady = asyncHandler(async (req, res) => {
     const qrData = JSON.stringify({ token, orderId: order._id });
     const qrCode = await QRCode.toDataURL(qrData);
 
-    sendNotification(order.userId.toString(), {
-        type:        "orderReady",
-        orderId:     order._id,
-        orderNumber: (order as any).orderNumber,
-        message:     `🛎️ Order #${(order as any).orderNumber} is ready for pickup!`,
-        qrCode,      // Push QR directly via WebSocket — no extra HTTP round-trip needed
+    // Push QR indirectly via WebSocket using the Pub/Sub broker — no extra HTTP round-trip needed
+    MessageBroker.emit(TOPICS.ORDER_READY, { 
+        userId: order.userId.toString(), 
+        orderId: order._id, 
+        orderNumber: (order as any).orderNumber, 
+        qrCode 
     });
 
     return res.json(new ApiResponse(200, true, "Order ready + QR generated", { order, qrCode }));
@@ -415,11 +413,10 @@ const VerifyOrderQR = asyncHandler(async (req, res) => {
     order.status                = "delivered";
     await order.save();
 
-    sendNotification(order.userId.toString(), {
-        type:        "orderDelivered",
-        orderId:     order._id,
-        orderNumber: (order as any).orderNumber,
-        message:     `✅ Order #${(order as any).orderNumber} picked up successfully!`,
+    MessageBroker.emit(TOPICS.ORDER_DELIVERED, { 
+        userId: order.userId.toString(), 
+        orderId: order._id, 
+        orderNumber: (order as any).orderNumber 
     });
 
     return res.json(new ApiResponse(200, true, "Order verified and marked as delivered", order));
@@ -467,13 +464,11 @@ const RejectOrder = asyncHandler(async (req, res) => {
 
     await order.save();
 
-    // 3. Notify the user
-    sendNotification(order.userId.toString(), {
-        type:    "orderCancelled",
-        orderId: order._id,
-        message: order.paymentStatus === "refunded" 
-            ? "❌ Sorry, your order was rejected. A full refund has been initiated to your account."
-            : "❌ Sorry, your order was rejected by the canteen.",
+    // 3. Notify the user asymmetrically via Pub/Sub
+    MessageBroker.emit(TOPICS.ORDER_REJECTED, { 
+        userId: order.userId.toString(), 
+        orderId: order._id, 
+        isRefunded: order.paymentStatus === "refunded" 
     });
 
     return res.json(new ApiResponse(200, true, "Order rejected and refund processed", order));

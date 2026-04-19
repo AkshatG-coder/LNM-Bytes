@@ -9,8 +9,12 @@ import { Store_Router } from './Routers/Store_Router'
 import { MenuItemRouter } from './Routers/Menu_Item_Router'
 import { Auth_Router } from './Routers/Auth_Router'
 import { Order_Router } from './Routers/Order_Router'
+import { initConsumers } from './broker/consumers'
 
 const app = express()
+
+// Initialize background Pub/Sub workers
+initConsumers()
 
 // ─── Bulletproof CORS & Preflight Handler ───────────────────────────────────────
 app.use((req, res, next) => {
