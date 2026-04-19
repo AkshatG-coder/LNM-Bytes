@@ -3,7 +3,6 @@ configDotenv({ path: "./.env" });
 
 import http from "http";
 import { app } from "./app";
-import "./Crons/storeCrone";
 import { DbConnection } from "./Database_Connection/DbConnect";
 import { initWebSocket } from "./websockets/websocket"
 
