@@ -473,6 +473,8 @@ function Landing(): React.JSX.Element {
                   </button>
                 </form>
               )}
+            </>
+          )}
         </div>
       </div>
     </div>
