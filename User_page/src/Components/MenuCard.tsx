@@ -148,6 +148,45 @@ export function MenuCard() {
               </div>
             )}
           </div>
+          
+          {/* Category Tabs / Quick Links */}
+          {!isLoading && categories.length > 0 && (
+            <div className="mt-6 w-full overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-3 pb-2 w-max">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      const element = document.getElementById(`category-${cat}`);
+                      if (element) {
+                        // Offset for sticky headers if any, or just scroll to center/start
+                        const y = element.getBoundingClientRect().top + window.scrollY - 100;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                      }
+                    }}
+                    className="px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap transition-all shadow-sm active:scale-95"
+                    style={{
+                      backgroundColor: 'var(--surface)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-main)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--primary)';
+                      e.currentTarget.style.color = '#fff';
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--surface)';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -160,7 +199,7 @@ export function MenuCard() {
         <div className="max-w-7xl mx-auto flex flex-col gap-12">
           {categories.length > 0 ? (
             categories.map(cat => (
-              <div key={cat} className="space-y-6">
+              <div key={cat} id={`category-${cat}`} className="space-y-6 scroll-mt-24">
                 <h3 className="text-2xl font-black uppercase tracking-wider relative inline-block" style={{ color: 'var(--text-main)' }}>
                   {cat}
                   <div className="absolute -bottom-2 left-0 w-12 h-1 bg-primary rounded-full"></div>
