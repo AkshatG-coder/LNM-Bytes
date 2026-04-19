@@ -263,6 +263,36 @@ const rejectOwner = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Owner request rejected and deleted successfully", owner));
 });
 
+// ─── Owner: Reset Password ──────────────────────────────────────────────────
+// PATCH /auth/owner/reset-password
+// Body: { email, currentPassword, newPassword }
+const resetOwnerPassword = asyncHandler(async (req, res) => {
+    const { email, currentPassword, newPassword } = req.body;
+
+    if (!email || !currentPassword || !newPassword)
+        return err(res, 400, "Email, current password, and new password are all required.");
+
+    if (newPassword.length < 6)
+        return err(res, 400, "New password must be at least 6 characters.");
+
+    if (currentPassword === newPassword)
+        return err(res, 400, "New password must be different from the current password.");
+
+    const owner = await OwnerModel.findOne({ email }).select("+password");
+    if (!owner)
+        return err(res, 404, `No account found with email: ${email}.`);
+
+    const isMatch = await (owner as any).comparePassword(currentPassword);
+    if (!isMatch)
+        return err(res, 401, "Current password is incorrect. Please try again.");
+
+    // Assign new password — the pre-save hook in Owner.model.ts will hash it
+    owner.password = newPassword;
+    await owner.save();
+
+    return res.json(new ApiResponse(200, true, "Password reset successfully. Please log in with your new password.", null));
+});
+
 // ─── Owner: Update Phone ──────────────────────────────────────────────────────
 // PATCH /auth/owner/phone/:ownerId
 const updateOwnerPhone = asyncHandler(async (req, res) => {
@@ -293,6 +323,7 @@ export {
     verifyPhoneOtp,
     ownerRegister,
     ownerLogin,
+    resetOwnerPassword,
     updateOwnerPhone,
     getAllOwners,
     approveOwner,

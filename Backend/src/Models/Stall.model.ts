@@ -49,7 +49,7 @@ const StallSchema = new Schema(
     event: {
       name: {
         type: String,
-        required: true, // e.g. "TechFest 2026"
+        required: true, 
       },
       type: {
         type: String,

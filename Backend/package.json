@@ -9,7 +9,7 @@
     "start": "tsx src/index.ts",
     "start:prod": "node dist/index.js"
   },
-  "author": "vashisth_akshat",
+  "author": "Akshat",
   "license": "ISC",
   "description": "",
   "dependencies": {

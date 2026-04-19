@@ -7,6 +7,7 @@ import {
     verifyPhoneOtp,
     ownerRegister,
     ownerLogin,
+    resetOwnerPassword,
     updateOwnerPhone,
     getAllOwners,
     approveOwner,
@@ -29,7 +30,8 @@ Auth_Router.post("/otp/verify", authLimiter, verifyPhoneOtp);  // verify OTP + s
 // ─── Owner Auth ───────────────────────────────────────────────────────────────
 Auth_Router.post("/owner/register", ownerRegister);
 Auth_Router.post("/owner/login", ownerLogin);
-Auth_Router.patch("/owner/phone/:ownerId", updateOwnerPhone);  // update owner phone + sync to store
+Auth_Router.patch("/owner/reset-password", authLimiter, resetOwnerPassword);  // verify old pw → set new pw
+Auth_Router.patch("/owner/phone/:ownerId", updateOwnerPhone);
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Auth_Router.get("/superadmin/owners", getAllOwners);

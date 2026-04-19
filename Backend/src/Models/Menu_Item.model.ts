@@ -39,6 +39,7 @@ const MenuItemSchema = new Schema(
       enum: ["snacks", "drinks", "meals", "dessert", "other"],
       default: "snacks",
     },
+    
     isVeg: {
       type: Boolean,
       default: true,

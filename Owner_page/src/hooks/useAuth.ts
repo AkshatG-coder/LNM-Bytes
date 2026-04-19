@@ -129,5 +129,25 @@ export const useAuth = () => {
     }
   };
 
-  return { login, register, loading, error, setError };
+  const resetPassword = async (
+    email: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.patch("/auth/owner/reset-password", { email, currentPassword, newPassword });
+      if (res.data?.success) return true;
+      setError(res.data?.message || "Reset failed. Please try again.");
+      return false;
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Could not connect to server.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { login, register, resetPassword, loading, error, setError };
 };
