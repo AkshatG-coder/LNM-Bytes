@@ -65,7 +65,7 @@ export async function sendOtpEmail(toEmail: string, otp: string, ownerName?: str
               <p style="margin:0 0 28px;color:#64748b;font-size:14px;line-height:1.6;">
                 Hi ${ownerName ? `<strong>${ownerName}</strong>` : "there"}, we received a request to reset your
                 LNM Bytes Partner Portal password. Use the OTP below — it expires in
-                <strong>10 minutes</strong>.
+                <strong>1 minute</strong>.
               </p>
 
               <!-- OTP Box -->

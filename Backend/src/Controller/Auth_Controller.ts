@@ -333,7 +333,7 @@ const forgotPasswordSendOtp = asyncHandler(async (req, res) => {
     // Generate a 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiry = new Date(Date.now() + 1 * 60 * 1000); // 1 minute
 
     owner.passwordResetOtp    = hashedOtp;
     owner.passwordResetExpiry = expiry;
@@ -350,7 +350,7 @@ const forgotPasswordSendOtp = asyncHandler(async (req, res) => {
     }
 
     return res.json(new ApiResponse(200, true,
-        `OTP sent to ${email}. It expires in 10 minutes.`, { email }));
+        `OTP sent to ${email}. It expires in 1 minute.`, { email }));
 });
 
 // ─── Owner: Forgot Password — Step 2: Verify OTP ─────────────────────────────

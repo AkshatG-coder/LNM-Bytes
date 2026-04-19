@@ -171,7 +171,7 @@ function Landing(): React.JSX.Element {
     const ok = await forgotSendOtp(fpEmail);
     if (ok) {
       setFpStep(2);
-      setFpTimer(600); // 10-min countdown
+      setFpTimer(60); // 1-min countdown
       setFpOtp(['', '', '', '', '', '']);
     }
   };
@@ -425,7 +425,7 @@ function Landing(): React.JSX.Element {
                         <button
                           type="button"
                           onClick={() => {
-                            forgotSendOtp(fpEmail).then(ok => { if (ok) { setFpTimer(600); setFpOtp(['','','','','','']); } });
+                            forgotSendOtp(fpEmail).then(ok => { if (ok) { setFpTimer(60); setFpOtp(['','','','','','']); } });
                           }}
                           className="text-xs font-bold text-primary hover:underline"
                         >
