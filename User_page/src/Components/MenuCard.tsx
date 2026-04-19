@@ -149,10 +149,16 @@ export function MenuCard() {
             )}
           </div>
           
-          {/* Category Tabs / Quick Links */}
+          {/* Category Tabs / Quick Links (STICKY) */}
           {!isLoading && categories.length > 0 && (
-            <div className="mt-6 w-full overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-3 pb-2 w-max">
+            <div 
+              className="mt-4 w-full overflow-x-auto no-scrollbar sticky top-0 z-40 py-3 -mx-2 px-2 sm:-mx-4 sm:px-4 backdrop-blur-md border-b shadow-sm transition-all duration-300"
+              style={{
+                backgroundColor: 'rgba(var(--bg-rgb, 15, 23, 42), 0.85)',
+                borderColor: 'var(--border)'
+              }}
+            >
+              <div className="flex items-center gap-3 w-max">
                 {categories.map((cat) => (
                   <button
                     key={cat}
