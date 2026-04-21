@@ -128,8 +128,8 @@ const updatePhone = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { phone } = req.body;
 
-    const user = (req as any).user;
-    if (user && userId !== String(user.userId)) {
+    const requestUser = (req as any).user;
+    if (requestUser && userId !== String(requestUser.userId)) {
         return err(res, 403, "Unauthorized: Cannot update phone for another user.");
     }
 

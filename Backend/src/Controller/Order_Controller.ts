@@ -293,6 +293,11 @@ const GetOwnerAll_Orders = asyncHandler(async (req, res) => {
     const status = req.query.status as string | undefined;
     if (!storeId) return fail(res, 400, "storeId is missing");
 
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && String(storeId) !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: Cannot access orders of another shop");
+    }
+
     // Covered by index: { storeId: 1, status: 1, createdAt: -1 }
     const matchStage: any = { storeId: new mongoose.Types.ObjectId(String(storeId)) };
     if (status) matchStage.status = status;
@@ -353,7 +358,10 @@ const AcceptOrder = asyncHandler(async (req, res) => {
     if (!order) return fail(res, 404, "Order not found");
 
     const owner = (req as any).owner;
-    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+    const orderStoreId = order.storeId.toString();
+    const ownerStoreId = String(owner?.storeId || "");
+
+    if (owner && owner.role === "owner" && orderStoreId !== ownerStoreId) {
         return fail(res, 403, "Unauthorized: This order belongs to a different shop");
     }
 
@@ -378,7 +386,10 @@ const MarkReady = asyncHandler(async (req, res) => {
     if (!order) return fail(res, 404, "Order not found");
 
     const owner = (req as any).owner;
-    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+    const orderStoreId = order.storeId.toString();
+    const ownerStoreId = String(owner?.storeId || "");
+
+    if (owner && owner.role === "owner" && orderStoreId !== ownerStoreId) {
         return fail(res, 403, "Unauthorized: This order belongs to a different shop");
     }
 
@@ -439,7 +450,10 @@ const VerifyOrderQR = asyncHandler(async (req, res) => {
     if (!order)                    return fail(res, 400, "Invalid QR code");
 
     const owner = (req as any).owner;
-    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+    const orderStoreId = order.storeId.toString();
+    const ownerStoreId = String(owner?.storeId || "");
+
+    if (owner && owner.role === "owner" && orderStoreId !== ownerStoreId) {
         return fail(res, 403, "Unauthorized: This order belongs to a different shop");
     }
 
@@ -468,7 +482,10 @@ const RejectOrder = asyncHandler(async (req, res) => {
     if (!order) return fail(res, 404, "Order not found");
 
     const owner = (req as any).owner;
-    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+    const orderStoreId = order.storeId.toString();
+    const ownerStoreId = String(owner?.storeId || "");
+
+    if (owner && owner.role === "owner" && orderStoreId !== ownerStoreId) {
         return fail(res, 403, "Unauthorized: This order belongs to a different shop");
     }
 
@@ -533,6 +550,11 @@ const TrackOrderStatus = asyncHandler(async (req, res) => {
 const GetDailySales = asyncHandler(async (req, res) => {
     const { storeId } = req.params;
     if (!storeId) return fail(res, 400, "storeId is required");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && String(storeId) !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: Cannot access daily sales of another shop");
+    }
 
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
     const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
