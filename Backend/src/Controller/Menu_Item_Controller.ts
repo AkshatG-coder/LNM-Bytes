@@ -44,6 +44,15 @@ const getMenuItemsById = asyncHandler(async (req, res) => {
 const updateMenuItem = asyncHandler(async (req, res) => {
     const { Item_Id } = req.params;
     if (!Item_Id) return res.json(new ApiError("ItemId is missing", 404));
+
+    const item = await MenuItemModel.findById(Item_Id);
+    if (!item) return res.json(new ApiError("Item not found", 404));
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && item.storeId.toString() !== String(owner.storeId)) {
+        return res.status(403).json({ success: false, message: "Unauthorized: Cannot modify an item from another shop" });
+    }
+
     const update_item = await MenuItemModel.findByIdAndUpdate(Item_Id, req.body, { new: true });
     if (!update_item) return res.json(new ApiError("Error while updating the item", 500));
     
@@ -57,6 +66,14 @@ const deleteMenuItem = asyncHandler(async (req, res) => {
     const { Item_Id } = req.params;
     if (!Item_Id) return res.json(new ApiError("ItemId is missing", 404));
 
+    const item = await MenuItemModel.findById(Item_Id);
+    if (!item) return res.json(new ApiError("Item not found", 404));
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && item.storeId.toString() !== String(owner.storeId)) {
+        return res.status(403).json({ success: false, message: "Unauthorized: Cannot delete an item from another shop" });
+    }
+
     const deleted_item = await MenuItemModel.findByIdAndDelete(Item_Id);
     if (deleted_item) {
         // Flush the cache so the deleted item vanishes instantly for students
@@ -69,6 +86,11 @@ const deleteMenuItem = asyncHandler(async (req, res) => {
 const add_Menu_Item = asyncHandler(async (req, res) => {
     const { Store_Id } = req.params;
     if (!Store_Id) return res.json(new ApiError("Store_Id is missing", 404));
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && Store_Id !== String(owner.storeId)) {
+        return res.status(403).json({ success: false, message: "Unauthorized: Cannot add item to another shop" });
+    }
 
     const { name, price, category, isVeg, isAvailable, hasHalf, halfPrice } = req.body;
 

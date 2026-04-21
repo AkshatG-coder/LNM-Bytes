@@ -258,6 +258,11 @@ const GetUserAll_Orders = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     if (!userId) return fail(res, 400, "UserId is missing");
 
+    const user = (req as any).user;
+    if (user && userId !== String(user.userId)) {
+        return fail(res, 403, "Unauthorized: Cannot fetch orders of another user.");
+    }
+
     // Covered by index: { userId: 1, createdAt: -1 }
     const order = await OrderModel.aggregate([
         { $match: { userId: new mongoose.Types.ObjectId(String(userId)) } },
@@ -307,6 +312,12 @@ const GetSingleOrder_Details = asyncHandler(async (req, res) => {
     if (!order_id) return fail(res, 400, "OrderId is missing");
     const order = await OrderModel.findById(order_id).lean();
     if (!order) return fail(res, 404, "Order not found");
+
+    const user = (req as any).user;
+    if (user && String(order.userId) !== String(user.userId)) {
+        return fail(res, 403, "Unauthorized: Cannot access order of another user.");
+    }
+
     return res.json(new ApiResponse(200, true, "Order Details Fetched Successfully", order));
 });
 
@@ -314,6 +325,11 @@ const GetSingleOrder_Details = asyncHandler(async (req, res) => {
 const CancelOrder = asyncHandler(async (req, res) => {
     const { order_id, userId } = req.params;
     if (!order_id || !userId) return fail(res, 400, "orderId and userId are required");
+
+    const user = (req as any).user;
+    if (user && userId !== String(user.userId)) {
+        return fail(res, 403, "Unauthorized: Cannot cancel order of another user.");
+    }
 
     const order = await OrderModel.findOne({ _id: order_id, userId });
     if (!order) return fail(res, 404, "Order not found");
@@ -335,6 +351,12 @@ const AcceptOrder = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const order = await OrderModel.findById(orderId);
     if (!order) return fail(res, 404, "Order not found");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: This order belongs to a different shop");
+    }
+
     if (order.status !== "pending") return fail(res, 400, "Only pending orders can be accepted");
 
     order.status = "preparing";
@@ -354,6 +376,12 @@ const MarkReady = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const order = await OrderModel.findById(orderId);
     if (!order) return fail(res, 404, "Order not found");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: This order belongs to a different shop");
+    }
+
     if (order.status !== "preparing") return fail(res, 400, "Order must be in preparing state");
 
     // Generate one-time QR token
@@ -387,6 +415,11 @@ const GetOrderQR = asyncHandler(async (req, res) => {
     const order = await OrderModel.findById(orderId).lean();
     if (!order || !(order as any).qrToken) return fail(res, 404, "QR not available for this order");
 
+    const user = (req as any).user;
+    if (user && String(order.userId) !== String(user.userId)) {
+        return fail(res, 403, "Unauthorized: Cannot fetch QR code of another user's order.");
+    }
+
     if ((order as any).qrExpiresAt && new Date() > (order as any).qrExpiresAt)
         return fail(res, 400, "QR code has expired");
 
@@ -404,6 +437,12 @@ const VerifyOrderQR = asyncHandler(async (req, res) => {
     // Covered by sparse index on qrToken
     const order = await OrderModel.findOne({ qrToken: token });
     if (!order)                    return fail(res, 400, "Invalid QR code");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: This order belongs to a different shop");
+    }
+
     if ((order as any).qrVerified) return fail(res, 400, "This QR has already been used");
     if ((order as any).qrExpiresAt && new Date() > (order as any).qrExpiresAt)
         return fail(res, 400, "QR code has expired (30 min limit)");
@@ -427,6 +466,12 @@ const RejectOrder = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const order = await OrderModel.findById(orderId);
     if (!order) return fail(res, 404, "Order not found");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && order.storeId.toString() !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: This order belongs to a different shop");
+    }
+
     if (order.status !== "pending") return fail(res, 400, "Only pending orders can be rejected");
 
     // 1. Mark order as cancelled internally

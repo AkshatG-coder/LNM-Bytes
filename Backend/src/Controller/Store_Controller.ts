@@ -10,7 +10,12 @@ const Create_Store = asyncHandler(async (req, res) => {
 });
 
 const Update_Store = asyncHandler(async (req, res) => {
-    const store = await Store.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { id } = req.params;
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && id !== String(owner.storeId)) {
+        return res.status(403).json({ success: false, message: "Unauthorized: Cannot modify another shop's store" });
+    }
+    const store = await Store.findByIdAndUpdate(id, req.body, { new: true });
     return res.json(new ApiResponse(200, true, "Store Details Updated Successfully", {}));
 });
 
@@ -33,13 +38,21 @@ const GetStoreById = asyncHandler(async (req, res) => {
 const DeleteStore = asyncHandler(async (req, res) => {
     const { id } = req.params;
     if (!id) return res.json(new ApiError("StoreId is Missing", 400));
-    await Store.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && id !== String(owner.storeId)) {
+        return res.status(403).json({ success: false, message: "Unauthorized: Cannot delete another shop" });
+    }
+    await Store.findByIdAndUpdate(id, { isActive: false }, { new: true });
     return res.json(new ApiResponse(200, true, "Store Deleted Successfully", {}));
 });
 
 const ToggleStoreStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
     if (!id) return res.json(new ApiError("StoreId is Missing", 400));
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && id !== String(owner.storeId)) {
+        return res.status(403).json({ success: false, message: "Unauthorized: Cannot toggle another shop's status" });
+    }
     const store = await Store.findById(id);
     if (!store) return res.json(new ApiError("Store not found", 404));
     store.status = store?.status === "open" ? "closed" : "open";

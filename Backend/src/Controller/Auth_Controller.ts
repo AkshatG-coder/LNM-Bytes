@@ -128,6 +128,11 @@ const updatePhone = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { phone } = req.body;
 
+    const user = (req as any).user;
+    if (user && userId !== String(user.userId)) {
+        return err(res, 403, "Unauthorized: Cannot update phone for another user.");
+    }
+
     if (!phone || !/^\d{10}$/.test(phone))
         return err(res, 400, "Please enter a valid 10-digit mobile number");
 
@@ -224,6 +229,10 @@ const ownerLogin = asyncHandler(async (req, res) => {
 
 // ─── Super Admin: Get All Owners ─────────────────────────────────────────────
 const getAllOwners = asyncHandler(async (req, res) => {
+    const owner = (req as any).owner;
+    if (owner && owner.role !== "superadmin") {
+        return err(res, 403, "Access denied — superadmin only.");
+    }
     const owners = await OwnerModel.find({})
         .populate("storeId", "name status location")
         .select("-password")
@@ -234,6 +243,10 @@ const getAllOwners = asyncHandler(async (req, res) => {
 
 // ─── Super Admin: Approve Owner ──────────────────────────────────────────────
 const approveOwner = asyncHandler(async (req, res) => {
+    const owner_req = (req as any).owner;
+    if (owner_req && owner_req.role !== "superadmin") {
+        return err(res, 403, "Access denied — superadmin only.");
+    }
     const { ownerId } = req.params;
     const owner = await OwnerModel.findByIdAndUpdate(
         ownerId, { isApproved: true }, { new: true }
@@ -245,6 +258,10 @@ const approveOwner = asyncHandler(async (req, res) => {
 
 // ─── Super Admin: Revoke Owner ───────────────────────────────────────────────
 const revokeOwner = asyncHandler(async (req, res) => {
+    const owner_req = (req as any).owner;
+    if (owner_req && owner_req.role !== "superadmin") {
+        return err(res, 403, "Access denied — superadmin only.");
+    }
     const { ownerId } = req.params;
     const owner = await OwnerModel.findByIdAndUpdate(
         ownerId, { isApproved: false }, { new: true }
@@ -256,6 +273,10 @@ const revokeOwner = asyncHandler(async (req, res) => {
 
 // ─── Super Admin: Reject Owner ───────────────────────────────────────────────
 const rejectOwner = asyncHandler(async (req, res) => {
+    const owner_req = (req as any).owner;
+    if (owner_req && owner_req.role !== "superadmin") {
+        return err(res, 403, "Access denied — superadmin only.");
+    }
     const { ownerId } = req.params;
     const owner = await OwnerModel.findByIdAndDelete(ownerId);
     if (!owner) return err(res, 404, "Owner not found");
@@ -300,6 +321,11 @@ const resetOwnerPassword = asyncHandler(async (req, res) => {
 const updateOwnerPhone = asyncHandler(async (req, res) => {
     const { ownerId } = req.params;
     const { phone }   = req.body;
+
+    const owner_req = (req as any).owner;
+    if (owner_req && owner_req.role !== "superadmin" && ownerId !== String(owner_req.ownerId)) {
+        return err(res, 403, "Unauthorized: Cannot update phone for another owner.");
+    }
 
     if (!phone || !/^\d{10}$/.test(phone))
         return err(res, 400, "Phone number must be exactly 10 digits");
