@@ -80,7 +80,7 @@ function PasswordField({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 function Landing(): React.JSX.Element {
   const navigate = useNavigate();
-  const { login, register, resetPassword, forgotSendOtp, forgotVerifyOtp, forgotResetPassword, loading, error, setError } = useAuth();
+  const { login, register, forgotSendOtp, forgotVerifyOtp, forgotResetPassword, loading, error, setError } = useAuth();
   const { isDark, toggle } = useTheme();
 
   const [mode, setMode] = useState<Mode>('login');
