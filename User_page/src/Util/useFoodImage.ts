@@ -47,6 +47,7 @@ import { useEffect, useState } from "react";
  * Returns a Pexels image URL for the given food item name.
  * Falls back to "" if the API key is missing or the item has no match.
  */
+
 export function useFoodImage(itemName: string): string {
   const [url, setUrl] = useState<string>(() => cache.get(itemName) ?? "");
 

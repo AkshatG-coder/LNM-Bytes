@@ -233,11 +233,13 @@ const getAllOwners = asyncHandler(async (req, res) => {
     if (owner && owner.role !== "superadmin") {
         return err(res, 403, "Access denied — superadmin only.");
     }
+
     const owners = await OwnerModel.find({})
         .populate("storeId", "name status location")
         .select("-password")
         .lean();
     return res.json(new ApiResponse(200, true, "Owners fetched", owners));
+
 });
 
 

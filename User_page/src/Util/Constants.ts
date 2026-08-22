@@ -1,1 +1,0 @@
-export const CANTEEN_STORE_URL="https://dummyjson.com/products?limit=6"

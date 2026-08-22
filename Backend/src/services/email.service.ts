@@ -1,12 +1,6 @@
 /**
  * Nodemailer Email Service — Gmail App Password
  * Used for sending OTP emails for the Owner forgot-password flow.
- *
- * Setup (one-time):
- *  1. Enable 2FA on your Gmail account.
- *  2. Go to myaccount.google.com → Security → App Passwords
- *  3. Create a new App Password named "LNM Bytes"
- *  4. Set SMTP_USER and SMTP_PASS in .env
  */
 
 import nodemailer from "nodemailer";
@@ -70,7 +64,7 @@ export async function sendOtpEmail(toEmail: string, otp: string, ownerName?: str
 
               <!-- OTP Box -->
               <div style="text-align:center;margin:0 0 28px;">
-                <div style="display:inline-block;background:#fff7ed;border:2px dashed #f97316;
+                <div style="display:inline-block;background:#fff7ed;border:2px dashed #0019a7ff;
                             border-radius:16px;padding:20px 48px;">
                   <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#f97316;
                              letter-spacing:3px;text-transform:uppercase;">Your OTP</p>
