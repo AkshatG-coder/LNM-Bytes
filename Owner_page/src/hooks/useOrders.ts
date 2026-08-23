@@ -12,18 +12,12 @@ export const useOrders = () => {
 
   const { playNewOrderAlert } = useOrderSound();
 
-  // Refs for things that should NOT cause re-renders / effect re-runs ─────────
-  const knownOrderIds  = useRef<Set<string>>(new Set());
-  const initialised    = useRef(false);
-  const playRef        = useRef(playNewOrderAlert); // always latest, never triggers deps
+  const knownOrderIds = useRef<Set<string>>(new Set());
+  const playRef = useRef(playNewOrderAlert);
   const wsConnectedRef = useRef(false);
 
-  // Keep playRef fresh without it being a reactive dep
   useEffect(() => { playRef.current = playNewOrderAlert; }, [playNewOrderAlert]);
 
-  // ── Core fetch ──────────────────────────────────────────────────────────────
-  // Defined as a plain function — NOT useCallback — so it never changes identity.
-  // Called from interval and WS message handler via ref.
   const fetchRef = useRef(async (background = false) => {
     try {
       if (!background) setLoading(true);
@@ -33,42 +27,38 @@ export const useOrders = () => {
 
       const rawOrders: any[] = response.data.data || [];
 
-      // Detect new pending orders (skip on first load)
-      if (initialised.current) {
-        const newPending = rawOrders.filter(
-          (o) => o.status === "pending" && !knownOrderIds.current.has(o._id)
-        );
-        if (newPending.length > 0) {
-          playRef.current();
-          if (Notification.permission === "granted") {
-            new Notification(
-              `🔥 ${newPending.length} new order${newPending.length > 1 ? "s" : ""}!`,
-              { body: newPending.map((o) => `Order #${String(o._id).slice(-6)}`).join(", ") }
-            );
-          }
+      const newPending = rawOrders.filter(
+        (o) => o.status === "pending" && !knownOrderIds.current.has(o._id)
+      );
+      if (newPending.length > 0) {
+        playRef.current();
+        if (Notification.permission === "granted") {
+          new Notification(
+            `🔥 ${newPending.length} new order${newPending.length > 1 ? "s" : ""}!`,
+            { body: newPending.map((o) => `Order #${String(o._id).slice(-6)}`).join(", ") }
+          );
         }
       }
 
       rawOrders.forEach((o) => knownOrderIds.current.add(o._id));
-      initialised.current = true;
 
       setUsers(
         rawOrders.map((order) => ({
-          userId:        order._id as string,
-          orderNumber:   order.orderNumber ?? undefined,
-          userName:      order.userName  || `Order #${String(order._id).slice(-6).toUpperCase()}`,
-          userEmail:     order.userEmail || "—",
-          userPhone:     order.userPhone || null,
-          paymentType:   order.paymentType   || "cash",
+          userId: order._id as string,
+          orderNumber: order.orderNumber ?? undefined,
+          userName: order.userName || `Order #${String(order._id).slice(-6).toUpperCase()}`,
+          userEmail: order.userEmail || "—",
+          userPhone: order.userPhone || null,
+          paymentType: order.paymentType || "cash",
           paymentStatus: order.paymentStatus || "pending",
-          status:        order.status as OrderStatus,
-          totalAmount:   order.totalAmount,
-          createdAt:     order.createdAt,
+          status: order.status as OrderStatus,
+          totalAmount: order.totalAmount,
+          createdAt: order.createdAt,
           orders: (order.items || []).map((item: any, idx: number) => ({
-            id:          item._id || item.menuItemId || String(idx),
-            itemName:    item.name || `Item #${String(item.menuItemId || "").slice(-4)}`,
-            quantity:    item.quantity,
-            price:       item.price,
+            id: item._id || item.menuItemId || String(idx),
+            itemName: item.name || `Item #${String(item.menuItemId || "").slice(-4)}`,
+            quantity: item.quantity,
+            price: item.price,
             portionSize: item.portionSize || "full",
           })),
         }))
@@ -82,20 +72,16 @@ export const useOrders = () => {
     }
   });
 
-  // Stable public handle for other callers (Refresh button manual click)
   const fetchOrders = () => fetchRef.current(false);
 
-  // ── Polling — single interval, never recreated ──────────────────────────────
   useEffect(() => {
-    // Poll unconditionally every 30s as safety net/refresh
-    fetchRef.current(false);                          // initial load shows spinner
+    fetchRef.current(false);
     const id = setInterval(() => {
-      fetchRef.current(true);                         // background poll silent
+      fetchRef.current(true);
     }, 30_000);
     return () => clearInterval(id);
-  }, []); // ← empty deps: runs ONCE, no loops
+  }, []);
 
-  // ── WebSocket — stable connection ───────────────────────────────────────────
   useEffect(() => {
     const storeId = getStoreId();
     if (!storeId) return;
@@ -104,7 +90,6 @@ export const useOrders = () => {
       Notification.requestPermission();
     }
 
-    // Automatically derive WS_URL from VITE_API_URL to ensure wss:// on https://
     const apiHost = import.meta.env.VITE_API_URL || "http://localhost:8081";
     const WS_URL = apiHost.replace(/^http/, "ws");
     const ws = new WebSocket(WS_URL);
@@ -119,23 +104,22 @@ export const useOrders = () => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === "newOrder") {
-          playRef.current();        // instant alert on push
-          fetchRef.current(true);   // background refresh list
+          playRef.current();
+          fetchRef.current(true);
         }
-      } catch { /* ignore */ }
+      } catch {}
     };
 
     ws.onclose = () => { setWsConnected(false); wsConnectedRef.current = false; };
     ws.onerror = () => { setWsConnected(false); wsConnectedRef.current = false; };
 
     return () => ws.close();
-  }, []); // ← empty deps: single stable WS connection
+  }, []);
 
-  // ── Status mutations ────────────────────────────────────────────────────────
   const callEndpoint = async (action: string, orderId: string) => {
     try {
       await api.patch(`/order/${action}/${orderId}`);
-      fetchRef.current(true); // silent refresh after action
+      fetchRef.current(true);
     } catch (err) {
       console.error(`Failed to call /order/${action}:`, err);
     }

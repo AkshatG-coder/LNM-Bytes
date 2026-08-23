@@ -575,8 +575,7 @@ const GetDailySales = asyncHandler(async (req, res) => {
                 $match: {
                     storeId:   new mongoose.Types.ObjectId(String(storeId)),
                     createdAt: { $gte: startOfDay, $lte: endOfDay },
-                    status:    { $ne: "cancelled" },
-                },
+                }
             },
             {
                 $group: {
@@ -588,9 +587,14 @@ const GetDailySales = asyncHandler(async (req, res) => {
             },
         ]),
         // Fetch raw list (for the table in the dashboard) — selective fields only
-        OrderModel.find({
-            storeId:   new mongoose.Types.ObjectId(String(storeId)),
+        OrderModel.aggregate({
+            {
+                $match: {
+                        storeId:   new mongoose.Types.ObjectId(String(storeId)),
             createdAt: { $gte: startOfDay, $lte: endOfDay },
+        
+                }
+            }
         })
             .select("_id orderNumber status totalAmount paymentType userName userPhone createdAt items")
             .sort({ createdAt: -1 })
