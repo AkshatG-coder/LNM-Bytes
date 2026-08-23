@@ -76,10 +76,6 @@ export const useOrders = () => {
 
   useEffect(() => {
     fetchRef.current(false);
-    const id = setInterval(() => {
-      fetchRef.current(true);
-    }, 30_000);
-    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
