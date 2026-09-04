@@ -1,5 +1,5 @@
 {
-  "name": "package.json",
+  "name": "@lnm-bytes/owner-web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lnm-bytes/types": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.2",
     "html5-qrcode": "^2.3.8",

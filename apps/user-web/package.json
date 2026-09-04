@@ -1,5 +1,5 @@
 {
-  "name": "lnm-bytes",
+  "name": "@lnm-bytes/user-web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lnm-bytes/types": "workspace:*",
     "@react-oauth/google": "^0.13.5",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.13.2",

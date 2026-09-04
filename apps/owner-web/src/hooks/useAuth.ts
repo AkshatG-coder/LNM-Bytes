@@ -59,7 +59,7 @@ export const useAuth = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.post<{ success: boolean; data: { token: string; owner: { name: string; id: string; phone?: string; role: string }; store: { _id: string; name: string }; isApproved: boolean } }>("/auth/owner/login", { email, password });
+      const res = await api.post<{ success: boolean; message?: string; data: { token: string; owner: { name: string; id: string; phone?: string; role: string }; store: { _id: string; name: string }; isApproved: boolean } }>("/auth/owner/login", { email, password });
       if (res.data?.success) {
         const { token, owner, store, isApproved } = res.data.data;
         const auth: AuthState = {

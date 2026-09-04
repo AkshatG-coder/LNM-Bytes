@@ -6,20 +6,27 @@ A full-stack food ordering platform built for LNM Institute of Information Techn
 
 ```
 LNM-Bytes/
-├── LNM_BYTES_BACKEND-dev/     # Node.js + Express + MongoDB REST API
-├── LNM_BYTES_FRONTEND-dev/    # React + Vite (Customer-facing app)
-└── Owner_page/                # React + Vite (Store owner management portal)
+├── apps/
+│   ├── backend/               # Node.js + Express + MongoDB REST API
+│   ├── user-web/              # React 19 + Vite (Customer-facing app)
+│   └── owner-web/             # React 19 + Vite (Store owner management portal)
+├── packages/
+│   └── types/                 # Shared TypeScript models, enums & contracts
+├── package.json               # Root workspace scripts (pnpm dev, pnpm build)
+├── pnpm-workspace.yaml        # Workspace configuration
+└── turbo.json                 # Turborepo task pipeline
 ```
 
 ## 🚀 Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Node.js, Express.js, MongoDB, Mongoose |
+| Monorepo | Turborepo, pnpm workspaces |
+| Backend | Node.js, Express.js, MongoDB, Mongoose, TypeScript |
 | Auth | JWT (JSON Web Tokens), bcrypt |
-| Customer Frontend | React 18, TypeScript, Vite, Context API |
-| Owner Portal | React 18, TypeScript, Vite |
-| Styling | Custom CSS with dark/light mode support |
+| Customer Frontend | React 19, TypeScript, Vite, Redux Toolkit, Tailwind CSS |
+| Owner Portal | React 19, TypeScript, Vite, Tailwind CSS v4 |
+| Shared Contracts | `@lnm-bytes/types` |
 
 ## ✨ Features
 
@@ -39,33 +46,39 @@ LNM-Bytes/
 
 ### Prerequisites
 - Node.js v18+
+- pnpm v9+ (`corepack enable` or `npm i -g pnpm`)
 - MongoDB (local or Atlas)
 
-### Backend
+### 1. Install all dependencies (single command)
 ```bash
-cd LNM_BYTES_BACKEND-dev
-npm install
-# Create .env with MONGO_URI, JWT_SECRET, PORT
-npm run dev
+pnpm install
 ```
 
-### Customer Frontend
-```bash
-cd LNM_BYTES_FRONTEND-dev
-npm install
-npm run dev
+### 2. Configure Environment Variables
+Create `.env` inside `apps/backend/`:
+```env
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+PORT=5000
 ```
 
-### Owner Portal
+### 3. Run entire stack concurrently
 ```bash
-cd Owner_page
-npm install
-npm run dev
+pnpm dev
+```
+This boots:
+- Backend on `http://localhost:5000`
+- Customer App on `http://localhost:5173`
+- Owner App on `http://localhost:5174`
+
+### 4. Build all apps (with Turborepo caching)
+```bash
+pnpm build
 ```
 
 ## 🔐 Environment Variables
 
-**Backend** (`LNM_BYTES_BACKEND-dev/.env`):
+**Backend** (`apps/backend/.env`):
 ```
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret

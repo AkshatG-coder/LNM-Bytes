@@ -39,3 +39,7 @@ Thumbs.db
 
 # Temp files
 git_status.txt
+
+# Turborepo
+.turbo/
+

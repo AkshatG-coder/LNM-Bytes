@@ -263,7 +263,7 @@ function ShopSettings() {
           <ToggleSwitch
             label="📱 Online Orders"
             sublabel="Accept orders through the app"
-            value={store.isOnlineOrderAvailable}
+            value={store.isOnlineOrderAvailable ?? true}
             onChange={() => handleToggle('isOnlineOrderAvailable')}
             colorClass="bg-primary"
           />
