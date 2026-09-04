@@ -100,7 +100,7 @@ const add_Menu_Item = asyncHandler(async (req, res) => {
         category,
         isVeg,
         isAvailable: isAvailable ?? true,
-        storeId: Store_Id,
+        storeId: String(Store_Id),
         hasHalf: hasHalf ?? false,
         halfPrice: hasHalf && halfPrice ? halfPrice : null,
     });
