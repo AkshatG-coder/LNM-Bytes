@@ -1,9 +1,9 @@
 import { Kafka } from "kafkajs";
 
-const mechanism = (process.env.KAFKA_MECHANISM as any) || "plain";
+const mechanism = (process.env.KAFKA_MECHANISM as any) || "scram-sha-256";
 const broker = process.env.KAFKA_BROKER || "localhost:9092";
 
-// Single shared Kafka client — configured for Confluent Cloud (SASL/PLAIN + SSL)
+// Single shared Kafka client — supports Aiven, Upstash & Confluent (SSL + SASL)
 const kafka = new Kafka({
     clientId: "lnm-bytes",
     brokers: [broker],
@@ -12,7 +12,7 @@ const kafka = new Kafka({
         username: process.env.KAFKA_USERNAME,
         password: process.env.KAFKA_PASSWORD,
     } : undefined,
-    ssl: Boolean(process.env.KAFKA_USERNAME),
+    ssl: process.env.KAFKA_USERNAME ? { rejectUnauthorized: false } : undefined,
     // Retry on transient network blips — important on cloud Kafka
     retry: {
         initialRetryTime: 300,
