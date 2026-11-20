@@ -1,10 +1,32 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import api from '../hooks/api';
+import { BlocksView } from './CopilotCards';
+import type { OwnerUiBlock } from './CopilotCards';
 
 interface Message {
     role: 'user' | 'assistant';
     text: string;
     timestamp: Date;
+    blocks?: OwnerUiBlock[];
+    suggestions?: string[];
+}
+
+// Short note of the cards shown, so follow-ups like "reject the second one" have context.
+function blocksToHistoryNote(blocks?: OwnerUiBlock[]): string {
+    if (!blocks || blocks.length === 0) return '';
+    const parts = blocks.map((b) => {
+        switch (b.type) {
+            case 'orders':
+                return `orders: ${b.orders.map((o) => `#${o.orderNumber} ${o.userName} (${o.status})`).join(', ')}`;
+            case 'menu':
+                return `menu items: ${b.items.map((i) => `${i.name} ₹${i.price}${i.isAvailable ? '' : ' (unavailable)'}`).join(', ')}`;
+            case 'sales':
+                return `sales card: ${b.sales.periodLabel}, revenue ₹${b.sales.totalRevenue}, ${b.sales.totalOrders} orders`;
+            case 'store':
+                return `store card: ${b.store.name} is ${b.store.status}`;
+        }
+    });
+    return `\n[Cards shown to the owner — ${parts.join('; ')}]`;
 }
 
 const SUGGESTIONS = [
@@ -53,7 +75,7 @@ export default function CopilotChat() {
             // Build history from prior messages (skip system greeting)
             const history = messages
                 .filter((_, i) => i > 0) // skip initial greeting
-                .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text }));
+                .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text + blocksToHistoryNote(m.blocks) }));
 
             // AI replies can take a while (model + tool-call loop), so allow more than the default 10s
             const { data } = await api.post('/copilot/chat', {
@@ -65,6 +87,8 @@ export default function CopilotChat() {
                 role: 'assistant',
                 text: data.message || "I apologize, but I could not process your request. Please try again.",
                 timestamp: new Date(),
+                blocks: Array.isArray(data.blocks) ? data.blocks : [],
+                suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {
@@ -147,28 +171,56 @@ export default function CopilotChat() {
                         style={{ backgroundColor: 'var(--color-background)' }}
                     >
                         {messages.map((msg, i) => (
-                            <div
-                                key={i}
-                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                <div
-                                    className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed whitespace-pre-wrap ${
-                                        msg.role === 'user'
-                                            ? 'rounded-br-md text-white'
-                                            : 'rounded-bl-md border'
-                                    }`}
-                                    style={
-                                        msg.role === 'user'
-                                            ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }
-                                            : {
-                                                  backgroundColor: 'var(--color-surface)',
-                                                  borderColor: 'var(--color-border)',
-                                                  color: 'var(--color-text-main)',
-                                              }
-                                    }
-                                >
-                                    {msg.text}
+                            <div key={i} className="space-y-2">
+                                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div
+                                        className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed whitespace-pre-wrap ${
+                                            msg.role === 'user'
+                                                ? 'rounded-br-md text-white'
+                                                : 'rounded-bl-md border'
+                                        }`}
+                                        style={
+                                            msg.role === 'user'
+                                                ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }
+                                                : {
+                                                      backgroundColor: 'var(--color-surface)',
+                                                      borderColor: 'var(--color-border)',
+                                                      color: 'var(--color-text-main)',
+                                                  }
+                                        }
+                                    >
+                                        {msg.text}
+                                    </div>
                                 </div>
+
+                                {/* Cards with live Accept / Reject / Mark ready, availability switches, charts */}
+                                {msg.role === 'assistant' && msg.blocks && msg.blocks.length > 0 && (
+                                    <BlocksView blocks={msg.blocks} />
+                                )}
+
+                                {/* Quick replies under the latest answer only */}
+                                {msg.role === 'assistant' &&
+                                    i === messages.length - 1 &&
+                                    !loading &&
+                                    msg.suggestions &&
+                                    msg.suggestions.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {msg.suggestions.map((s) => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => sendMessage(s)}
+                                                    className="text-[11px] px-2.5 py-1 rounded-full border font-bold transition-all hover:scale-105 active:scale-95"
+                                                    style={{
+                                                        borderColor: '#8b5cf6',
+                                                        color: '#8b5cf6',
+                                                        backgroundColor: 'rgba(139, 92, 246, 0.05)',
+                                                    }}
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                             </div>
                         ))}
 
