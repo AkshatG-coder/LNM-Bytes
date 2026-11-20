@@ -7,6 +7,7 @@ import logger from "../utils/logger";
 import mongoose from "mongoose";
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 // ─── Tool definitions for the student-facing chatbot ─────────────────────────
 const tools: any = [
@@ -324,7 +325,7 @@ RULES:
 
     try {
         let response = await ai.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: GEMINI_MODEL,
             contents,
             config: {
                 tools,
@@ -360,7 +361,7 @@ RULES:
             contents.push({ role: "user", parts: functionResponses });
 
             response = await ai.models.generateContent({
-                model: "gemini-2.0-flash",
+                model: GEMINI_MODEL,
                 contents,
                 config: {
                     tools,
@@ -382,10 +383,10 @@ RULES:
 
         return res.json({ success: true, message: finalText });
     } catch (err: any) {
-        logger.error({ err: err.message }, "BiteBot AI error");
+        logger.error({ err: err.message, stack: err.stack }, "BiteBot AI error");
         return res.status(500).json({
             success: false,
-            message: "AI thoda busy hai abhi — 2 sec me try karo 🙏",
+            message: err.message || "AI thoda busy hai abhi — 2 sec me try karo 🙏",
         });
     }
 });

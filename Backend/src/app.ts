@@ -33,6 +33,7 @@ app.use((req, res, next) => {
 
 // ─── Security & Perf middleware ───────────────────────────────────────────────
 app.use(helmet({ 
+    contentSecurityPolicy: false, // API backend serving cross-origin JSON should not send HTML CSP
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }))

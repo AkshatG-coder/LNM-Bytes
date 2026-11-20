@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import appCache from "../utils/cache";
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 // ─── Tool definitions the LLM can call ───────────────────────────────────────
 // Using 'as any' to avoid overly strict SDK type inference on discriminated unions
@@ -305,7 +306,7 @@ IMPORTANT RULES:
     try {
         // Use generateContent with tool calling (agentic loop)
         let response = await ai.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: GEMINI_MODEL,
             contents,
             config: {
                 tools,
@@ -351,7 +352,7 @@ IMPORTANT RULES:
             contents.push({ role: "user", parts: functionResponses });
 
             response = await ai.models.generateContent({
-                model: "gemini-2.0-flash",
+                model: GEMINI_MODEL,
                 contents,
                 config: {
                     tools,
@@ -379,10 +380,10 @@ IMPORTANT RULES:
             message: finalText,
         });
     } catch (err: any) {
-        logger.error({ err: err.message }, "Copilot AI error");
+        logger.error({ err: err.message, stack: err.stack }, "Copilot AI error");
         return res.status(500).json({
             success: false,
-            message: "AI service error — please try again in a moment.",
+            message: err.message || "AI service error — please try again in a moment.",
         });
     }
 });
