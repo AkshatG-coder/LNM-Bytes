@@ -75,10 +75,11 @@ export default function BiteBotChat() {
         .filter((_, i) => i > 0)
         .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text }));
 
+      // AI replies can take a while (model + tool-call loop), so allow more than the default 15s
       const { data } = await api.post('/bitebot/chat', {
         message: msg,
         history,
-      });
+      }, { timeout: 60000 });
 
       const assistantMsg: Message = {
         role: 'assistant',

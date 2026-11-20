@@ -55,10 +55,11 @@ export default function CopilotChat() {
                 .filter((_, i) => i > 0) // skip initial greeting
                 .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text }));
 
+            // AI replies can take a while (model + tool-call loop), so allow more than the default 10s
             const { data } = await api.post('/copilot/chat', {
                 message: msg,
                 history,
-            });
+            }, { timeout: 60000 });
 
             const assistantMsg: Message = {
                 role: 'assistant',
