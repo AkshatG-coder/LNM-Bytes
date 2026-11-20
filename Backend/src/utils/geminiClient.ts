@@ -1,10 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
+import type { GenerateContentParameters, GenerateContentResponse } from "@google/genai";
+import logger from "./logger";
 
 // Default Gemini model. Override on the server with the GEMINI_MODEL env var.
 // NOTE: do not auto-pick a model from ListModels. It also returns models that
 // are still listed but no longer available to this key (e.g. gemini-2.5-flash),
 // which causes 404 NOT_FOUND on generateContent.
 export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+
+// Tried in order when the primary model is overloaded (503/429) or gone (404).
+const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
+
+const PER_CALL_TIMEOUT_MS = 25_000; // abort a single hung Gemini call
+const TOTAL_BUDGET_MS = 40_000;     // stop retrying/falling back after this long
+const RETRY_DELAY_MS = 800;
 
 export function getGeminiClient(): GoogleGenAI {
     const key = process.env.GEMINI_API_KEY || "";
@@ -14,10 +23,99 @@ export function getGeminiClient(): GoogleGenAI {
     });
 }
 
+/** Remembers which model answered, so one chat turn's tool-call loop stays on one model. */
+export interface GeminiRun {
+    model: string | null;
+}
+
+export function createGeminiRun(): GeminiRun {
+    return { model: null };
+}
+
+function modelChain(run?: GeminiRun): string[] {
+    const primary = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+    const chain = [primary, ...FALLBACK_MODELS];
+    if (run?.model) chain.unshift(run.model);
+    return chain.filter((m, i) => chain.indexOf(m) === i); // de-duplicate, keep order
+}
+
+function statusOf(err: any): number | undefined {
+    const s = err?.status ?? err?.code ?? err?.error?.code;
+    if (typeof s === "number") return s;
+    const m = /"code"\s*:\s*(\d{3})/.exec(String(err?.message ?? ""));
+    return m ? Number(m[1]) : undefined;
+}
+
+/** Temporary problems: worth a retry / another model. */
+function isBusy(err: any): boolean {
+    const status = statusOf(err);
+    if (status && [429, 500, 502, 503, 504].includes(status)) return true;
+    return /UNAVAILABLE|high demand|overloaded|RESOURCE_EXHAUSTED|timed? ?out|aborted|fetch failed|ECONNRESET|ETIMEDOUT/i
+        .test(String(err?.message ?? ""));
+}
+
+/** The model name itself is retired / not available to this key. */
+function isModelGone(err: any): boolean {
+    if (statusOf(err) === 404) return true;
+    return /no longer available|is not found|not supported for generateContent/i.test(String(err?.message ?? ""));
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Returns the Gemini model to use: GEMINI_MODEL if set, otherwise the default.
- * Kept async with the same signature so existing callers don't change.
+ * generateContent with retry + model fallback.
+ * - busy (503/429/timeout): retry the primary model once, then try the fallback models
+ * - model retired (404): skip straight to the next model
+ * - anything else (e.g. 400 bad request): thrown as-is, not hidden
  */
-export async function getActiveGeminiModel(_ai?: GoogleGenAI): Promise<string> {
-    return process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+export async function generateWithFallback(
+    ai: GoogleGenAI,
+    params: Omit<GenerateContentParameters, "model">,
+    run?: GeminiRun,
+): Promise<GenerateContentResponse> {
+    const started = Date.now();
+    const chain = modelChain(run);
+    let sawBusy = false;
+
+    for (let i = 0; i < chain.length; i++) {
+        const model = chain[i];
+        const attempts = i === 0 ? 2 : 1;
+
+        for (let attempt = 1; attempt <= attempts; attempt++) {
+            try {
+                const response = await ai.models.generateContent({
+                    ...params,
+                    model,
+                    config: {
+                        ...params.config,
+                        httpOptions: { ...params.config?.httpOptions, timeout: PER_CALL_TIMEOUT_MS },
+                    },
+                });
+                if (run) run.model = model;
+                if (i > 0) logger.info({ model }, "Gemini fallback model answered");
+                return response;
+            } catch (err: any) {
+                const gone = isModelGone(err);
+                const busy = !gone && isBusy(err);
+                logger.warn(
+                    { model, attempt, status: statusOf(err), busy, gone, err: String(err?.message ?? err).slice(0, 300) },
+                    "Gemini call failed",
+                );
+
+                if (!gone && !busy) throw err; // real error — don't mask it
+                if (busy) sawBusy = true;
+                if (gone) break;               // this model is out — go to the next one
+                if (Date.now() - started > TOTAL_BUDGET_MS) break;
+                if (attempt < attempts) await sleep(RETRY_DELAY_MS);
+            }
+        }
+
+        if (Date.now() - started > TOTAL_BUDGET_MS) break;
+    }
+
+    throw new Error(
+        sawBusy
+            ? "The AI service is very busy right now. Please try again in a few seconds."
+            : "The AI model is unavailable for this API key. Set GEMINI_MODEL to a model that is currently available.",
+    );
 }
