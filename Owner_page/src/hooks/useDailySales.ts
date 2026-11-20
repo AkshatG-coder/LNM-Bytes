@@ -51,9 +51,6 @@ export const useDailySales = () => {
 
   useEffect(() => {
     fetchSales();
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchSales, 60_000);
-    return () => clearInterval(interval);
   }, [fetchSales]);
 
   return { data, loading, error, refresh: fetchSales };

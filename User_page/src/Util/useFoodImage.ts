@@ -16,7 +16,7 @@ const inFlight = new Map<string, Promise<string>>();
 function persistCache() {
   try {
     localStorage.setItem('PEXELS_IMAGE_CACHE', JSON.stringify(Array.from(cache.entries())));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 const PEXELS_KEY = import.meta.env.VITE_PEXELS_API_KEY as string | undefined;

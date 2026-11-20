@@ -25,7 +25,7 @@ function App() {
           <Route path="sales" element={<DailySales />} />
           <Route path="scan" element={<QRScanner />} />
           <Route path="settings" element={<ShopSettings />} />
-        </Route>
+        </Route>  
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
