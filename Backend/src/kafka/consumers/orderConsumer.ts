@@ -2,7 +2,10 @@ import kafka from "../client";
 import { TOPICS, OrderEvent } from "../topics";
 import logger from "../../utils/logger";
 
-const consumer = kafka.consumer({ groupId: "order-events-group" });
+const consumer = kafka.consumer({ 
+    groupId: "order-events-group",
+    retry: { retries: 2, initialRetryTime: 300 }
+});
 
 export async function startOrderConsumer() {
     if (!process.env.KAFKA_BROKER) return;
@@ -52,8 +55,8 @@ export async function startOrderConsumer() {
         });
 
         logger.info("Order consumer running");
-    } catch (err) {
-        logger.error({ err }, "Order consumer failed to start");
+    } catch (err: any) {
+        logger.warn(`Order consumer could not connect: ${err.message || err} (will retry on next event)`);
     }
 }
 

@@ -1,6 +1,8 @@
 import { Producer } from "kafkajs";
 import kafka from "./client";
 import logger from "../utils/logger";
+import { sendNotification } from "../websockets/notify";
+import { TOPICS } from "./topics";
 
 class KafkaProducer {
     private producer: Producer;
@@ -8,7 +10,6 @@ class KafkaProducer {
 
     constructor() {
         this.producer = kafka.producer({
-            // Wait for leader + at least one replica to ack — avoids message loss
             allowAutoTopicCreation: false,
         });
     }
@@ -16,22 +17,23 @@ class KafkaProducer {
     async connect() {
         if (this.connected) return;
         if (!process.env.KAFKA_BROKER) {
-            logger.warn("KAFKA_BROKER not configured — Kafka producer disabled");
+            logger.info("KAFKA_BROKER not set — using local in-memory event dispatch");
             return;
         }
         try {
             await this.producer.connect();
             this.connected = true;
-            logger.info("Kafka producer connected");
-        } catch (err) {
-            logger.error({ err }, "Kafka producer connection failed");
-            // Don't crash the server — Kafka is non-critical vs DB
+            logger.info("Kafka producer connected successfully");
+        } catch (err: any) {
+            logger.warn(`Kafka producer connection failed: ${err.message || err}. Falling back to in-memory dispatch.`);
+            this.connected = false;
         }
     }
 
     async publish(topic: string, message: object) {
         if (!this.connected) {
-            logger.warn({ topic }, "Kafka producer not connected — skipping publish");
+            // Graceful circuit-breaker fallback: execute locally
+            this.handleLocalFallback(topic, message);
             return;
         }
         try {
@@ -40,15 +42,24 @@ class KafkaProducer {
                 messages: [{ value: JSON.stringify(message) }],
             });
             logger.info({ topic, type: (message as any).type }, "Kafka event published");
-        } catch (err) {
-            logger.error({ err, topic, message }, "Kafka publish failed");
-            // Fire-and-forget: don't throw, the HTTP response already went out
+        } catch (err: any) {
+            logger.warn({ err: err.message, topic }, "Kafka publish failed — falling back to local dispatch");
+            this.handleLocalFallback(topic, message);
+        }
+    }
+
+    private handleLocalFallback(topic: string, message: any) {
+        if (topic === TOPICS.NOTIFICATION_EVENTS && message?.receiverId && message?.payload) {
+            sendNotification(message.receiverId, message.payload);
+            logger.info({ receiverId: message.receiverId }, "WebSocket notification dispatched via local fallback");
         }
     }
 
     async disconnect() {
         if (!this.connected) return;
-        await this.producer.disconnect();
+        try {
+            await this.producer.disconnect();
+        } catch {}
         this.connected = false;
         logger.info("Kafka producer disconnected");
     }

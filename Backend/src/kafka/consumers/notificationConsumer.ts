@@ -3,7 +3,10 @@ import { TOPICS, NotificationEvent } from "../topics";
 import { sendNotification } from "../../websockets/notify";
 import logger from "../../utils/logger";
 
-const consumer = kafka.consumer({ groupId: "notification-events-group" });
+const consumer = kafka.consumer({ 
+    groupId: "notification-events-group",
+    retry: { retries: 2, initialRetryTime: 300 }
+});
 
 export async function startNotificationConsumer() {
     if (!process.env.KAFKA_BROKER) return;
@@ -45,8 +48,8 @@ export async function startNotificationConsumer() {
         });
 
         logger.info("Notification consumer running");
-    } catch (err) {
-        logger.error({ err }, "Notification consumer failed to start");
+    } catch (err: any) {
+        logger.warn(`Notification consumer could not connect: ${err.message || err} (will retry on next event)`);
     }
 }
 

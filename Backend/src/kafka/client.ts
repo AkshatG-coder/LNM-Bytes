@@ -7,16 +7,18 @@ const broker = process.env.KAFKA_BROKER || "localhost:9092";
 const kafka = new Kafka({
     clientId: "lnm-bytes",
     brokers: [broker],
+    connectionTimeout: 4000,
+    authenticationTimeout: 4000,
     sasl: process.env.KAFKA_USERNAME && process.env.KAFKA_PASSWORD ? {
         mechanism,
         username: process.env.KAFKA_USERNAME,
         password: process.env.KAFKA_PASSWORD,
     } : undefined,
     ssl: process.env.KAFKA_USERNAME ? { rejectUnauthorized: false } : undefined,
-    // Retry on transient network blips — important on cloud Kafka
+    // Fast failover to local fallback instead of freezing server
     retry: {
         initialRetryTime: 300,
-        retries: 5,
+        retries: 2,
     },
 });
 
