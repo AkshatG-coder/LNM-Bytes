@@ -1,6 +1,7 @@
 import './App.css'
 import { Outlet } from 'react-router-dom'
 import { Header } from './Components/Header'
+import BiteBotChat from './Components/BiteBotChat'
 import { useTheme } from './Util/useTheme'
 import { Toaster } from 'react-hot-toast'
 
@@ -16,6 +17,7 @@ function App() {
       <Toaster position="top-center" />
       <Header/>
       <Outlet/>
+      <BiteBotChat />
     </div>
   )
 }
