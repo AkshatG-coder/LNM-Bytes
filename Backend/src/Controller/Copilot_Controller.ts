@@ -9,7 +9,6 @@ import appCache from "../utils/cache";
 import { getActiveGeminiModel } from "../utils/geminiClient";
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 // ─── Tool definitions the LLM can call ───────────────────────────────────────
 // Using 'as any' to avoid overly strict SDK type inference on discriminated unions
