@@ -8,10 +8,10 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-    "Aaj ki sales kya hai?",
-    "Kitne pending orders hain?",
-    "Menu dikha do",
-    "Dukaan band kardo",
+    "Show today's sales summary",
+    "View pending kitchen orders",
+    "List current menu items",
+    "Close store for today",
 ];
 
 export default function CopilotChat() {
@@ -19,7 +19,7 @@ export default function CopilotChat() {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
-            text: "Hey! 👋 Main tumhara Copilot hoon. Menu manage karna ho, sales dekhni ho, ya koi item band karna ho — bas bolo!",
+            text: "Hello! I am your Store Copilot. How may I assist you with your store operations, menu management, or daily sales analytics today?",
             timestamp: new Date(),
         },
     ]);
@@ -62,12 +62,12 @@ export default function CopilotChat() {
 
             const assistantMsg: Message = {
                 role: 'assistant',
-                text: data.message || "Kuch samajh nahi aaya, dobara try karo?",
+                text: data.message || "I apologize, but I could not process your request. Please try again.",
                 timestamp: new Date(),
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {
-            const errorText = err.response?.data?.message || "Network error — backend check karo.";
+            const errorText = err.response?.data?.message || "A network error occurred. Please verify backend service status.";
             setMessages(prev => [
                 ...prev,
                 { role: 'assistant', text: `⚠️ ${errorText}`, timestamp: new Date() },

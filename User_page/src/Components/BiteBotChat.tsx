@@ -10,10 +10,10 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  "Konsi canteen open hai abhi? 🏪",
-  "Kuch tasty under ₹100 batao! 🍔",
-  "Mera latest order kahan hai? 📦",
-  "Best cold coffee kahan milegi? ☕",
+  "Which canteens are open right now?",
+  "Recommend meals under ₹100",
+  "Track my latest order status",
+  "Where can I get cold coffee?",
 ];
 
 export default function BiteBotChat() {
@@ -24,7 +24,7 @@ export default function BiteBotChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: `Hey ${userName ? userName.split(' ')[0] : 'there'}! 👋 Main hoon BiteBot — LNMIIT campus food concierge 🍕\n\nCanteen timings, menu search, cheap cravings ya order tracking — kuch bhi pucho!`,
+      text: `Hello ${userName ? userName.split(' ')[0] : 'there'}! I am BiteBot, your campus dining assistant at LNMIIT.\n\nI can help you check open canteens, explore menus, find recommendations by budget, or track your live orders. How may I assist you today?`,
       timestamp: new Date(),
     },
   ]);
@@ -57,7 +57,7 @@ export default function BiteBotChat() {
         { role: 'user', text: msg, timestamp: new Date() },
         {
           role: 'assistant',
-          text: 'BiteBot use karne ke liye pehle login kar lo please! 🔐',
+          text: 'Please sign in to your student account to chat with BiteBot. 🔐',
           timestamp: new Date(),
         },
       ]);
@@ -82,14 +82,14 @@ export default function BiteBotChat() {
 
       const assistantMsg: Message = {
         role: 'assistant',
-        text: data.message || "Kuch samajh nahi aaya, dobara try karo? 😅",
+        text: data.message || "I apologize, but I could not process your request. Please try again.",
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
       const errorText =
         err.response?.data?.message ||
-        "Network thoda slow hai — ek baar dobara try karo! 🙏";
+        "A network error occurred. Please try again in a moment.";
       setMessages(prev => [
         ...prev,
         { role: 'assistant', text: `⚠️ ${errorText}`, timestamp: new Date() },
