@@ -2,18 +2,23 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../Util/store';
 import api from '../Util/api';
+import { BlocksView, blocksToHistoryNote } from './BiteBotCards';
+import type { UiBlock } from './BiteBotCards';
 
 interface Message {
   role: 'user' | 'assistant';
   text: string;
   timestamp: Date;
+  blocks?: UiBlock[];
+  suggestions?: string[];
 }
 
 const QUICK_PROMPTS = [
   "Which canteens are open right now?",
   "Recommend meals under ₹100",
   "Track my latest order status",
-  "Where can I get cold coffee?",
+  "Show my favourites",
+  "Order my usual again",
 ];
 
 export default function BiteBotChat() {
@@ -24,7 +29,7 @@ export default function BiteBotChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: `Hello ${userName ? userName.split(' ')[0] : 'there'}! I am BiteBot, your campus dining assistant at LNMIIT.\n\nI can help you check open canteens, explore menus, find recommendations by budget, or track your live orders. How may I assist you today?`,
+      text: `Hello ${userName ? userName.split(' ')[0] : 'there'}! I am BiteBot, your campus dining assistant at LNMIIT.\n\nI can show open canteens and menus, suggest meals by budget, reorder your usual, prepare an order for you to confirm, and track your live orders. How may I assist you today?`,
       timestamp: new Date(),
     },
   ]);
@@ -73,7 +78,11 @@ export default function BiteBotChat() {
     try {
       const history = messages
         .filter((_, i) => i > 0)
-        .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text }));
+        .map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          // hidden note lists the cards shown, so "add the first one" can be understood
+          text: m.text + blocksToHistoryNote(m.blocks),
+        }));
 
       // AI replies can take a while (model + tool-call loop), so allow more than the default 15s
       const { data } = await api.post('/bitebot/chat', {
@@ -85,6 +94,8 @@ export default function BiteBotChat() {
         role: 'assistant',
         text: data.message || "I apologize, but I could not process your request. Please try again.",
         timestamp: new Date(),
+        blocks: Array.isArray(data.blocks) ? data.blocks : [],
+        suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
@@ -148,7 +159,7 @@ export default function BiteBotChat() {
         <div
           className="fixed bottom-24 right-4 sm:right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border overflow-hidden flex flex-col animate-fade-in"
           style={{
-            height: '520px',
+            height: 'min(620px, calc(100vh - 8rem))',
             backgroundColor: 'var(--surface)',
             borderColor: 'var(--border)',
           }}
@@ -184,28 +195,60 @@ export default function BiteBotChat() {
             style={{ backgroundColor: 'var(--bg)' }}
           >
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap ${
-                    msg.role === 'user'
-                      ? 'rounded-br-md text-white'
-                      : 'rounded-bl-md border shadow-sm'
-                  }`}
-                  style={
-                    msg.role === 'user'
-                      ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
-                      : {
-                          backgroundColor: 'var(--surface)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-main)',
-                        }
-                  }
-                >
-                  {msg.text}
+              <div key={i} className="space-y-2">
+                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user'
+                        ? 'rounded-br-md text-white'
+                        : 'rounded-bl-md border shadow-sm'
+                    }`}
+                    style={
+                      msg.role === 'user'
+                        ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
+                        : {
+                            backgroundColor: 'var(--surface)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-main)',
+                          }
+                    }
+                  >
+                    {msg.text}
+                  </div>
                 </div>
+
+                {/* Rich cards: items with Add buttons, stores, live order tracker, order draft */}
+                {msg.role === 'assistant' && msg.blocks && msg.blocks.length > 0 && (
+                  <BlocksView
+                    blocks={msg.blocks}
+                    onAsk={sendMessage}
+                    onClose={() => setIsOpen(false)}
+                  />
+                )}
+
+                {/* Quick replies under the latest answer only */}
+                {msg.role === 'assistant' &&
+                  i === messages.length - 1 &&
+                  !loading &&
+                  msg.suggestions &&
+                  msg.suggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {msg.suggestions.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => sendMessage(s)}
+                          className="text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all hover:scale-105 active:scale-95"
+                          style={{
+                            borderColor: '#f97316',
+                            color: '#ea580c',
+                            backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
               </div>
             ))}
 
