@@ -5,6 +5,7 @@ import logger from "../../utils/logger";
 const consumer = kafka.consumer({ groupId: "order-events-group" });
 
 export async function startOrderConsumer() {
+    if (!process.env.KAFKA_BROKER) return;
     try {
         await consumer.connect();
         await consumer.subscribe({ topic: TOPICS.ORDER_EVENTS, fromBeginning: false });

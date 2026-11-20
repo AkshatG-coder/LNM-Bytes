@@ -6,6 +6,7 @@ import logger from "../../utils/logger";
 const consumer = kafka.consumer({ groupId: "notification-events-group" });
 
 export async function startNotificationConsumer() {
+    if (!process.env.KAFKA_BROKER) return;
     try {
         await consumer.connect();
         await consumer.subscribe({ topic: TOPICS.NOTIFICATION_EVENTS, fromBeginning: false });

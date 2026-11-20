@@ -15,6 +15,10 @@ class KafkaProducer {
 
     async connect() {
         if (this.connected) return;
+        if (!process.env.KAFKA_BROKER) {
+            logger.warn("KAFKA_BROKER not configured — Kafka producer disabled");
+            return;
+        }
         try {
             await this.producer.connect();
             this.connected = true;
