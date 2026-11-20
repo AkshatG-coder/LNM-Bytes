@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
+import CopilotChat from '../components/CopilotChat';
 import { readAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { Menu } from 'lucide-react';
@@ -59,6 +60,9 @@ function AdminLayout() {
       <main className="flex-1 md:ml-64 p-4 mt-16 md:mt-0 lg:p-8 transition-all relative z-0">
         <Outlet />
       </main>
+
+      {/* AI Copilot — floating chat widget available on all admin pages */}
+      <CopilotChat />
     </div>
   );
 }
