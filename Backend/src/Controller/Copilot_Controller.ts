@@ -276,7 +276,10 @@ const CopilotChat = asyncHandler(async (req, res) => {
     if (!message) return res.status(400).json({ success: false, message: "message is required" });
     if (!storeId) return res.status(401).json({ success: false, message: "No store linked to your account" });
 
-    const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+    const ai = new GoogleGenAI({ 
+        apiKey: GEMINI_KEY,
+        apiVersion: "v1beta",
+    });
 
     // Build conversation history from frontend
     const contents: any[] = [];

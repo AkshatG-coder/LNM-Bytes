@@ -289,7 +289,10 @@ const BotChat = asyncHandler(async (req, res) => {
     if (!message) return res.status(400).json({ success: false, message: "message is required" });
     if (!userId) return res.status(401).json({ success: false, message: "Please sign in to use BiteBot" });
 
-    const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+    const ai = new GoogleGenAI({ 
+        apiKey: GEMINI_KEY,
+        apiVersion: "v1beta",
+    });
 
     // Build conversation from frontend history
     const contents: any[] = [];
