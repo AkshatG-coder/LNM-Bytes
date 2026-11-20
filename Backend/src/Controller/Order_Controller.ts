@@ -5,7 +5,8 @@ import asyncHandler from "../utils/AsyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import mongoose from "mongoose";
-import { sendNotification } from "../websockets/notify";
+import producer from "../kafka/producer";
+import { TOPICS, OrderEvent, NotificationEvent } from "../kafka/topics";
 import QRCode from "qrcode";
 import crypto from "crypto";
 import logger from "../utils/logger";
@@ -22,6 +23,33 @@ const CASHFREE_API_VERSION = "2023-08-01"; // using the latest API version corre
 
 const fail = (res: any, code: number, msg: string) =>
     res.status(code).json({ success: false, message: msg });
+
+// Publish an order lifecycle event + push a WebSocket notification via Kafka
+const emitOrderEvent = (
+    type: OrderEvent["type"],
+    order: any,
+    wsReceiverId: string,
+    wsPayload: Record<string, unknown>
+) => {
+    const orderEvent: OrderEvent = {
+        type,
+        orderId:     order._id.toString(),
+        storeId:     order.storeId.toString(),
+        userId:      order.userId.toString(),
+        orderNumber: order.orderNumber,
+        paymentType: order.paymentType,
+        userName:    order.userName,
+        totalAmount: order.totalAmount,
+        timestamp:   new Date().toISOString(),
+    };
+    // Fire-and-forget — these are non-blocking and won't slow down the HTTP response
+    producer.publish(TOPICS.ORDER_EVENTS, orderEvent);
+    producer.publish(TOPICS.NOTIFICATION_EVENTS, {
+        type: "PUSH_WEBSOCKET",
+        receiverId: wsReceiverId,
+        payload: wsPayload,
+    } satisfies NotificationEvent);
+};
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
 const CreateOrder = asyncHandler(async (req, res) => {
@@ -190,8 +218,8 @@ const CreateOrder = asyncHandler(async (req, res) => {
         }
     }
 
-    // Standard cash order — trigger WebSocket directly
-    sendNotification(storeId.toString(), {
+    // Cash order — publish event to Kafka instead of direct WebSocket
+    emitOrderEvent("ORDER_CREATED", newOrder, storeId.toString(), {
         type: "newOrder",
         orderId: newOrder._id,
         orderNumber: (newOrder as any).orderNumber,
@@ -231,8 +259,8 @@ const VerifyPayment = asyncHandler(async (req, res) => {
             order.paymentStatus = "paid";
             await order.save();
 
-            // WebSocket notification
-            sendNotification(order.storeId.toString(), {
+            // Kafka event — same shape as a cash order notification
+            emitOrderEvent("ORDER_CREATED", order, order.storeId.toString(), {
                 type: "newOrder",
                 orderId: order._id,
                 orderNumber: (order as any).orderNumber,
@@ -346,7 +374,7 @@ const CancelOrder = asyncHandler(async (req, res) => {
     order.status = "cancelled";
     await order.save();
 
-    sendNotification(order.userId.toString(), {
+    emitOrderEvent("ORDER_CANCELLED", order, order.userId.toString(), {
         type: "orderCancelled",
         orderId: order._id,
         message: "Your order has been cancelled.",
@@ -374,7 +402,7 @@ const AcceptOrder = asyncHandler(async (req, res) => {
     order.status = "preparing";
     await order.save();
 
-    sendNotification(order.userId.toString(), {
+    emitOrderEvent("ORDER_ACCEPTED", order, order.userId.toString(), {
         type: "orderPreparing",
         orderId: order._id,
         orderNumber: (order as any).orderNumber,
@@ -413,8 +441,8 @@ const MarkReady = asyncHandler(async (req, res) => {
     const qrData = JSON.stringify({ token, orderId: order._id });
     const qrCode = await QRCode.toDataURL(qrData);
 
-    // Push QR directly via WebSocket
-    sendNotification(order.userId.toString(), {
+    // Push QR via Kafka → notification consumer → WebSocket
+    emitOrderEvent("ORDER_READY", order, order.userId.toString(), {
         type: "orderReady",
         orderId: order._id,
         orderNumber: (order as any).orderNumber,
@@ -472,7 +500,7 @@ const VerifyOrderQR = asyncHandler(async (req, res) => {
     order.status                = "delivered";
     await order.save();
 
-    sendNotification(order.userId.toString(), {
+    emitOrderEvent("ORDER_DELIVERED", order, order.userId.toString(), {
         type: "orderDelivered",
         orderId: order._id,
         orderNumber: (order as any).orderNumber,
@@ -533,8 +561,8 @@ const RejectOrder = asyncHandler(async (req, res) => {
 
     await order.save();
 
-    // 3. Notify the user directly via WebSocket
-    sendNotification(order.userId.toString(), {
+    // 3. Notify the user via Kafka → WebSocket
+    emitOrderEvent("ORDER_REJECTED", order, order.userId.toString(), {
         type: "orderCancelled",
         orderId: order._id,
         message: order.paymentStatus === "refunded" 

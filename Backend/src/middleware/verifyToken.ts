@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
  * Expects:  Authorization: Bearer <token>
  * On success: attaches decoded payload to req.user and calls next().
  */
+
 export const verifyUserToken = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
@@ -26,6 +27,7 @@ export const verifyUserToken = (req: Request, res: Response, next: NextFunction)
  * Middleware to protect routes that require a logged-in owner.
  * Same structure — owner JWTs contain { ownerId, storeId, role, isApproved }.
  */
+
 export const verifyOwnerToken = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
