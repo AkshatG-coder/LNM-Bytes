@@ -4,6 +4,7 @@ import type { RootState } from '../Util/store';
 import api from '../Util/api';
 import { BlocksView, blocksToHistoryNote } from './BiteBotCards';
 import type { UiBlock } from './BiteBotCards';
+import ChatText from './ChatText';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -11,100 +12,112 @@ interface Message {
   timestamp: Date;
   blocks?: UiBlock[];
   suggestions?: string[];
+  isError?: boolean;
+  retryText?: string;
 }
 
 const QUICK_PROMPTS = [
-  "Which canteens are open right now?",
-  "Recommend meals under ₹100",
-  "Track my latest order status",
-  "Show my favourites",
-  "Order my usual again",
+  'Which canteens are open?',
+  'Meals under ₹100',
+  'Track my latest order',
+  'Show my favourites',
+  'Order my usual again',
 ];
+
+const BRAND = '#ea580c';
+
+const greeting = (name?: string): Message => ({
+  role: 'assistant',
+  text: `Hi ${name ? name.split(' ')[0] : 'there'}, I'm BiteBot.\nI can find open canteens and menus, suggest meals for your budget, reorder your usual, and track your orders. You confirm before anything is placed.`,
+  timestamp: new Date(),
+});
+
+function Icon({ d, size = 18 }: { d: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
 
 export default function BiteBotChat() {
   const [isOpen, setIsOpen] = useState(false);
   const isAuthenticated = useSelector((s: RootState) => s.User.isAuthenticated);
   const userName = useSelector((s: RootState) => s.User.user?.name);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      text: `Hello ${userName ? userName.split(' ')[0] : 'there'}! I am BiteBot, your campus dining assistant at LNMIIT.\n\nI can show open canteens and menus, suggest meals by budget, reorder your usual, prepare an order for you to confirm, and track your live orders. How may I assist you today?`,
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => [greeting(userName)]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, loading, scrollToBottom]);
 
   useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus();
-    }
+    if (isOpen) inputRef.current?.focus();
+  }, [isOpen]);
+
+  // Esc closes the chat
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
   const sendMessage = async (textToSend?: string) => {
-    const msg = textToSend || input.trim();
+    const msg = (textToSend ?? input).trim();
     if (!msg || loading) return;
 
     if (!isAuthenticated) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         { role: 'user', text: msg, timestamp: new Date() },
-        {
-          role: 'assistant',
-          text: 'Please sign in to your student account to chat with BiteBot. 🔐',
-          timestamp: new Date(),
-        },
+        { role: 'assistant', text: 'Sign in to your student account to chat with BiteBot.', timestamp: new Date() },
       ]);
       setInput('');
       return;
     }
 
-    const userMsg: Message = { role: 'user', text: msg, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: 'user', text: msg, timestamp: new Date() }]);
     setInput('');
     setLoading(true);
 
     try {
       const history = messages
-        .filter((_, i) => i > 0)
-        .map(m => ({
+        .filter((m, i) => i > 0 && !m.isError)
+        .map((m) => ({
           role: m.role === 'user' ? 'user' : 'model',
           // hidden note lists the cards shown, so "add the first one" can be understood
           text: m.text + blocksToHistoryNote(m.blocks),
         }));
 
       // AI replies can take a while (model + tool-call loop), so allow more than the default 15s
-      const { data } = await api.post('/bitebot/chat', {
-        message: msg,
-        history,
-      }, { timeout: 60000 });
+      const { data } = await api.post('/bitebot/chat', { message: msg, history }, { timeout: 60000 });
 
-      const assistantMsg: Message = {
-        role: 'assistant',
-        text: data.message || "I apologize, but I could not process your request. Please try again.",
-        timestamp: new Date(),
-        blocks: Array.isArray(data.blocks) ? data.blocks : [],
-        suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-    } catch (err: any) {
-      const errorText =
-        err.response?.data?.message ||
-        "A network error occurred. Please try again in a moment.";
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { role: 'assistant', text: `⚠️ ${errorText}`, timestamp: new Date() },
+        {
+          role: 'assistant',
+          text: data.message || "I couldn't work that out. Try rephrasing it.",
+          timestamp: new Date(),
+          blocks: Array.isArray(data.blocks) ? data.blocks : [],
+          suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+        },
+      ]);
+    } catch (err: any) {
+      const errorText = err.response?.data?.message || 'Could not reach BiteBot. Check your connection and try again.';
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: errorText, timestamp: new Date(), isError: true, retryText: msg },
       ]);
     } finally {
       setLoading(false);
@@ -118,219 +131,170 @@ export default function BiteBotChat() {
     }
   };
 
+  const last = messages[messages.length - 1];
+  const dockChips = loading
+    ? []
+    : messages.length <= 1
+      ? QUICK_PROMPTS
+      : last.role === 'assistant' && !last.isError
+        ? (last.suggestions ?? [])
+        : [];
+
   return (
     <>
-      {/* Floating launcher button */}
+      {/* Launcher */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        aria-label="Open BiteBot Food AI Assistant"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group"
-        style={{
-          background: 'linear-gradient(135deg, #f97316, #ea580c)',
-          color: 'white',
-        }}
+        aria-label={isOpen ? 'Close BiteBot' : 'Open BiteBot, your food assistant'}
+        aria-expanded={isOpen}
+        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        style={{ background: BRAND, outlineColor: BRAND }}
       >
         {isOpen ? (
-          <svg
-            width="24"
-            height="24"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <Icon d="M6 18L18 6M6 6l12 12" size={22} />
         ) : (
-          <div className="relative flex items-center justify-center">
-            <span className="text-2xl select-none group-hover:rotate-12 transition-transform duration-200">
-              🍕
-            </span>
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-yellow-400 border-2 border-white" />
-            </span>
-          </div>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 11h18a0 0 0 0 1 0 0 9 9 0 0 1-18 0 0 0 0 0 1 0 0z" />
+            <path d="M8 7c0-1.5 1-2 1-3.5M12 7c0-1.5 1-2 1-3.5M16 7c0-1.5 1-2 1-3.5" />
+          </svg>
         )}
       </button>
 
-      {/* Chat window panel */}
       {isOpen && (
         <div
-          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border overflow-hidden flex flex-col animate-fade-in"
-          style={{
-            height: 'min(620px, calc(100vh - 8rem))',
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--border)',
-          }}
+          role="dialog"
+          aria-label="BiteBot chat"
+          className="fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 sm:w-[400px] sm:h-[min(660px,calc(100vh-7rem))] flex flex-col overflow-hidden sm:rounded-2xl sm:border shadow-2xl"
+          style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
         >
           {/* Header */}
-          <div
-            className="px-5 py-4 flex items-center gap-3 border-b text-white"
-            style={{
-              background: 'linear-gradient(135deg, #f97316, #ea580c)',
-              borderColor: 'transparent',
-            }}
-          >
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl shadow-inner">
-              🍕
+          <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ background: BRAND }}>
+            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 11h18a9 9 0 0 1-18 0z" />
+                <path d="M8 7c0-1.5 1-2 1-3.5M12 7c0-1.5 1-2 1-3.5M16 7c0-1.5 1-2 1-3.5" />
+              </svg>
             </div>
-            <div className="min-w-0">
-              <h3 className="font-black text-sm tracking-tight flex items-center gap-1.5">
-                BiteBot <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-bold">AI</span>
-              </h3>
-              <p className="text-white/80 text-[11px] font-medium truncate">
-                Campus Food Assistant • LNMIIT
-              </p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[15px] font-semibold leading-tight">BiteBot</h2>
+              <p className="text-xs text-white/80 truncate">Menus, orders and picks</p>
             </div>
-            <div className="ml-auto flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-green-300 animate-pulse" />
-              <span className="text-white/90 text-[10px] font-bold">Online</span>
-            </div>
+            <button
+              onClick={() => {
+                setMessages([greeting(userName)]);
+                setInput('');
+              }}
+              disabled={loading || messages.length <= 1}
+              aria-label="Start a new chat"
+              title="New chat"
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Icon d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" size={16} />
+            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              aria-label="Close chat"
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Icon d="M6 18L18 6M6 6l12 12" size={18} />
+            </button>
           </div>
 
-          {/* Messages list */}
-          <div
-            className="flex-1 overflow-y-auto p-4 space-y-3"
-            style={{ backgroundColor: 'var(--bg)' }}
-          >
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3" role="log" aria-live="polite">
             {messages.map((msg, i) => (
               <div key={i} className="space-y-2">
                 <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap ${
+                    className={`max-w-[88%] px-3.5 py-2.5 text-[13.5px] leading-relaxed motion-safe:animate-fade-in ${
                       msg.role === 'user'
-                        ? 'rounded-br-md text-white'
-                        : 'rounded-bl-md border shadow-sm'
+                        ? 'text-white rounded-2xl rounded-br-md'
+                        : 'rounded-2xl rounded-bl-md border'
                     }`}
                     style={
                       msg.role === 'user'
-                        ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
-                        : {
-                            backgroundColor: 'var(--surface)',
-                            borderColor: 'var(--border)',
-                            color: 'var(--text-main)',
-                          }
+                        ? { background: BRAND }
+                        : msg.isError
+                          ? { backgroundColor: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.35)', color: 'var(--text-main)' }
+                          : { backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }
                     }
                   >
-                    {msg.text}
+                    {msg.role === 'user' ? <span className="whitespace-pre-wrap break-words">{msg.text}</span> : <ChatText text={msg.text} />}
+                    {msg.isError && msg.retryText && (
+                      <button
+                        onClick={() => sendMessage(msg.retryText)}
+                        disabled={loading}
+                        className="mt-2 block text-xs font-semibold underline underline-offset-2 disabled:opacity-50"
+                        style={{ color: BRAND }}
+                      >
+                        Try again
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Rich cards: items with Add buttons, stores, live order tracker, order draft */}
                 {msg.role === 'assistant' && msg.blocks && msg.blocks.length > 0 && (
-                  <BlocksView
-                    blocks={msg.blocks}
-                    onAsk={sendMessage}
-                    onClose={() => setIsOpen(false)}
-                  />
+                  <BlocksView blocks={msg.blocks} onAsk={sendMessage} onClose={() => setIsOpen(false)} />
                 )}
-
-                {/* Quick replies under the latest answer only */}
-                {msg.role === 'assistant' &&
-                  i === messages.length - 1 &&
-                  !loading &&
-                  msg.suggestions &&
-                  msg.suggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {msg.suggestions.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => sendMessage(s)}
-                          className="text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all hover:scale-105 active:scale-95"
-                          style={{
-                            borderColor: '#f97316',
-                            color: '#ea580c',
-                            backgroundColor: 'rgba(249, 115, 22, 0.08)',
-                          }}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
               </div>
             ))}
 
             {loading && (
-              <div className="flex justify-start">
-                <div
-                  className="px-4 py-3 rounded-2xl rounded-bl-md border flex items-center gap-2 shadow-sm"
-                  style={{
-                    backgroundColor: 'var(--surface)',
-                    borderColor: 'var(--border)',
-                  }}
-                >
-                  <span className="flex gap-1">
-                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </span>
-                  <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                    Finding best bites...
-                  </span>
+              <div className="flex justify-start" aria-label="BiteBot is typing">
+                <div className="px-4 py-3 rounded-2xl rounded-bl-md border flex items-center gap-1.5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  {[0, 150, 300].map((d) => (
+                    <span key={d} className="w-1.5 h-1.5 rounded-full motion-safe:animate-bounce" style={{ background: BRAND, animationDelay: `${d}ms` }} />
+                  ))}
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick recommendation chips — shown when only greeting is in chat */}
-          {messages.length <= 1 && (
-            <div
-              className="px-4 py-2 border-t flex flex-wrap gap-1.5"
-              style={{
-                borderColor: 'var(--border)',
-                backgroundColor: 'var(--surface)',
-              }}
-            >
-              {QUICK_PROMPTS.map((prompt, idx) => (
+          {/* Suggestions: one scrolling row so they never push the conversation up */}
+          {dockChips.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-3.5 pt-2 pb-1 flex-shrink-0" aria-label="Suggested replies">
+              {dockChips.map((s) => (
                 <button
-                  key={idx}
-                  onClick={() => sendMessage(prompt)}
-                  className="text-xs px-2.5 py-1.5 rounded-full border font-semibold transition-all hover:scale-105 active:scale-95 text-left"
-                  style={{
-                    borderColor: '#f97316',
-                    color: '#ea580c',
-                    backgroundColor: 'rgba(249, 115, 22, 0.08)',
-                  }}
+                  key={s}
+                  onClick={() => sendMessage(s)}
+                  className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors active:scale-95 hover:bg-orange-500/10"
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)', color: 'var(--text-main)' }}
                 >
-                  {prompt}
+                  {s}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Input form */}
-          <div
-            className="px-4 py-3 border-t flex items-center gap-2"
-            style={{
-              borderColor: 'var(--border)',
-              backgroundColor: 'var(--surface)',
-            }}
-          >
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask for food, stores, orders..."
-              disabled={loading}
-              className="flex-1 bg-transparent text-xs sm:text-sm font-medium outline-none placeholder:text-gray-400 disabled:opacity-50"
-              style={{ color: 'var(--text-main)' }}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || loading}
-              aria-label="Send message"
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-30 flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)' }}
+          {/* Input */}
+          <div className="px-3.5 pt-2 pb-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div
+              className="flex items-center gap-2 rounded-full border pl-4 pr-1.5 py-1.5 focus-within:ring-2 focus-within:ring-orange-500/50"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
             >
-              <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
-            </button>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about food, canteens or orders"
+                aria-label="Message BiteBot"
+                disabled={loading}
+                className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-gray-400 disabled:opacity-60"
+                style={{ color: 'var(--text-main)' }}
+              />
+              <button
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || loading}
+                aria-label="Send message"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0"
+                style={{ background: BRAND }}
+              >
+                <Icon d="M5 12h14M13 6l6 6-6 6" size={18} />
+              </button>
+            </div>
           </div>
         </div>
       )}

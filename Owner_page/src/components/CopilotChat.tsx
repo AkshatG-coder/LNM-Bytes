@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import api from '../hooks/api';
 import { BlocksView } from './CopilotCards';
 import type { OwnerUiBlock } from './CopilotCards';
+import ChatText from './ChatText';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -9,7 +10,19 @@ interface Message {
     timestamp: Date;
     blocks?: OwnerUiBlock[];
     suggestions?: string[];
+    isError?: boolean;
+    retryText?: string;
 }
+
+const ACCENT = '#4f46e5';
+
+const GREETING: Message = {
+    role: 'assistant',
+    text: "Hi, I'm Copilot.\nAsk me about orders, sales, your menu or store status. I can also mark items out of stock, change prices and open or close the store.",
+    timestamp: new Date(),
+};
+
+const STARTERS = ['Pending orders', "Today's sales", 'Sales for the last 7 days', 'Show unavailable items', 'Store status'];
 
 // Short note of the cards shown, so follow-ups like "reject the second one" have context.
 function blocksToHistoryNote(blocks?: OwnerUiBlock[]): string {
@@ -29,73 +42,76 @@ function blocksToHistoryNote(blocks?: OwnerUiBlock[]): string {
     return `\n[Cards shown to the owner — ${parts.join('; ')}]`;
 }
 
-const SUGGESTIONS = [
-    "Show today's sales summary",
-    "View pending kitchen orders",
-    "List current menu items",
-    "Close store for today",
-];
+function Icon({ d, size = 18 }: { d: string; size?: number }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={d} />
+        </svg>
+    );
+}
 
 export default function CopilotChat() {
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            role: 'assistant',
-            text: "Hello! I am your Store Copilot. How may I assist you with your store operations, menu management, or daily sales analytics today?",
-            timestamp: new Date(),
-        },
-    ]);
+    const [messages, setMessages] = useState<Message[]>([GREETING]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = useCallback(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, []);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, scrollToBottom]);
+    }, [messages, loading, scrollToBottom]);
 
     useEffect(() => {
         if (isOpen) inputRef.current?.focus();
     }, [isOpen]);
 
+    // Esc closes the chat
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsOpen(false);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen]);
+
     const sendMessage = async (text?: string) => {
-        const msg = text || input.trim();
+        const msg = (text ?? input).trim();
         if (!msg || loading) return;
 
-        const userMsg: Message = { role: 'user', text: msg, timestamp: new Date() };
-        setMessages(prev => [...prev, userMsg]);
+        setMessages((prev) => [...prev, { role: 'user', text: msg, timestamp: new Date() }]);
         setInput('');
         setLoading(true);
 
         try {
-            // Build history from prior messages (skip system greeting)
+            // Build history from prior messages (skip greeting and error bubbles)
             const history = messages
-                .filter((_, i) => i > 0) // skip initial greeting
-                .map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text + blocksToHistoryNote(m.blocks) }));
+                .filter((m, i) => i > 0 && !m.isError)
+                .map((m) => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text + blocksToHistoryNote(m.blocks) }));
 
             // AI replies can take a while (model + tool-call loop), so allow more than the default 10s
-            const { data } = await api.post('/copilot/chat', {
-                message: msg,
-                history,
-            }, { timeout: 60000 });
+            const { data } = await api.post('/copilot/chat', { message: msg, history }, { timeout: 60000 });
 
-            const assistantMsg: Message = {
-                role: 'assistant',
-                text: data.message || "I apologize, but I could not process your request. Please try again.",
-                timestamp: new Date(),
-                blocks: Array.isArray(data.blocks) ? data.blocks : [],
-                suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
-            };
-            setMessages(prev => [...prev, assistantMsg]);
-        } catch (err: any) {
-            const errorText = err.response?.data?.message || "A network error occurred. Please verify backend service status.";
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
-                { role: 'assistant', text: `⚠️ ${errorText}`, timestamp: new Date() },
+                {
+                    role: 'assistant',
+                    text: data.message || "I couldn't work that out. Try rephrasing it.",
+                    timestamp: new Date(),
+                    blocks: Array.isArray(data.blocks) ? data.blocks : [],
+                    suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+                },
+            ]);
+        } catch (err: any) {
+            const errorText = err.response?.data?.message || 'Could not reach the server. Check your connection and try again.';
+            setMessages((prev) => [
+                ...prev,
+                { role: 'assistant', text: errorText, timestamp: new Date(), isError: true, retryText: msg },
             ]);
         } finally {
             setLoading(false);
@@ -109,157 +125,132 @@ export default function CopilotChat() {
         }
     };
 
+    const last = messages[messages.length - 1];
+    const dockChips = loading
+        ? []
+        : messages.length <= 1
+            ? STARTERS
+            : last.role === 'assistant' && !last.isError
+                ? (last.suggestions ?? [])
+                : [];
+
+    const scrollRow: React.CSSProperties = { scrollbarWidth: 'none' };
+
     return (
         <>
-            {/* Floating button */}
+            {/* Launcher */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
-                style={{
-                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                    color: 'white',
-                }}
-                title="AI Copilot"
+                aria-label={isOpen ? 'Close Copilot' : 'Open Copilot, your store assistant'}
+                aria-expanded={isOpen}
+                className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+                style={{ background: ACCENT, outlineColor: ACCENT }}
             >
                 {isOpen ? (
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <Icon d="M6 18L18 6M6 6l12 12" size={22} />
                 ) : (
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l4.93-1.37A9.95 9.95 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm-1 14h-1.5v-1.5H11V16zm2.07-4.75l-.9.92c-.5.51-.82.93-.97 1.42-.1.3-.15.63-.15.91H9.5c0-.5.08-.95.25-1.37.22-.54.62-1.07 1.05-1.5l1.24-1.26c.46-.44.68-1.1.55-1.76a1.99 1.99 0 00-1.56-1.55c-.82-.16-1.57.09-2.1.59-.37.36-.59.83-.65 1.35H6.73c.07-.97.47-1.83 1.14-2.49A4.03 4.03 0 0112 5.5c1.56 0 2.86.82 3.52 2.07.5.9.55 2.01.1 2.99-.3.65-.82 1.19-1.55 1.69z" />
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M4 5h16v11H9l-5 4z" />
+                        <path d="M8 10h8M8 13h5" />
                     </svg>
                 )}
             </button>
 
-            {/* Chat panel */}
             {isOpen && (
                 <div
-                    className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border overflow-hidden flex flex-col"
-                    style={{
-                        height: '520px',
-                        backgroundColor: 'var(--color-surface)',
-                        borderColor: 'var(--color-border)',
-                    }}
+                    role="dialog"
+                    aria-label="Store Copilot chat"
+                    className="fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 sm:w-[420px] sm:h-[min(680px,calc(100vh-7rem))] flex flex-col overflow-hidden sm:rounded-2xl sm:border shadow-2xl"
+                    style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
                 >
                     {/* Header */}
-                    <div
-                        className="px-5 py-4 flex items-center gap-3 border-b"
-                        style={{
-                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                            borderColor: 'transparent',
-                        }}
-                    >
-                        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-lg">
-                            🤖
+                    <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ background: ACCENT }}>
+                        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M4 5h16v11H9l-5 4z" />
+                                <path d="M8 10h8M8 13h5" />
+                            </svg>
                         </div>
-                        <div>
-                            <h3 className="text-white font-black text-sm tracking-tight">AI Copilot</h3>
-                            <p className="text-white/70 text-[10px] font-bold">
-                                Menu • Orders • Analytics • Store Control
-                            </p>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-[15px] font-semibold leading-tight">Copilot</h2>
+                            <p className="text-xs text-white/80 truncate">Orders, sales, menu and store</p>
                         </div>
-                        <div className="ml-auto flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                            <span className="text-white/60 text-[10px] font-bold">Online</span>
-                        </div>
+                        <button
+                            onClick={() => {
+                                setMessages([GREETING]);
+                                setInput('');
+                            }}
+                            disabled={loading || messages.length <= 1}
+                            aria-label="Start a new chat"
+                            title="New chat"
+                            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-white"
+                        >
+                            <Icon d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" size={16} />
+                        </button>
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            aria-label="Close chat"
+                            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white"
+                        >
+                            <Icon d="M6 18L18 6M6 6l12 12" size={18} />
+                        </button>
                     </div>
 
                     {/* Messages */}
-                    <div
-                        className="flex-1 overflow-y-auto p-4 space-y-3"
-                        style={{ backgroundColor: 'var(--color-background)' }}
-                    >
+                    <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3" role="log" aria-live="polite">
                         {messages.map((msg, i) => (
                             <div key={i} className="space-y-2">
                                 <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div
-                                        className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed whitespace-pre-wrap ${
-                                            msg.role === 'user'
-                                                ? 'rounded-br-md text-white'
-                                                : 'rounded-bl-md border'
+                                        className={`max-w-[88%] px-3.5 py-2.5 text-[13.5px] leading-relaxed motion-safe:animate-fade-in ${
+                                            msg.role === 'user' ? 'text-white rounded-2xl rounded-br-md' : 'rounded-2xl rounded-bl-md border'
                                         }`}
                                         style={
                                             msg.role === 'user'
-                                                ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }
-                                                : {
-                                                      backgroundColor: 'var(--color-surface)',
-                                                      borderColor: 'var(--color-border)',
-                                                      color: 'var(--color-text-main)',
-                                                  }
+                                                ? { background: ACCENT }
+                                                : msg.isError
+                                                    ? { backgroundColor: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.35)', color: 'var(--color-text-main)' }
+                                                    : { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }
                                         }
                                     >
-                                        {msg.text}
+                                        {msg.role === 'user' ? <span className="whitespace-pre-wrap break-words">{msg.text}</span> : <ChatText text={msg.text} />}
+                                        {msg.isError && msg.retryText && (
+                                            <button
+                                                onClick={() => sendMessage(msg.retryText)}
+                                                disabled={loading}
+                                                className="mt-2 block text-xs font-semibold underline underline-offset-2 disabled:opacity-50 text-indigo-600 dark:text-indigo-300"
+                                            >
+                                                Try again
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Cards with live Accept / Reject / Mark ready, availability switches, charts */}
-                                {msg.role === 'assistant' && msg.blocks && msg.blocks.length > 0 && (
-                                    <BlocksView blocks={msg.blocks} />
-                                )}
-
-                                {/* Quick replies under the latest answer only */}
-                                {msg.role === 'assistant' &&
-                                    i === messages.length - 1 &&
-                                    !loading &&
-                                    msg.suggestions &&
-                                    msg.suggestions.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {msg.suggestions.map((s) => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => sendMessage(s)}
-                                                    className="text-[11px] px-2.5 py-1 rounded-full border font-bold transition-all hover:scale-105 active:scale-95"
-                                                    style={{
-                                                        borderColor: '#8b5cf6',
-                                                        color: '#8b5cf6',
-                                                        backgroundColor: 'rgba(139, 92, 246, 0.05)',
-                                                    }}
-                                                >
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                {msg.role === 'assistant' && msg.blocks && msg.blocks.length > 0 && <BlocksView blocks={msg.blocks} />}
                             </div>
                         ))}
 
                         {loading && (
-                            <div className="flex justify-start">
-                                <div
-                                    className="px-4 py-3 rounded-2xl rounded-bl-md border flex items-center gap-2"
-                                    style={{
-                                        backgroundColor: 'var(--color-surface)',
-                                        borderColor: 'var(--color-border)',
-                                    }}
-                                >
-                                    <span className="flex gap-1">
-                                        <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                                    </span>
-                                    <span className="text-xs font-bold" style={{ color: 'var(--color-text-sub)' }}>
-                                        Thinking...
-                                    </span>
+                            <div className="flex justify-start" aria-label="Copilot is typing">
+                                <div className="px-4 py-3 rounded-2xl rounded-bl-md border flex items-center gap-1.5" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                                    {[0, 150, 300].map((d) => (
+                                        <span key={d} className="w-1.5 h-1.5 rounded-full motion-safe:animate-bounce" style={{ background: ACCENT, animationDelay: `${d}ms` }} />
+                                    ))}
                                 </div>
                             </div>
                         )}
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Quick suggestions — only show when no user messages sent */}
-                    {messages.length <= 1 && (
-                        <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                            {SUGGESTIONS.map((s, i) => (
+                    {/* Suggestions: one scrolling row so they never push the conversation up */}
+                    {dockChips.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto px-3.5 pt-2 pb-1 flex-shrink-0" style={scrollRow} aria-label="Suggested replies">
+                            {dockChips.map((s) => (
                                 <button
-                                    key={i}
+                                    key={s}
                                     onClick={() => sendMessage(s)}
-                                    className="text-xs px-3 py-1.5 rounded-full border font-bold transition-all hover:scale-105 active:scale-95"
-                                    style={{
-                                        borderColor: '#8b5cf6',
-                                        color: '#8b5cf6',
-                                        backgroundColor: 'rgba(139, 92, 246, 0.05)',
-                                    }}
+                                    className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors active:scale-95 hover:bg-indigo-500/10"
+                                    style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                                 >
                                     {s}
                                 </button>
@@ -268,31 +259,33 @@ export default function CopilotChat() {
                     )}
 
                     {/* Input */}
-                    <div
-                        className="px-4 py-3 border-t flex items-center gap-2"
-                        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-                    >
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Type a message..."
-                            disabled={loading}
-                            className="flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-gray-400 disabled:opacity-50"
-                            style={{ color: 'var(--color-text-main)' }}
-                        />
-                        <button
-                            onClick={() => sendMessage()}
-                            disabled={!input.trim() || loading}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
-                            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                    <div className="px-3.5 pt-2 pb-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                        <div
+                            className="flex items-center gap-2 rounded-full border pl-4 pr-1.5 py-1.5 focus-within:ring-2 focus-within:ring-indigo-500/50"
+                            style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                         >
-                            <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                            </svg>
-                        </button>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Ask about orders, sales or menu"
+                                aria-label="Message Copilot"
+                                disabled={loading}
+                                className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-gray-400 disabled:opacity-60"
+                                style={{ color: 'var(--color-text-main)' }}
+                            />
+                            <button
+                                onClick={() => sendMessage()}
+                                disabled={!input.trim() || loading}
+                                aria-label="Send message"
+                                className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0"
+                                style={{ background: ACCENT }}
+                            >
+                                <Icon d="M5 12h14M13 6l6 6-6 6" size={18} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

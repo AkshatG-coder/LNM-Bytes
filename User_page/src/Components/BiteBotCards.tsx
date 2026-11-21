@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../Util/api';
@@ -77,7 +77,7 @@ export type UiBlock =
   | { type: 'orders'; orders: UiOrder[] }
   | { type: 'order_draft'; draft: OrderDraft };
 
-const ORANGE = '#f97316';
+const BRAND = '#ea580c';
 const DRAFT_TTL_MS = 10 * 60 * 1000;
 
 const cardStyle: React.CSSProperties = {
@@ -86,6 +86,7 @@ const cardStyle: React.CSSProperties = {
   color: 'var(--text-main)',
 };
 const mutedStyle: React.CSSProperties = { color: 'var(--text-muted)' };
+const nums: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
 /** A short hidden note appended to the chat history so the model knows which cards were shown. */
 export function blocksToHistoryNote(blocks?: UiBlock[]): string {
@@ -115,6 +116,49 @@ export function blocksToHistoryNote(blocks?: UiBlock[]): string {
   return `\n[context for you, not visible to the student: ${parts.join(' | ')}]`;
 }
 
+// ─── Small shared pieces ─────────────────────────────────────────────────────
+/** Indian food-type mark: outlined square with a dot (green veg, red non-veg). */
+function VegMark({ isVeg }: { isVeg: boolean }) {
+  const c = isVeg ? '#16a34a' : '#dc2626';
+  return (
+    <span
+      className="inline-flex w-3.5 h-3.5 items-center justify-center rounded-[3px] border-[1.5px] flex-shrink-0"
+      style={{ borderColor: c }}
+      role="img"
+      aria-label={isVeg ? 'Vegetarian' : 'Non-vegetarian'}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c }} />
+    </span>
+  );
+}
+
+function Pin() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
+/** Paper-slip look: dashed tear line with notches on both sides. Needs `overflow-hidden relative` parent. */
+function TearLine() {
+  return (
+    <div className="relative h-0 my-1" aria-hidden="true">
+      <div className="border-t border-dashed" style={{ borderColor: 'var(--border)' }} />
+      {(['-left-2', '-right-2'] as const).map((side) => (
+        <span
+          key={side}
+          className={`absolute ${side} -top-2 w-4 h-4 rounded-full border`}
+          style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+const outlineBtn = 'text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors active:scale-95 disabled:opacity-40';
+
 // ─── Menu item rows with Add buttons (same cart rules as the menu page) ──────
 function ItemRow({ item }: { item: UiMenuItem }) {
   const dispatch = useAppDispatch();
@@ -128,19 +172,17 @@ function ItemRow({ item }: { item: UiMenuItem }) {
 
   function add() {
     if (blocked) {
-      toast.error(item.storeOpen ? 'App orders are paused for this shop ⏸️' : 'Sorry, this shop is currently closed 🚫');
+      toast.error(item.storeOpen ? 'App orders are paused for this shop' : 'This shop is closed right now');
       return;
     }
     if (cart.length > 0 && cart[0].canteen_id !== item.storeId) {
-      toast.error('You can only add items from the same canteen 🍽️');
+      toast.error('Your cart has items from another canteen. Clear it first to order from here.');
       return;
     }
     if (cartItem) {
       dispatch(increase_item({ id: item.id, portionSize: portion }));
     } else {
-      dispatch(
-        add_item({ id: item.id, item_name: item.name, price, qty: 1, canteen_id: item.storeId, portionSize: portion }),
-      );
+      dispatch(add_item({ id: item.id, item_name: item.name, price, qty: 1, canteen_id: item.storeId, portionSize: portion }));
     }
   }
 
@@ -149,74 +191,59 @@ function ItemRow({ item }: { item: UiMenuItem }) {
   }
 
   return (
-    <div className="px-3 py-2.5 border-t first:border-t-0" style={{ borderColor: 'var(--border)' }}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-bold leading-tight">
-            <span className="mr-1">{item.isVeg ? '🟢' : '🔴'}</span>
-            {item.name}
-          </p>
-          <p className="text-[10px] mt-0.5 font-medium" style={mutedStyle}>
-            {item.storeName}
-            {item.category ? ` · ${item.category}` : ''}
-            {item.rating > 0 ? ` · ⭐ ${item.rating.toFixed(1)}` : ''}
-            {item.timesOrdered ? ` · ordered ${item.timesOrdered}×` : ''}
-          </p>
+    <div className="flex items-start gap-3 px-3.5 py-3 border-t first:border-t-0" style={{ borderColor: 'var(--border)' }}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <VegMark isVeg={item.isVeg} />
+          <p className="text-[13px] font-semibold leading-snug truncate">{item.name}</p>
         </div>
-        <span className="text-sm font-black whitespace-nowrap" style={{ color: ORANGE }}>
-          ₹{price}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 mt-2">
+        <p className="text-xs mt-1 flex items-center gap-x-2.5 gap-y-0.5 flex-wrap" style={mutedStyle}>
+          <span className="truncate max-w-[9rem]">{item.storeName}</span>
+          {item.rating > 0 && (
+            <span className="inline-flex items-center gap-0.5">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" aria-hidden="true"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.7 7.4L12 18l-6.6 4 1.7-7.4-5.6-5 7.5-.7z" /></svg>
+              {item.rating.toFixed(1)}
+            </span>
+          )}
+          {item.timesOrdered ? <span>You ordered {item.timesOrdered} {item.timesOrdered === 1 ? 'time' : 'times'}</span> : null}
+        </p>
         {item.hasHalf && item.halfPrice ? (
-          <div className="flex rounded-lg p-0.5 gap-0.5 border" style={{ borderColor: 'var(--border)' }}>
+          <div className="inline-flex mt-2 rounded-full p-0.5 border" style={{ borderColor: 'var(--border)' }} role="group" aria-label="Portion size">
             {(['full', 'half'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPortion(p)}
-                className="px-2 py-0.5 rounded-md text-[10px] font-black transition-all"
-                style={
-                  portion === p ? { background: ORANGE, color: 'white' } : { color: 'var(--text-muted)' }
-                }
+                aria-pressed={portion === p}
+                className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
+                style={portion === p ? { background: BRAND, color: 'white' } : { color: 'var(--text-muted)' }}
               >
-                {p === 'full' ? `Full ₹${item.price}` : `Half ₹${item.halfPrice}`}
+                {p === 'full' ? 'Full' : 'Half'}
               </button>
             ))}
           </div>
-        ) : (
-          <span />
-        )}
+        ) : null}
+      </div>
 
+      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+        <span className="text-sm font-bold" style={nums}>₹{price}</span>
         {blocked ? (
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-600">{blocked}</span>
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(107,114,128,0.15)', color: 'var(--text-muted)' }}>
+            {blocked}
+          </span>
         ) : qty === 0 ? (
           <button
             onClick={add}
-            className="text-[11px] font-black px-3 py-1 rounded-lg text-white active:scale-95 transition-transform"
-            style={{ background: ORANGE }}
+            aria-label={`Add ${item.name}`}
+            className="min-w-[4.25rem] text-xs font-bold px-3 py-1.5 rounded-lg border-[1.5px] transition-colors hover:bg-orange-500/10 active:scale-95"
+            style={{ borderColor: BRAND, color: BRAND }}
           >
-            + Add
+            Add
           </button>
         ) : (
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={remove}
-              className="w-6 h-6 rounded-md border font-bold flex items-center justify-center"
-              style={{ borderColor: 'var(--border)' }}
-              aria-label={`Remove one ${item.name}`}
-            >
-              −
-            </button>
-            <span className="text-xs font-black w-4 text-center">{qty}</span>
-            <button
-              onClick={add}
-              className="w-6 h-6 rounded-md text-white font-bold flex items-center justify-center"
-              style={{ background: ORANGE }}
-              aria-label={`Add one more ${item.name}`}
-            >
-              +
-            </button>
+          <div className="flex items-center rounded-lg overflow-hidden text-white" style={{ background: BRAND }}>
+            <button onClick={remove} className="w-7 h-7 text-base font-bold leading-none active:bg-black/10" aria-label={`Remove one ${item.name}`}>−</button>
+            <span className="w-5 text-center text-xs font-bold" style={nums} aria-live="polite">{qty}</span>
+            <button onClick={add} className="w-7 h-7 text-base font-bold leading-none active:bg-black/10" aria-label={`Add one more ${item.name}`}>+</button>
           </div>
         )}
       </div>
@@ -237,30 +264,32 @@ function MenuItemsBlock({
 }) {
   const cartCount = useAppSelector((s) => s.Cart.items.reduce((n, i) => n + i.qty, 0));
   return (
-    <div className="rounded-2xl border overflow-hidden shadow-sm" style={cardStyle}>
-      {title && (
-        <div className="px-3 py-2 text-[11px] font-black uppercase tracking-wide" style={{ background: 'rgba(249,115,22,0.10)', color: '#ea580c' }}>
-          {title}
-        </div>
-      )}
-      {items.map((it) => (
-        <ItemRow key={it.id} item={it} />
-      ))}
-      {(hiddenCount ?? 0) > 0 && (
-        <p className="px-3 py-2 text-[10px] font-medium border-t" style={{ ...mutedStyle, borderColor: 'var(--border)' }}>
-          +{hiddenCount} more. Ask me to narrow it down (veg, budget, canteen).
-        </p>
-      )}
-      {cartCount > 0 && (
-        <button
-          onClick={onViewCart}
-          className="w-full text-[11px] font-black py-2 border-t text-center"
-          style={{ borderColor: 'var(--border)', color: '#ea580c' }}
-        >
-          🛒 View cart ({cartCount} item{cartCount !== 1 ? 's' : ''})
-        </button>
-      )}
-    </div>
+    <section aria-label={title || 'Menu items'}>
+      {title && <h3 className="text-[13px] font-semibold mb-1.5 px-0.5">{title}</h3>}
+      <div className="rounded-xl border overflow-hidden" style={cardStyle}>
+        {items.map((it) => (
+          <ItemRow key={it.id} item={it} />
+        ))}
+        {(hiddenCount ?? 0) > 0 && (
+          <p className="px-3.5 py-2.5 text-xs border-t" style={{ ...mutedStyle, borderColor: 'var(--border)' }}>
+            {hiddenCount} more not shown. Ask for veg only, a budget or one canteen to narrow it down.
+          </p>
+        )}
+        {cartCount > 0 && (
+          <button
+            onClick={onViewCart}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-white active:brightness-95"
+            style={{ background: BRAND }}
+          >
+            <span>{cartCount} {cartCount === 1 ? 'item' : 'items'} in your cart</span>
+            <span className="inline-flex items-center gap-1">
+              View cart
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </span>
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -275,39 +304,38 @@ function StoresBlock({
   onOpenStore: (id: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border overflow-hidden shadow-sm" style={cardStyle}>
+    <div className="rounded-xl border overflow-hidden" style={cardStyle}>
       {stores.map((s) => (
-        <div key={s.id} className="px-3 py-2.5 border-t first:border-t-0" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-bold">{s.name}</p>
+        <div key={s.id} className="px-3.5 py-3 border-t first:border-t-0" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold leading-snug">{s.name}</p>
+              <p className="text-xs mt-1 flex items-center gap-1" style={mutedStyle}>
+                <Pin />
+                <span className="truncate">{s.location || 'On campus'}</span>
+              </p>
+            </div>
             <span
-              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                s.orderableNow ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-              }`}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold flex-shrink-0 mt-0.5"
+              style={{ color: s.orderableNow ? '#16a34a' : 'var(--text-muted)' }}
             >
-              {s.orderableNow ? 'OPEN NOW' : 'NOT TAKING ORDERS'}
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.orderableNow ? '#16a34a' : '#9ca3af' }} />
+              {s.orderableNow ? 'Taking orders' : 'Not taking orders'}
             </span>
           </div>
-          <p className="text-[10px] mt-0.5 font-medium" style={mutedStyle}>
-            {s.location}
-            {s.openTime && s.closeTime ? ` · ${s.openTime}–${s.closeTime}` : ''}
-            {s.foodType ? ` · ${s.foodType}` : ''}
-            {s.nightDelivery ? ' · 🌙 night delivery' : ''}
+
+          <p className="text-xs mt-1.5" style={mutedStyle}>
+            {s.openTime && s.closeTime ? `Open ${s.openTime} to ${s.closeTime}` : 'Hours not listed'}
+            {s.foodType ? `, ${s.foodType}` : ''}
+            {s.nightDelivery ? '. Night delivery available' : ''}
           </p>
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={() => onAsk(`Show the menu of ${s.name}`)}
-              className="text-[11px] font-black px-2.5 py-1 rounded-lg border"
-              style={{ borderColor: ORANGE, color: '#ea580c' }}
-            >
-              Menu in chat
+
+          <div className="flex items-center gap-2 mt-2.5">
+            <button onClick={() => onAsk(`Show the menu of ${s.name}`)} className={outlineBtn} style={{ borderColor: BRAND, color: BRAND }}>
+              See menu here
             </button>
-            <button
-              onClick={() => onOpenStore(s.id)}
-              className="text-[11px] font-black px-2.5 py-1 rounded-lg text-white"
-              style={{ background: ORANGE }}
-            >
-              Open shop page
+            <button onClick={() => onOpenStore(s.id)} className="text-xs font-semibold px-2 py-1.5 underline underline-offset-2" style={mutedStyle}>
+              Shop page
             </button>
           </div>
         </div>
@@ -316,7 +344,7 @@ function StoresBlock({
   );
 }
 
-// ─── Live order tracker ──────────────────────────────────────────────────────
+// ─── Live order tracker (a token slip) ───────────────────────────────────────
 const STEPS = ['Placed', 'Preparing', 'Ready', 'Picked up'];
 const ACTIVE_STATUSES = new Set(['payment_pending', 'pending', 'accepted', 'preparing', 'ready']);
 
@@ -333,6 +361,28 @@ function stepIndex(status: string): number {
       return 3;
     default:
       return -1;
+  }
+}
+
+function statusHeadline(status: string): { text: string; color: string } {
+  switch (status) {
+    case 'pending':
+      return { text: 'Waiting for the canteen to accept', color: '#d97706' };
+    case 'accepted':
+    case 'preparing':
+      return { text: 'Being prepared', color: BRAND };
+    case 'ready':
+      return { text: 'Ready. Show your QR at the counter', color: '#16a34a' };
+    case 'delivered':
+      return { text: 'Picked up. Enjoy your meal', color: '#16a34a' };
+    case 'cancelled':
+      return { text: 'Cancelled', color: '#dc2626' };
+    case 'rejected':
+      return { text: 'Declined by the canteen', color: '#dc2626' };
+    case 'payment_pending':
+      return { text: 'Payment not completed', color: '#d97706' };
+    default:
+      return { text: status, color: 'var(--text-muted)' };
   }
 }
 
@@ -384,98 +434,102 @@ function OrderCard({ order: initial, onViewOrders }: { order: UiOrder; onViewOrd
     }
   }
 
+  // The QR opens below the fold in a scrolling chat, so bring it into view once it loads.
+  const qrRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (qr) qrRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [qr]);
+
   const idx = stepIndex(order.status);
-  const cancelled = order.status === 'cancelled';
+  const stopped = order.status === 'cancelled' || order.status === 'rejected';
   const awaitingPayment = order.status === 'payment_pending';
+  const headline = statusHeadline(order.status);
 
   return (
-    <div className="rounded-2xl border px-3 py-3 shadow-sm" style={cardStyle}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-black">
-            Order #{order.orderNumber} <span style={mutedStyle}>· {order.storeName}</span>
-          </p>
-          <p className="text-[10px] mt-0.5 font-medium line-clamp-2" style={mutedStyle}>
-            {order.items}
-          </p>
+    <div className="relative rounded-xl border overflow-hidden" style={cardStyle}>
+      <div className="flex items-stretch">
+        <div className="px-3.5 py-3 flex flex-col justify-center items-center border-r border-dashed min-w-[4.5rem]" style={{ borderColor: 'var(--border)' }}>
+          <span className="text-xs" style={mutedStyle}>Token</span>
+          <span className="text-2xl font-bold leading-none mt-0.5" style={nums}>{order.orderNumber}</span>
         </div>
-        <span className="text-sm font-black whitespace-nowrap" style={{ color: ORANGE }}>
-          ₹{order.totalAmount}
-        </span>
+        <div className="px-3.5 py-3 min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[13px] font-semibold truncate">{order.storeName}</p>
+            <span className="text-sm font-bold flex-shrink-0" style={nums}>₹{order.totalAmount}</span>
+          </div>
+          <p className="text-xs mt-0.5 line-clamp-2" style={mutedStyle}>{order.items}</p>
+        </div>
       </div>
 
-      {cancelled ? (
-        <p className="mt-2 text-[11px] font-black text-red-600">❌ This order was cancelled</p>
-      ) : awaitingPayment ? (
-        <div className="mt-2">
-          <p className="text-[11px] font-black text-yellow-600">⏳ Payment pending</p>
-          <button onClick={onViewOrders} className="mt-1 text-[11px] font-black underline" style={{ color: '#ea580c' }}>
-            Complete it in My Orders
+      <TearLine />
+
+      <div className="px-3.5 pt-2 pb-3">
+        <p className="text-[13px] font-semibold" style={{ color: headline.color }} aria-live="polite">
+          {headline.text}
+        </p>
+
+        {awaitingPayment ? (
+          <button onClick={onViewOrders} className="mt-1.5 text-xs font-semibold underline underline-offset-2" style={{ color: BRAND }}>
+            Finish payment in My Orders
           </button>
-        </div>
-      ) : (
-        <div className="mt-3">
-          <div className="flex items-center">
-            {STEPS.map((label, i) => (
-              <div key={label} className="flex items-center flex-1 last:flex-none">
-                <div
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white flex-shrink-0"
-                  style={{ background: i <= idx ? ORANGE : 'var(--border)' }}
-                >
-                  {i <= idx ? '✓' : ''}
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className="h-0.5 flex-1 mx-1" style={{ background: i < idx ? ORANGE : 'var(--border)' }} />
-                )}
+        ) : !stopped ? (
+          <ol className="mt-3 flex items-start" aria-label="Order progress">
+            {STEPS.map((label, i) => {
+              const done = i < idx || (i === idx && idx === 3);
+              const current = i === idx && idx < 3;
+              return (
+                <li key={label} className={`flex flex-col ${i < STEPS.length - 1 ? 'flex-1' : ''}`} aria-current={current ? 'step' : undefined}>
+                  <div className="flex items-center">
+                    <span className="relative flex w-4 h-4 flex-shrink-0">
+                      {current && <span className="absolute inset-0 rounded-full motion-safe:animate-ping opacity-40" style={{ background: BRAND }} />}
+                      <span
+                        className="relative w-4 h-4 rounded-full flex items-center justify-center border-2"
+                        style={{
+                          background: done ? BRAND : current ? 'var(--surface)' : 'transparent',
+                          borderColor: done || current ? BRAND : 'var(--border)',
+                        }}
+                      >
+                        {done && (
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+                        )}
+                        {current && <span className="w-1.5 h-1.5 rounded-full" style={{ background: BRAND }} />}
+                      </span>
+                    </span>
+                    {i < STEPS.length - 1 && <span className="h-0.5 flex-1 mx-1 rounded" style={{ background: i < idx ? BRAND : 'var(--border)' }} />}
+                  </div>
+                  <span className="text-[11px] mt-1 font-medium whitespace-nowrap" style={{ color: i <= idx ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        ) : null}
+
+        {order.status === 'ready' && (
+          <div className="mt-3">
+            {qr ? (
+              <div ref={qrRef} className="flex flex-col items-center gap-1.5 py-1">
+                <img src={qr} alt="Pickup QR code" className="w-40 h-40 rounded-lg bg-white p-1.5 border" style={{ borderColor: 'var(--border)' }} />
+                <p className="text-xs" style={mutedStyle}>Show this at the counter</p>
               </div>
-            ))}
+            ) : (
+              <button onClick={showQr} disabled={busy} className="w-full text-xs font-bold py-2 rounded-lg text-white disabled:opacity-50 active:scale-[0.98]" style={{ background: BRAND }}>
+                {busy ? 'Loading QR…' : 'Show pickup QR'}
+              </button>
+            )}
           </div>
-          <div className="flex justify-between mt-1">
-            {STEPS.map((label, i) => (
-              <span
-                key={label}
-                className="text-[9px] font-bold"
-                style={{ color: i <= idx ? '#ea580c' : 'var(--text-muted)' }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
 
-      {order.status === 'ready' && (
-        <div className="mt-3">
-          {qr ? (
-            <div className="flex flex-col items-center gap-1">
-              <img src={qr} alt="Pickup QR code" className="w-40 h-40 rounded-lg bg-white p-1" />
-              <p className="text-[10px] font-medium" style={mutedStyle}>
-                Show this at the counter
-              </p>
-            </div>
-          ) : (
-            <button
-              onClick={showQr}
-              disabled={busy}
-              className="w-full text-[11px] font-black py-1.5 rounded-lg text-white disabled:opacity-50"
-              style={{ background: ORANGE }}
-            >
-              📱 Show pickup QR
+        {ACTIVE_STATUSES.has(order.status) && (
+          <div className="mt-2.5 flex items-center justify-between">
+            <span className="text-[11px]" style={mutedStyle}>Updates automatically</span>
+            <button onClick={() => refresh(true)} disabled={busy} className="text-[11px] font-semibold underline underline-offset-2 disabled:opacity-50" style={mutedStyle}>
+              {busy ? 'Checking…' : 'Check now'}
             </button>
-          )}
-        </div>
-      )}
-
-      {ACTIVE_STATUSES.has(order.status) && (
-        <button
-          onClick={() => refresh(true)}
-          disabled={busy}
-          className="mt-2 text-[10px] font-bold underline disabled:opacity-50"
-          style={mutedStyle}
-        >
-          {busy ? 'Refreshing…' : 'Refresh status'}
-        </button>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -490,7 +544,7 @@ function OrdersBlock({ orders, onViewOrders }: { orders: UiOrder[]; onViewOrders
   );
 }
 
-// ─── Order draft: nothing is placed until the student taps a button ──────────
+// ─── Order draft (a receipt): nothing is placed until the student taps a button ─
 function DraftCard({
   draft,
   onViewCart,
@@ -603,103 +657,130 @@ function DraftCard({
 
   if (discarded) {
     return (
-      <div className="rounded-2xl border px-3 py-2 text-[11px] font-medium" style={{ ...cardStyle, ...mutedStyle }}>
-        Draft discarded.
+      <div className="rounded-xl border px-3.5 py-2.5 text-xs" style={{ ...cardStyle, ...mutedStyle }}>
+        Draft discarded. Ask me whenever you want to order again.
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="rounded-2xl border overflow-hidden shadow-sm" style={cardStyle}>
-        <div className="px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(249,115,22,0.10)' }}>
-          <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#ea580c' }}>
-            Order draft · {draft.storeName}
-          </span>
-          <span className="text-[10px] font-bold" style={mutedStyle}>
-            not placed yet
+      <div className="relative rounded-xl border overflow-hidden" style={cardStyle}>
+        <div className="px-3.5 pt-3 pb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-[13px] font-semibold">Your order</h3>
+            <p className="text-xs mt-0.5 truncate" style={mutedStyle}>{draft.storeName}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold flex-shrink-0 mt-0.5" style={{ color: placed ? '#16a34a' : '#d97706' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: placed ? '#16a34a' : '#d97706' }} />
+            {placed ? 'Placed' : 'Not placed yet'}
           </span>
         </div>
 
-        <div className="px-3 py-2 space-y-1">
+        <ul className="px-3.5 pb-2 space-y-1.5">
           {draft.items.map((i) => (
-            <div key={`${i.menuItemId}-${i.portionSize}`} className="flex justify-between text-xs font-medium">
-              <span>
-                {i.isVeg === false ? '🔴' : '🟢'} {i.name}
-                {i.portionSize === 'half' ? ' (half)' : ''} × {i.quantity}
+            <li key={`${i.menuItemId}-${i.portionSize}`} className="flex items-baseline gap-2 text-[13px]">
+              <span className="self-center"><VegMark isVeg={i.isVeg !== false} /></span>
+              <span className="min-w-0">
+                {i.name}
+                {i.portionSize === 'half' ? ' (half)' : ''}
+                <span style={mutedStyle}> × {i.quantity}</span>
               </span>
-              <span className="font-bold">₹{i.price * i.quantity}</span>
-            </div>
+              <span className="flex-1 border-b border-dotted translate-y-[-3px] opacity-60" style={{ borderColor: 'var(--text-muted)' }} aria-hidden="true" />
+              <span className="font-medium" style={nums}>₹{i.price * i.quantity}</span>
+            </li>
           ))}
-        </div>
+        </ul>
 
         {draft.canPlace && draft.nightDeliveryAvailable && !placed && (
-          <label className="px-3 pb-2 flex items-center gap-2 text-[11px] font-bold cursor-pointer" style={mutedStyle}>
-            <input type="checkbox" checked={night} onChange={(e) => setNight(e.target.checked)} />
-            🌙 Night delivery (+₹{draft.nightDeliveryCharge})
-          </label>
+          <div className="px-3.5 pb-2">
+            <button
+              role="switch"
+              aria-checked={night}
+              onClick={() => setNight((v) => !v)}
+              className="w-full flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <span className="text-xs">
+                <span className="font-semibold">Night delivery</span>
+                <span style={mutedStyle}> adds ₹{draft.nightDeliveryCharge}</span>
+              </span>
+              <span className="relative w-9 h-5 rounded-full flex-shrink-0 transition-colors" style={{ background: night ? BRAND : '#9ca3af' }}>
+                <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: night ? '18px' : '2px' }} />
+              </span>
+            </button>
+          </div>
         )}
 
-        <div className="px-3 py-2 border-t flex justify-between items-center" style={{ borderColor: 'var(--border)' }}>
-          <span className="text-xs font-black">Total</span>
-          <span className="text-base font-black" style={{ color: ORANGE }}>
-            ₹{total}
-          </span>
+        <TearLine />
+
+        <div className="px-3.5 pt-2 pb-3 space-y-1">
+          {charge > 0 && (
+            <div className="flex justify-between text-xs" style={mutedStyle}>
+              <span>Items</span>
+              <span style={nums}>₹{draft.subtotal}</span>
+            </div>
+          )}
+          {charge > 0 && (
+            <div className="flex justify-between text-xs" style={mutedStyle}>
+              <span>Night delivery</span>
+              <span style={nums}>₹{charge}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-baseline">
+            <span className="text-[13px] font-semibold">Total</span>
+            <span className="text-lg font-bold" style={nums}>₹{total}</span>
+          </div>
         </div>
 
         {draft.issues.length > 0 && (
-          <div className="px-3 py-2 border-t bg-red-50 text-red-700 text-[11px] font-bold space-y-0.5" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-3.5 py-2.5 border-t text-xs font-medium space-y-0.5 text-red-700 dark:text-red-300" style={{ borderColor: 'var(--border)', background: 'rgba(239,68,68,0.10)' }} role="alert">
             {draft.issues.map((m, i) => (
-              <p key={i}>⚠️ {m}</p>
+              <p key={i}>{m}</p>
             ))}
           </div>
         )}
         {draft.notes.length > 0 && (
-          <div className="px-3 py-2 border-t bg-yellow-50 text-yellow-800 text-[11px] font-medium space-y-0.5" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-3.5 py-2.5 border-t text-xs space-y-0.5 text-amber-800 dark:text-amber-200" style={{ borderColor: 'var(--border)', background: 'rgba(245,158,11,0.12)' }}>
             {draft.notes.map((m, i) => (
-              <p key={i}>ℹ️ {m}</p>
+              <p key={i}>{m}</p>
             ))}
           </div>
         )}
         {expired && !placed && (
-          <p className="px-3 py-2 border-t text-[11px] font-bold text-yellow-700" style={{ borderColor: 'var(--border)' }}>
-            This draft is more than 10 minutes old. Ask me again for fresh prices.
+          <p className="px-3.5 py-2.5 border-t text-xs font-medium text-amber-800 dark:text-amber-200" style={{ borderColor: 'var(--border)', background: 'rgba(245,158,11,0.12)' }}>
+            This draft is over 10 minutes old. Ask me again to get current prices.
           </p>
         )}
 
         {!placed && (
-          <div className="p-3 border-t space-y-2" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-3.5 pb-3.5 pt-3 border-t space-y-2" style={{ borderColor: 'var(--border)' }}>
             <button
               onClick={() => placeOrder('cash')}
               disabled={locked}
-              className="w-full text-xs font-black py-2 rounded-xl text-white disabled:opacity-40 active:scale-[0.98] transition-transform"
-              style={{ background: ORANGE }}
+              className="w-full text-[13px] font-bold py-2.5 rounded-lg text-white disabled:opacity-40 active:scale-[0.98] transition-transform"
+              style={{ background: BRAND }}
             >
-              {placing ? '⏳ Placing…' : `✅ Confirm · Pay at counter ₹${total}`}
+              {placing ? 'Placing order…' : `Place order, pay at counter ₹${total}`}
             </button>
             <button
               onClick={() => placeOrder('online')}
               disabled={locked}
-              className="w-full text-xs font-black py-2 rounded-xl border-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
-              style={{ borderColor: ORANGE, color: '#ea580c' }}
+              className="w-full text-[13px] font-bold py-2.5 rounded-lg border-[1.5px] disabled:opacity-40 active:scale-[0.98] transition-transform"
+              style={{ borderColor: BRAND, color: BRAND }}
             >
-              💳 Pay online ₹{total}
+              Pay online ₹{total}
             </button>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-center gap-4 pt-0.5">
               <button
                 onClick={addedToCart ? onViewCart : addToCart}
                 disabled={!draft.canPlace || expired || placing}
-                className="flex-1 text-[11px] font-black py-1.5 rounded-lg border disabled:opacity-40"
-                style={{ borderColor: 'var(--border)' }}
+                className="text-xs font-semibold underline underline-offset-2 disabled:opacity-40"
+                style={{ color: 'var(--text-main)' }}
               >
-                {addedToCart ? '🛒 View cart' : '🛒 Add to cart'}
+                {addedToCart ? 'View cart' : 'Add to cart instead'}
               </button>
-              <button
-                onClick={() => setDiscarded(true)}
-                disabled={placing}
-                className="flex-1 text-[11px] font-black py-1.5 rounded-lg border disabled:opacity-40"
-                style={{ borderColor: 'var(--border)', ...mutedStyle }}
-              >
+              <button onClick={() => setDiscarded(true)} disabled={placing} className="text-xs font-semibold underline underline-offset-2 disabled:opacity-40" style={mutedStyle}>
                 Discard
               </button>
             </div>
@@ -709,7 +790,9 @@ function DraftCard({
 
       {placed && (
         <>
-          <p className="text-[11px] font-black text-green-600 px-1">✅ Order #{placed.orderNumber} placed. Track it here:</p>
+          <p className="text-xs font-semibold px-0.5" style={{ color: '#16a34a' }}>
+            Order {placed.orderNumber} placed. Track it here.
+          </p>
           <OrderCard order={placed} onViewOrders={onViewOrders} />
         </>
       )}

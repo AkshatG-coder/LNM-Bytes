@@ -63,20 +63,20 @@ export type OwnerUiBlock =
     | { type: 'store'; store: OwnerUiStore };
 
 // ─── Shared bits ─────────────────────────────────────────────────────────────
-const ACCENT = '#8b5cf6';
+const ACCENT = '#4f46e5';
 
 const cardStyle: React.CSSProperties = {
     backgroundColor: 'var(--color-surface)',
     borderColor: 'var(--color-border)',
     color: 'var(--color-text-main)',
 };
-
 const mutedStyle: React.CSSProperties = { color: 'var(--color-text-muted)' };
+const nums: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
+const divider: React.CSSProperties = { borderColor: 'var(--color-border)' };
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
-const errorMessage = (err: any, fallback: string) =>
-    err?.response?.data?.message || err?.message || fallback;
+const errorMessage = (err: any, fallback: string) => err?.response?.data?.message || err?.message || fallback;
 
 /** The backend sometimes answers errors with HTTP 200 and an error-shaped body, so check the body too. */
 function assertOk(res: { data?: any }) {
@@ -87,34 +87,58 @@ function assertOk(res: { data?: any }) {
     return res;
 }
 
-function BlockTitle({ children }: { children: React.ReactNode }) {
+function Heading({ children, count }: { children: React.ReactNode; count?: number }) {
     return (
-        <p className="text-[11px] font-black uppercase tracking-wide mb-1.5" style={mutedStyle}>
+        <h3 className="text-[13px] font-semibold mb-1.5 px-0.5">
             {children}
-        </p>
+            {count !== undefined && (
+                <span className="font-normal" style={mutedStyle}> ({count})</span>
+            )}
+        </h3>
     );
 }
 
-function minutesAgo(iso?: string): string {
-    if (!iso) return '';
-    const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins} min ago`;
-    const hrs = Math.floor(mins / 60);
-    return hrs < 24 ? `${hrs} h ago` : `${Math.floor(hrs / 24)} d ago`;
+function Dot({ className }: { className: string }) {
+    return <span className={`inline-block w-1.5 h-1.5 rounded-full ${className}`} />;
 }
 
-const STATUS_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
-    pending: { label: 'New', bg: 'rgba(245,158,11,0.15)', fg: '#b45309' },
-    preparing: { label: 'Preparing', bg: 'rgba(99,102,241,0.15)', fg: '#4f46e5' },
-    ready: { label: 'Ready', bg: 'rgba(16,185,129,0.15)', fg: '#047857' },
-    delivered: { label: 'Delivered', bg: 'rgba(16,185,129,0.15)', fg: '#047857' },
-    cancelled: { label: 'Cancelled', bg: 'rgba(244,63,94,0.15)', fg: '#be123c' },
-    rejected: { label: 'Rejected', bg: 'rgba(244,63,94,0.15)', fg: '#be123c' },
-    payment_pending: { label: 'Unpaid', bg: 'rgba(107,114,128,0.15)', fg: '#4b5563' },
+function VegMark({ isVeg }: { isVeg: boolean }) {
+    const c = isVeg ? '#16a34a' : '#dc2626';
+    return (
+        <span
+            className="inline-flex w-3.5 h-3.5 items-center justify-center rounded-[3px] border-[1.5px] flex-shrink-0"
+            style={{ borderColor: c }}
+            role="img"
+            aria-label={isVeg ? 'Vegetarian' : 'Non-vegetarian'}
+        >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: c }} />
+        </span>
+    );
+}
+
+function waitMinutes(iso?: string): number | null {
+    if (!iso) return null;
+    return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+}
+
+function ago(mins: number): string {
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    return h < 24 ? `${h} h ${mins % 60} min` : `${Math.floor(h / 24)} d`;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+    pending: 'New order',
+    preparing: 'Preparing',
+    ready: 'Ready for pickup',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+    rejected: 'Rejected',
+    payment_pending: 'Unpaid',
 };
 
-// ─── Orders ──────────────────────────────────────────────────────────────────
+// ─── Orders: a ticket rail. The left edge shows how long a ticket has waited. ─
 function OrderRow({ order }: { order: OwnerUiOrder }) {
     // Status is tracked locally so the buttons react straight after a successful action.
     const [status, setStatus] = useState(order.status);
@@ -131,212 +155,231 @@ function OrderRow({ order }: { order: OwnerUiOrder }) {
             setStatus(next);
             setConfirmReject(false);
         } catch (err: any) {
-            setError(errorMessage(err, 'Could not update this order. Please try again.'));
+            setError(errorMessage(err, 'Could not update this order. Try again.'));
         } finally {
             setBusy(false);
         }
     };
 
-    const st = STATUS_STYLE[status] ?? { label: status, bg: 'rgba(107,114,128,0.15)', fg: '#4b5563' };
-    const btn = 'text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all active:scale-95 disabled:opacity-40';
+    const inQueue = status === 'pending' || status === 'preparing';
+    const mins = inQueue ? waitMinutes(order.placedAt) : null;
+    const level = mins === null ? 'ok' : mins >= 15 ? 'late' : mins >= 8 ? 'slow' : 'ok';
+    const edge = !inQueue
+        ? status === 'ready'
+            ? '#16a34a'
+            : 'var(--color-border)'
+        : level === 'late'
+            ? '#dc2626'
+            : level === 'slow'
+                ? '#f59e0b'
+                : ACCENT;
+
+    const btn = 'text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors active:scale-95 disabled:opacity-40';
 
     return (
-        <div className="rounded-xl border p-2.5" style={cardStyle}>
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-black">#{order.orderNumber} · {order.userName}</p>
-                <span
-                    className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: st.bg, color: st.fg }}
-                >
-                    {st.label}
-                </span>
-            </div>
-            <p className="text-[11px] font-medium mt-1 break-words">{order.items}</p>
-            <p className="text-[11px] mt-1" style={mutedStyle}>
-                {inr(order.totalAmount)} · {order.paymentType === 'online' ? 'Online' : 'Cash'}
-                {order.deliveryType ? ` · ${order.deliveryType}` : ''}
-                {order.placedAt ? ` · ${minutesAgo(order.placedAt)}` : ''}
-            </p>
-
-            {(status === 'pending' || status === 'preparing') && (
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    {status === 'pending' && (
-                        <button
-                            disabled={busy}
-                            onClick={() => act('accept', 'preparing')}
-                            className={`${btn} text-white`}
-                            style={{ backgroundColor: '#10b981' }}
-                        >
-                            Accept
-                        </button>
-                    )}
-                    {status === 'preparing' && (
-                        <button
-                            disabled={busy}
-                            onClick={() => act('ready', 'ready')}
-                            className={`${btn} text-white`}
-                            style={{ backgroundColor: ACCENT }}
-                        >
-                            Mark ready
-                        </button>
-                    )}
-                    {!confirmReject ? (
-                        <button
-                            disabled={busy}
-                            onClick={() => setConfirmReject(true)}
-                            className={`${btn} border`}
-                            style={{ borderColor: '#f43f5e', color: '#f43f5e' }}
-                        >
-                            Reject
-                        </button>
-                    ) : (
-                        <>
-                            <span className="text-[11px] font-bold" style={{ color: '#f43f5e' }}>
-                                Reject and notify student?
-                            </span>
-                            <button
-                                disabled={busy}
-                                onClick={() => act('reject', 'rejected')}
-                                className={`${btn} text-white`}
-                                style={{ backgroundColor: '#f43f5e' }}
-                            >
-                                Yes, reject
-                            </button>
-                            <button
-                                disabled={busy}
-                                onClick={() => setConfirmReject(false)}
-                                className={`${btn} border`}
-                                style={{ borderColor: 'var(--color-border)' }}
-                            >
-                                Keep
-                            </button>
-                        </>
-                    )}
+        <article className="rounded-xl border overflow-hidden flex" style={cardStyle} aria-label={`Order ${order.orderNumber}`}>
+            <span className="w-1 flex-shrink-0" style={{ background: edge }} aria-hidden="true" />
+            <div className="flex-1 min-w-0 px-3.5 py-3">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[13px] font-semibold truncate">
+                            #{order.orderNumber} <span className="font-normal" style={mutedStyle}>{order.userName}</span>
+                        </p>
+                        <p className="text-xs mt-0.5" style={mutedStyle}>
+                            {STATUS_LABEL[status] ?? status}
+                            {mins !== null && (
+                                <span
+                                    className={`font-semibold ${level === 'late' ? 'text-red-600 dark:text-red-400' : level === 'slow' ? 'text-amber-600 dark:text-amber-400' : ''}`}
+                                >
+                                    {' '}
+                                    {mins < 1 ? 'just in' : status === 'pending' ? `waiting ${ago(mins)}` : `for ${ago(mins)}`}
+                                </span>
+                            )}
+                        </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold" style={nums}>{inr(order.totalAmount)}</p>
+                        <p className="text-xs" style={mutedStyle}>{order.paymentType === 'online' ? 'Paid online' : 'Cash'}</p>
+                    </div>
                 </div>
-            )}
-            {status === 'ready' && (
-                <p className="text-[11px] font-bold mt-2" style={{ color: '#047857' }}>
-                    Ready for pickup. The student's QR code confirms collection.
-                </p>
-            )}
-            {error && (
-                <p className="text-[11px] font-semibold mt-1.5" style={{ color: '#f43f5e' }}>
-                    {error}
-                </p>
-            )}
-        </div>
+
+                <p className="text-[13px] mt-2 break-words">{order.items}</p>
+                {order.deliveryType && order.deliveryType !== 'pickup' && (
+                    <p className="text-xs mt-1 font-medium text-indigo-600 dark:text-indigo-300">Night delivery</p>
+                )}
+
+                {inQueue && (
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                        {status === 'pending' && (
+                            <button disabled={busy} onClick={() => act('accept', 'preparing')} className={`${btn} text-white`} style={{ background: '#16a34a' }}>
+                                {busy ? 'Accepting…' : 'Accept'}
+                            </button>
+                        )}
+                        {status === 'preparing' && (
+                            <button disabled={busy} onClick={() => act('ready', 'ready')} className={`${btn} text-white`} style={{ background: ACCENT }}>
+                                {busy ? 'Updating…' : 'Mark ready'}
+                            </button>
+                        )}
+                        {!confirmReject ? (
+                            <button
+                                disabled={busy}
+                                onClick={() => setConfirmReject(true)}
+                                className={`${btn} border text-red-600 dark:text-red-400`}
+                                style={{ borderColor: 'currentColor' }}
+                            >
+                                Reject
+                            </button>
+                        ) : (
+                            <div className="flex flex-wrap items-center gap-2 w-full rounded-lg px-3 py-2" style={{ background: 'rgba(239,68,68,0.10)' }} role="alert">
+                                <span className="text-xs font-medium text-red-700 dark:text-red-300 flex-1 min-w-[10rem]">
+                                    Reject this order? The student is notified{order.paymentType === 'online' ? ' and refunded' : ''}.
+                                </span>
+                                <button disabled={busy} onClick={() => act('reject', 'rejected')} className={`${btn} text-white`} style={{ background: '#dc2626' }}>
+                                    {busy ? 'Rejecting…' : 'Reject order'}
+                                </button>
+                                <button disabled={busy} onClick={() => setConfirmReject(false)} className={`${btn} border`} style={divider}>
+                                    Keep
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {status === 'ready' && (
+                    <p className="text-xs font-medium mt-2.5 text-emerald-700 dark:text-emerald-400">
+                        Ready. The student's QR code confirms pickup.
+                    </p>
+                )}
+                {error && (
+                    <p className="text-xs font-medium mt-2 text-red-600 dark:text-red-400" role="alert">
+                        {error}
+                    </p>
+                )}
+            </div>
+        </article>
     );
 }
 
 function OrdersBlock({ title, orders, hiddenCount }: { title: string; orders: OwnerUiOrder[]; hiddenCount: number }) {
     return (
-        <div className="space-y-1.5">
-            <BlockTitle>{title} ({orders.length + hiddenCount})</BlockTitle>
-            {orders.map((o) => (
-                <OrderRow key={o.id} order={o} />
-            ))}
+        <section aria-label={title}>
+            <Heading count={orders.length + hiddenCount}>{title}</Heading>
+            <div className="space-y-2">
+                {orders.map((o) => (
+                    <OrderRow key={o.id} order={o} />
+                ))}
+            </div>
             {hiddenCount > 0 && (
-                <p className="text-[11px] font-semibold" style={mutedStyle}>
-                    +{hiddenCount} more, see the Orders page.
+                <p className="text-xs mt-2 px-0.5" style={mutedStyle}>
+                    {hiddenCount} more not shown. Open the Orders page to see all of them.
                 </p>
             )}
-        </div>
+        </section>
     );
 }
 
-// ─── Sales ───────────────────────────────────────────────────────────────────
-function Kpi({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-lg border px-2.5 py-2" style={cardStyle}>
-            <p className="text-[10px] font-bold uppercase" style={mutedStyle}>{label}</p>
-            <p className="text-base font-black leading-tight">{value}</p>
-        </div>
-    );
-}
-
+// ─── Sales: one card, led by the revenue number ──────────────────────────────
 function SalesBlock({ sales }: { sales: SalesSummary }) {
-    const maxRevenue = Math.max(1, ...sales.perDay.map((d) => d.revenue));
+    const days = sales.perDay;
+    const maxRevenue = Math.max(1, ...days.map((d) => d.revenue));
+    const best = days.reduce((a, d) => (d.revenue > a.revenue ? d : a), days[0]);
+    const showAllLabels = days.length <= 10;
     const totalPay = sales.cashOrders + sales.onlineOrders;
     const onlinePct = totalPay > 0 ? Math.round((sales.onlineOrders / totalPay) * 100) : 0;
     const maxQty = Math.max(1, ...sales.topItems.map((t) => t.qty));
 
     return (
-        <div className="space-y-2">
-            <BlockTitle>Sales · {sales.periodLabel}</BlockTitle>
-            <div className="grid grid-cols-2 gap-1.5">
-                <Kpi label="Revenue" value={inr(sales.totalRevenue)} />
-                <Kpi label="Orders" value={String(sales.totalOrders)} />
-                <Kpi label="Avg order" value={inr(sales.avgOrderValue)} />
-                <Kpi label="In kitchen" value={String(sales.activeOrders)} />
+        <section aria-label={`Sales, ${sales.periodLabel}`} className="rounded-xl border overflow-hidden" style={cardStyle}>
+            <div className="px-4 pt-3.5 pb-3">
+                <p className="text-xs" style={mutedStyle}>{sales.periodLabel}</p>
+                <p className="text-[30px] leading-tight font-bold mt-0.5" style={nums}>{inr(sales.totalRevenue)}</p>
+                <dl className="grid grid-cols-3 mt-3 text-center">
+                    {[
+                        ['Orders', String(sales.totalOrders)],
+                        ['Average order', inr(sales.avgOrderValue)],
+                        ['In kitchen now', String(sales.activeOrders)],
+                    ].map(([label, value], i) => (
+                        <div key={label} className={`px-1 ${i > 0 ? 'border-l' : ''}`} style={divider}>
+                            <dd className="text-[15px] font-semibold" style={nums}>{value}</dd>
+                            <dt className="text-[11px]" style={mutedStyle}>{label}</dt>
+                        </div>
+                    ))}
+                </dl>
             </div>
 
-            {sales.perDay.length > 1 && (
-                <div className="rounded-xl border p-2.5" style={cardStyle}>
-                    <p className="text-[10px] font-bold uppercase mb-1.5" style={mutedStyle}>Revenue per day</p>
-                    <div className="flex items-end gap-1 h-20" role="img" aria-label="Revenue per day bar chart">
-                        {sales.perDay.map((d) => (
-                            <div key={d.date} className="flex-1 flex flex-col items-center justify-end h-full min-w-0">
-                                <div
-                                    title={`${d.label} ${d.date}: ${inr(d.revenue)} from ${d.orders} orders`}
-                                    className="w-full rounded-t"
-                                    style={{
-                                        height: `${Math.max(d.revenue > 0 ? 6 : 2, (d.revenue / maxRevenue) * 100)}%`,
-                                        backgroundColor: d.revenue > 0 ? ACCENT : 'var(--color-border)',
-                                    }}
-                                />
-                            </div>
+            {days.length > 1 && (
+                <div className="px-4 py-3 border-t" style={divider}>
+                    <p className="text-xs mb-2" style={mutedStyle}>
+                        Revenue per day
+                        {best.revenue > 0 && (
+                            <span>
+                                , best was {best.label} at <span className="font-semibold" style={{ color: 'var(--color-text-main)' }}>{inr(best.revenue)}</span>
+                            </span>
+                        )}
+                    </p>
+                    <div className="flex items-end gap-1 h-20" role="img" aria-label={`Revenue per day: ${days.map((d) => `${d.label} ${inr(d.revenue)}`).join(', ')}`}>
+                        {days.map((d, i) => {
+                            const isLast = i === days.length - 1;
+                            return (
+                                <div key={d.date} className="flex-1 min-w-0 h-full flex items-end" title={`${d.label} ${d.date}: ${inr(d.revenue)} from ${d.orders} orders`}>
+                                    <div
+                                        className="w-full rounded-t-[3px]"
+                                        style={{
+                                            height: `${Math.max(d.revenue > 0 ? 6 : 2, (d.revenue / maxRevenue) * 100)}%`,
+                                            background: d.revenue === 0 ? 'var(--color-border)' : ACCENT,
+                                            opacity: d.revenue === 0 ? 1 : isLast ? 1 : 0.4,
+                                        }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex gap-1 mt-1">
+                        {days.map((d, i) => (
+                            <span key={d.date} className="flex-1 min-w-0 text-center text-[10px] truncate" style={mutedStyle}>
+                                {showAllLabels || i === 0 || i === days.length - 1 ? d.label : ''}
+                            </span>
                         ))}
                     </div>
-                    {sales.perDay.length <= 10 && (
-                        <div className="flex gap-1 mt-1">
-                            {sales.perDay.map((d) => (
-                                <span key={d.date} className="flex-1 text-center text-[9px] font-bold truncate" style={mutedStyle}>
-                                    {d.label}
-                                </span>
-                            ))}
-                        </div>
-                    )}
                 </div>
             )}
 
             {totalPay > 0 && (
-                <div className="rounded-xl border p-2.5" style={cardStyle}>
-                    <div className="flex justify-between text-[10px] font-bold uppercase mb-1" style={mutedStyle}>
-                        <span>Online {sales.onlineOrders}</span>
-                        <span>Cash {sales.cashOrders}</span>
+                <div className="px-4 py-3 border-t" style={divider}>
+                    <div className="h-2 rounded-full overflow-hidden flex" style={{ background: 'var(--color-border)' }} role="img" aria-label={`${onlinePct}% online, ${100 - onlinePct}% cash`}>
+                        <div style={{ width: `${onlinePct}%`, background: ACCENT }} />
                     </div>
-                    <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border)' }}>
-                        <div className="h-full" style={{ width: `${onlinePct}%`, backgroundColor: ACCENT }} />
+                    <div className="flex justify-between mt-1.5 text-xs" style={mutedStyle}>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: ACCENT }} />Online {sales.onlineOrders} ({onlinePct}%)</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: 'var(--color-border)' }} />Cash {sales.cashOrders} ({100 - onlinePct}%)</span>
                     </div>
                 </div>
             )}
 
             {sales.topItems.length > 0 && (
-                <div className="rounded-xl border p-2.5 space-y-1.5" style={cardStyle}>
-                    <p className="text-[10px] font-bold uppercase" style={mutedStyle}>Top items</p>
-                    {sales.topItems.map((t) => (
-                        <div key={t.name}>
-                            <div className="flex justify-between text-[11px] font-semibold">
-                                <span className="truncate pr-2">{t.name}</span>
-                                <span>{t.qty}</span>
-                            </div>
-                            <div className="h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
-                                <div
-                                    className="h-full rounded-full"
-                                    style={{ width: `${(t.qty / maxQty) * 100}%`, backgroundColor: ACCENT }}
-                                />
-                            </div>
-                        </div>
-                    ))}
+                <div className="px-4 py-3 border-t" style={divider}>
+                    <p className="text-xs mb-2" style={mutedStyle}>Top sellers</p>
+                    <ul className="space-y-2">
+                        {sales.topItems.map((t) => (
+                            <li key={t.name}>
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="truncate pr-3">{t.name}</span>
+                                    <span className="font-semibold" style={nums}>{t.qty}</span>
+                                </div>
+                                <div className="h-1 rounded-full mt-1" style={{ background: 'var(--color-border)' }}>
+                                    <div className="h-full rounded-full" style={{ width: `${(t.qty / maxQty) * 100}%`, background: ACCENT }} />
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
-            {sales.totalOrders === 0 && (
-                <p className="text-[11px] font-semibold" style={mutedStyle}>No completed sales in this period yet.</p>
-            )}
-            <p className="text-[10px]" style={mutedStyle}>
-                Excludes cancelled and unpaid orders. Days follow India time.
+
+            <p className="px-4 py-2.5 border-t text-[11px]" style={{ ...divider, ...mutedStyle }}>
+                {sales.totalOrders === 0 ? 'No sales in this period yet. ' : ''}
+                Cancelled and unpaid orders are not counted. Days follow India time.
             </p>
-        </div>
+        </section>
     );
 }
 
@@ -362,42 +405,34 @@ function MenuRow({ item }: { item: OwnerUiMenuItem }) {
     };
 
     return (
-        <div className="rounded-xl border px-2.5 py-2" style={cardStyle}>
-            <div className="flex items-center gap-2">
-                <span
-                    className="w-3 h-3 rounded-sm border-2 flex-shrink-0 flex items-center justify-center"
-                    style={{ borderColor: item.isVeg ? '#16a34a' : '#dc2626' }}
-                    title={item.isVeg ? 'Veg' : 'Non-veg'}
-                >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.isVeg ? '#16a34a' : '#dc2626' }} />
-                </span>
+        <div className="px-3.5 py-2.5 border-t first:border-t-0" style={divider}>
+            <div className="flex items-center gap-3">
+                <VegMark isVeg={item.isVeg} />
                 <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{item.name}</p>
-                    <p className="text-[11px]" style={mutedStyle}>
-                        {inr(item.price)}
-                        {item.halfPrice ? ` · half ${inr(item.halfPrice)}` : ''} · {item.category}
+                    <p className={`text-[13px] font-semibold truncate ${available ? '' : 'opacity-60'}`}>{item.name}</p>
+                    <p className="text-xs" style={mutedStyle}>
+                        <span style={nums}>{inr(item.price)}</span>
+                        {item.halfPrice ? <span style={nums}>, half {inr(item.halfPrice)}</span> : null}
+                        {item.category ? `, ${item.category}` : ''}
                     </p>
                 </div>
+                <span className="text-xs font-medium flex-shrink-0" style={available ? { color: 'var(--color-text-muted)' } : undefined}>
+                    {available ? 'In stock' : <span className="text-amber-600 dark:text-amber-400">Out of stock</span>}
+                </span>
                 <button
                     role="switch"
                     aria-checked={available}
-                    aria-label={`${item.name} availability`}
+                    aria-label={`${item.name} in stock`}
                     disabled={busy}
                     onClick={toggle}
-                    className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50"
-                    style={{ backgroundColor: available ? '#10b981' : '#9ca3af' }}
+                    className="relative w-10 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+                    style={{ background: available ? '#16a34a' : '#9ca3af', outlineColor: ACCENT }}
                 >
-                    <span
-                        className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-                        style={{ left: available ? '22px' : '2px' }}
-                    />
+                    <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all" style={{ left: available ? '18px' : '2px' }} />
                 </button>
             </div>
-            <p className="text-[10px] font-bold mt-1" style={{ color: available ? '#047857' : '#6b7280' }}>
-                {available ? 'Available' : 'Out of stock'}
-            </p>
             {error && (
-                <p className="text-[11px] font-semibold mt-1" style={{ color: '#f43f5e' }}>
+                <p className="text-xs font-medium mt-1.5 text-red-600 dark:text-red-400" role="alert">
                     {error}
                 </p>
             )}
@@ -407,17 +442,19 @@ function MenuRow({ item }: { item: OwnerUiMenuItem }) {
 
 function MenuBlock({ title, items, hiddenCount }: { title: string; items: OwnerUiMenuItem[]; hiddenCount: number }) {
     return (
-        <div className="space-y-1.5">
-            <BlockTitle>{title} ({items.length + hiddenCount})</BlockTitle>
-            {items.map((i) => (
-                <MenuRow key={i.id} item={i} />
-            ))}
-            {hiddenCount > 0 && (
-                <p className="text-[11px] font-semibold" style={mutedStyle}>
-                    +{hiddenCount} more. Ask me for a specific item, or use the Menu page.
-                </p>
-            )}
-        </div>
+        <section aria-label={title}>
+            <Heading count={items.length + hiddenCount}>{title}</Heading>
+            <div className="rounded-xl border overflow-hidden" style={cardStyle}>
+                {items.map((i) => (
+                    <MenuRow key={i.id} item={i} />
+                ))}
+                {hiddenCount > 0 && (
+                    <p className="px-3.5 py-2.5 text-xs border-t" style={{ ...divider, ...mutedStyle }}>
+                        {hiddenCount} more not shown. Ask for a specific item by name, or use the Menu page.
+                    </p>
+                )}
+            </div>
+        </section>
     );
 }
 
@@ -449,48 +486,47 @@ function StoreBlock({ store }: { store: OwnerUiStore }) {
     };
 
     return (
-        <div className="rounded-xl border p-3" style={cardStyle}>
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-black truncate">{store.name}</p>
-                <span
-                    className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={{
-                        backgroundColor: isOpen ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-                        color: isOpen ? '#047857' : '#be123c',
-                    }}
-                >
-                    {isOpen ? 'OPEN' : 'CLOSED'}
+        <section aria-label="Store status" className="rounded-xl border px-4 py-3.5" style={cardStyle}>
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-[13px] font-semibold truncate">{store.name}</p>
+                    <p className="text-xs mt-0.5" style={mutedStyle}>
+                        {store.openTime && store.closeTime ? `Open ${store.openTime} to ${store.closeTime}` : 'Hours not set'}
+                        {store.location ? `, ${store.location}` : ''}
+                    </p>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 text-sm font-semibold flex-shrink-0 ${isOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <Dot className={isOpen ? 'bg-emerald-600' : 'bg-red-500'} />
+                    {isOpen ? 'Open' : 'Closed'}
                 </span>
             </div>
-            <p className="text-[11px] mt-1" style={mutedStyle}>
-                {store.openTime && store.closeTime ? `${store.openTime} – ${store.closeTime}` : 'Hours not set'}
-                {store.location ? ` · ${store.location}` : ''}
-            </p>
-            <p className="text-[11px]" style={mutedStyle}>
-                Night delivery: {store.nightDelivery ? 'on' : 'off'} · Online orders:{' '}
-                {store.isOnlineOrderAvailable ? 'on' : 'off'}
-            </p>
+
+            <ul className="mt-2.5 space-y-1 text-xs" style={mutedStyle}>
+                <li>Night delivery is {store.nightDelivery ? 'on' : 'off'}</li>
+                <li>Online orders are {store.isOnlineOrderAvailable ? 'on' : 'paused'}</li>
+            </ul>
+
             <button
                 disabled={busy}
                 onClick={() => setOpen(!isOpen)}
-                className="mt-2 text-[11px] font-bold px-3 py-1.5 rounded-lg text-white transition-all active:scale-95 disabled:opacity-40"
-                style={{ backgroundColor: isOpen ? '#f43f5e' : '#10b981' }}
+                className={`mt-3 text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors active:scale-95 disabled:opacity-40 ${isOpen ? 'border text-red-600 dark:text-red-400' : 'text-white'}`}
+                style={isOpen ? { borderColor: 'currentColor' } : { background: '#16a34a' }}
             >
                 {busy ? 'Updating…' : isOpen ? 'Close store' : 'Open store'}
             </button>
             {error && (
-                <p className="text-[11px] font-semibold mt-1.5" style={{ color: '#f43f5e' }}>
+                <p className="text-xs font-medium mt-2 text-red-600 dark:text-red-400" role="alert">
                     {error}
                 </p>
             )}
-        </div>
+        </section>
     );
 }
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 export function BlocksView({ blocks }: { blocks: OwnerUiBlock[] }) {
     return (
-        <div className="space-y-3 max-w-[95%]">
+        <div className="space-y-3 w-full">
             {blocks.map((b, i) => {
                 switch (b.type) {
                     case 'orders':
