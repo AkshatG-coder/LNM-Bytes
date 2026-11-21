@@ -3,6 +3,7 @@ import api from '../hooks/api';
 import { BlocksView } from './CopilotCards';
 import type { OwnerUiBlock } from './CopilotCards';
 import ChatText from './ChatText';
+import VoiceInput from './VoiceInput';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -56,6 +57,8 @@ export default function CopilotChat() {
     const [messages, setMessages] = useState<Message[]>([GREETING]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [listening, setListening] = useState(false);
+    const [voiceError, setVoiceError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -269,6 +272,9 @@ export default function CopilotChat() {
                     )}
 
                     {/* Input */}
+                    {voiceError && (
+                        <p role="status" className="px-4 pt-1 text-xs text-red-500 flex-shrink-0">{voiceError}</p>
+                    )}
                     <div className="px-3.5 pt-2 pb-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                         <div
                             className="flex items-center gap-2 rounded-xl border pl-4 pr-2 py-2 focus-within:ring-2 focus-within:ring-indigo-500/50"
@@ -280,12 +286,13 @@ export default function CopilotChat() {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                placeholder="Ask about orders, sales or menu"
+                                placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about orders, sales or menu"}
                                 aria-label="Message Copilot"
                                 disabled={loading}
                                 className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"
                                 style={{ color: 'var(--color-text-main)' }}
                             />
+                            <VoiceInput value={input} onChange={setInput} disabled={loading} accent={ACCENT} onListening={setListening} onError={setVoiceError} />
                             <button
                                 onClick={() => sendMessage()}
                                 disabled={!input.trim() || loading}

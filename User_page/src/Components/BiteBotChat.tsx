@@ -5,6 +5,7 @@ import api from '../Util/api';
 import { BlocksView, blocksToHistoryNote } from './BiteBotCards';
 import type { UiBlock } from './BiteBotCards';
 import ChatText from './ChatText';
+import VoiceInput from './VoiceInput';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -49,6 +50,8 @@ export default function BiteBotChat() {
   const [messages, setMessages] = useState<Message[]>(() => [greeting(userName)]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -278,6 +281,9 @@ export default function BiteBotChat() {
           )}
 
           {/* Input */}
+          {voiceError && (
+            <p role="status" className="px-4 pt-1 text-xs text-red-500 flex-shrink-0">{voiceError}</p>
+          )}
           <div className="px-3.5 pt-2 pb-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div
               className="flex items-center gap-2 rounded-xl border pl-4 pr-2 py-2 focus-within:ring-2 focus-within:ring-orange-500/50"
@@ -289,12 +295,13 @@ export default function BiteBotChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about food, canteens or orders"
+                placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about food, canteens or orders"}
                 aria-label="Message BiteBot"
                 disabled={loading}
                 className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"
                 style={{ color: 'var(--text-main)' }}
               />
+              <VoiceInput value={input} onChange={setInput} disabled={loading} accent={BRAND} onListening={setListening} onError={setVoiceError} />
               <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || loading}
