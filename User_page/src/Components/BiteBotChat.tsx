@@ -42,6 +42,7 @@ function Icon({ d, size = 18 }: { d: string; size?: number }) {
 
 export default function BiteBotChat() {
   const [isOpen, setIsOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const isAuthenticated = useSelector((s: RootState) => s.User.isAuthenticated);
   const userName = useSelector((s: RootState) => s.User.user?.name);
 
@@ -147,7 +148,7 @@ export default function BiteBotChat() {
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close BiteBot' : 'Open BiteBot, your food assistant'}
         aria-expanded={isOpen}
-        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         style={{ background: BRAND, outlineColor: BRAND }}
       >
         {isOpen ? (
@@ -164,12 +165,12 @@ export default function BiteBotChat() {
         <div
           role="dialog"
           aria-label="BiteBot chat"
-          className="fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 sm:w-[400px] sm:h-[min(660px,calc(100vh-7rem))] flex flex-col overflow-hidden sm:rounded-2xl sm:border shadow-2xl"
+          className={`fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 ${expanded ? 'sm:w-[min(780px,calc(100vw-3rem))] sm:h-[calc(100vh-7rem)]' : 'sm:w-[460px] sm:h-[min(740px,calc(100vh-7rem))]'} flex flex-col overflow-hidden sm:rounded-2xl sm:border shadow-2xl`}
           style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ background: BRAND }}>
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M3 11h18a9 9 0 0 1-18 0z" />
                 <path d="M8 7c0-1.5 1-2 1-3.5M12 7c0-1.5 1-2 1-3.5M16 7c0-1.5 1-2 1-3.5" />
@@ -187,14 +188,23 @@ export default function BiteBotChat() {
               disabled={loading || messages.length <= 1}
               aria-label="Start a new chat"
               title="New chat"
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               <Icon d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" size={16} />
             </button>
+
+          <button
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? 'Make the chat smaller' : 'Make the chat larger'}
+              title={expanded ? 'Smaller' : 'Larger'}
+              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+              <Icon d={expanded ? 'M9 4v5H4M15 20v-5h5M4 9l6-6M20 15l-6 6' : 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7'} size={16} />
+          </button>
             <button
               onClick={() => setIsOpen(false)}
               aria-label="Close chat"
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               <Icon d="M6 18L18 6M6 6l12 12" size={18} />
             </button>
@@ -206,10 +216,10 @@ export default function BiteBotChat() {
               <div key={i} className="space-y-2">
                 <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[88%] px-3.5 py-2.5 text-[13.5px] leading-relaxed motion-safe:animate-fade-in ${
+                    className={`max-w-[88%] px-3.5 py-2.5 text-[14px] leading-relaxed motion-safe:animate-fade-in ${
                       msg.role === 'user'
-                        ? 'text-white rounded-2xl rounded-br-md'
-                        : 'rounded-2xl rounded-bl-md border'
+                        ? 'text-white rounded-xl rounded-br-sm'
+                        : 'rounded-xl rounded-bl-sm border'
                     }`}
                     style={
                       msg.role === 'user'
@@ -241,7 +251,7 @@ export default function BiteBotChat() {
 
             {loading && (
               <div className="flex justify-start" aria-label="BiteBot is typing">
-                <div className="px-4 py-3 rounded-2xl rounded-bl-md border flex items-center gap-1.5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <div className="px-4 py-3 rounded-xl rounded-bl-sm border flex items-center gap-1.5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
                   {[0, 150, 300].map((d) => (
                     <span key={d} className="w-1.5 h-1.5 rounded-full motion-safe:animate-bounce" style={{ background: BRAND, animationDelay: `${d}ms` }} />
                   ))}
@@ -258,7 +268,7 @@ export default function BiteBotChat() {
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors active:scale-95 hover:bg-orange-500/10"
+                  className="flex-shrink-0 text-[13px] font-medium px-3.5 py-2 rounded-lg border transition-colors active:scale-95 hover:bg-orange-500/10"
                   style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)', color: 'var(--text-main)' }}
                 >
                   {s}
@@ -270,7 +280,7 @@ export default function BiteBotChat() {
           {/* Input */}
           <div className="px-3.5 pt-2 pb-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div
-              className="flex items-center gap-2 rounded-full border pl-4 pr-1.5 py-1.5 focus-within:ring-2 focus-within:ring-orange-500/50"
+              className="flex items-center gap-2 rounded-xl border pl-4 pr-2 py-2 focus-within:ring-2 focus-within:ring-orange-500/50"
               style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
             >
               <input
@@ -282,14 +292,14 @@ export default function BiteBotChat() {
                 placeholder="Ask about food, canteens or orders"
                 aria-label="Message BiteBot"
                 disabled={loading}
-                className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-gray-400 disabled:opacity-60"
+                className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"
                 style={{ color: 'var(--text-main)' }}
               />
               <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || loading}
                 aria-label="Send message"
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0"
                 style={{ background: BRAND }}
               >
                 <Icon d="M5 12h14M13 6l6 6-6 6" size={18} />

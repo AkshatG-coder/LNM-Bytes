@@ -208,13 +208,13 @@ function ItemRow({ item }: { item: UiMenuItem }) {
           {item.timesOrdered ? <span>You ordered {item.timesOrdered} {item.timesOrdered === 1 ? 'time' : 'times'}</span> : null}
         </p>
         {item.hasHalf && item.halfPrice ? (
-          <div className="inline-flex mt-2 rounded-full p-0.5 border" style={{ borderColor: 'var(--border)' }} role="group" aria-label="Portion size">
+          <div className="inline-flex mt-2 rounded-lg p-0.5 border" style={{ borderColor: 'var(--border)' }} role="group" aria-label="Portion size">
             {(['full', 'half'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPortion(p)}
                 aria-pressed={portion === p}
-                className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
+                className="px-3 py-1 rounded-md text-xs font-semibold transition-colors"
                 style={portion === p ? { background: BRAND, color: 'white' } : { color: 'var(--text-muted)' }}
               >
                 {p === 'full' ? 'Full' : 'Half'}
@@ -227,7 +227,7 @@ function ItemRow({ item }: { item: UiMenuItem }) {
       <div className="flex flex-col items-end gap-2 flex-shrink-0">
         <span className="text-sm font-bold" style={nums}>₹{price}</span>
         {blocked ? (
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(107,114,128,0.15)', color: 'var(--text-muted)' }}>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-md" style={{ background: 'rgba(107,114,128,0.15)', color: 'var(--text-muted)' }}>
             {blocked}
           </span>
         ) : qty === 0 ? (
