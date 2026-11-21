@@ -6,6 +6,7 @@ import { add_item, clear_all_item } from '../Util/CartReducer'
 import api from '../Util/api'
 import { rejectionLine, announceOrdersChanged } from '../Util/orderText'
 import toast from 'react-hot-toast'
+import RateOrder from './RateOrder'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered' | 'payment_pending'
 
@@ -30,6 +31,7 @@ interface Order {
   orderNote?: string
   rejectionReason?: string | null
   rejectionNote?: string
+  rating?: number | null
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: string; bg: string; step: number; fill: string; border: string }> = {
@@ -263,6 +265,7 @@ const OrderCard = memo(function OrderCard({
       {order.status === 'delivered' && (
         <div className="mt-3 p-3 rounded-xl bg-purple-900/10 border border-purple-700/20 text-center">
           <p className="text-purple-400 font-bold text-sm">✅ Picked up successfully. Enjoy your meal!</p>
+          <RateOrder orderId={order._id} rating={order.rating} />
         </div>
       )}
 

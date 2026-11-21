@@ -18,3 +18,18 @@ export const ORDERS_CHANGED_EVENT = 'lnm:orders-changed'
 export function announceOrdersChanged(): void {
   window.dispatchEvent(new Event(ORDERS_CHANGED_EVENT))
 }
+
+/** Sends the student's rating. Returns true when it is saved (an earlier rating also counts). */
+export async function sendOrderRating(
+  post: (url: string, body: unknown) => Promise<{ data?: { success?: boolean } }>,
+  orderId: string,
+  stars: number,
+): Promise<boolean> {
+  try {
+    const res = await post(`/order/${orderId}/rate`, { stars })
+    return res.data?.success === true
+  } catch (e) {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    return status === 409 // already rated
+  }
+}

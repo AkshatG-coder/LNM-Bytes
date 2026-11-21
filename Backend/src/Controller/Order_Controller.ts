@@ -14,6 +14,9 @@ import { Store } from "../Models/Store.model";
 import axios from "axios";
 import { parseRejectReason, rejectionMessage } from "../utils/rejectReasons";
 import { pushOrderEvent } from "../utils/pushService";
+import { parseStars, addRatingPipeline } from "../utils/ratingHelpers";
+import { MenuItemModel } from "../Models/Menu_Item.model";
+import appCache from "../utils/cache";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
@@ -588,6 +591,43 @@ const RejectOrder = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Order rejected and refund processed", order));
 });
 
+// ─── Rate an order after pickup ──────────────────────────────────────────────
+// One tap from the student. Counts once per order and feeds each item's star rating.
+const RateOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    if (!mongoose.isValidObjectId(orderId)) return fail(res, 400, "Invalid order id");
+
+    const parsed = parseStars(req.body);
+    if (!parsed.ok) return fail(res, 400, parsed.error);
+
+    const userId = String((req as any).user.userId);
+
+    // The condition makes this atomic: only a delivered, unrated order of this student matches.
+    const order = await OrderModel.findOneAndUpdate(
+        { _id: orderId, userId, status: "delivered", rating: null },
+        { rating: parsed.stars, ratedAt: new Date() },
+        { new: true },
+    ).select("items storeId rating orderNumber").lean();
+
+    if (!order) {
+        const existing = await OrderModel.findOne({ _id: orderId, userId }).select("status rating").lean();
+        if (!existing) return fail(res, 404, "Order not found");
+        if (existing.rating) return fail(res, 409, "You have already rated this order");
+        return fail(res, 400, "You can rate an order after you pick it up");
+    }
+
+    const itemIds = Array.from(new Set((order.items || []).map((i: any) => String(i.menuItemId))));
+    try {
+        await MenuItemModel.updateMany({ _id: { $in: itemIds } }, addRatingPipeline(parsed.stars));
+        appCache.del(`menu_${order.storeId}`);
+    } catch (err) {
+        // The student's rating is saved on the order; only the menu average missed this one.
+        logger.error({ err, orderId }, "Could not update item ratings");
+    }
+
+    return res.json(new ApiResponse(200, true, "Thanks for rating your order", { rating: order.rating }));
+});
+
 // ─── Track Order Status ───────────────────────────────────────────────────────
 const TrackOrderStatus = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
@@ -682,4 +722,5 @@ export {
     VerifyOrderQR,
     GetDailySales,
     VerifyPayment,
+    RateOrder,
 };

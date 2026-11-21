@@ -34,6 +34,13 @@ const MenuItemSchema = new Schema(
       max: 5,
     },
 
+    // How many student ratings the average above is made from
+    ratingCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     category: {
       type: String,
       enum: ["snacks", "drinks", "meals", "dessert", "other"],

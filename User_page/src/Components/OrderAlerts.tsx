@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../Util/api'
+import RateOrder from './RateOrder'
 import { useAppSelector } from '../Util/hook'
 import { ORDERS_CHANGED_EVENT, rejectionLine } from '../Util/orderText'
 import {
@@ -18,6 +19,7 @@ interface WatchedOrder {
   status: string
   rejectionReason?: string | null
   rejectionNote?: string
+  rating?: number | null
 }
 
 interface AlertContent {
@@ -171,6 +173,30 @@ export default function OrderAlerts() {
     return () => { document.removeEventListener('visibilitychange', onVisible); stopFlash() }
   }, [stopFlash])
 
+  // One tap after pickup. Skipped on My Orders, where the order card asks the same thing.
+  const askForRating = useCallback((orderId: string, orderNumber?: number) => {
+    const key = `${orderId}:rate`
+    if (told.current.has(key)) return
+    told.current.add(key)
+    if (document.visibilityState !== 'visible' || window.location.pathname === '/orders') return
+    toast.custom((t) => (
+      <div
+        className={`w-[min(92vw,22rem)] rounded-2xl border p-3.5 shadow-xl ${t.visible ? 'animate-fade-in' : 'opacity-0'}`}
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+      >
+        <p className="text-sm font-bold text-center" style={{ color: 'var(--text-main)' }}>
+          Order{numberLabel(orderNumber)} picked up
+        </p>
+        <RateOrder orderId={orderId} onRated={() => window.setTimeout(() => toast.dismiss(t.id), 1800)} />
+        <div className="mt-2 text-center">
+          <button type="button" onClick={() => toast.dismiss(t.id)} className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+            Not now
+          </button>
+        </div>
+      </div>
+    ), { duration: 20000, id: key })
+  }, [])
+
   // ─── Fetching orders and spotting changes ─────────────────────────────────
   const fetchOrders = useCallback(async () => {
     if (!userId) return
@@ -193,12 +219,14 @@ export default function OrderAlerts() {
           void showAlert({ key: `${o._id}:ready`, orderId: o._id, kind: 'ready', title: `Order${n} is ready`, body: 'Show your pickup QR at the counter.' })
         } else if (o.status === 'cancelled' && (o.rejectionReason || o.rejectionNote)) {
           void showAlert({ key: `${o._id}:declined`, orderId: o._id, kind: 'declined', title: `Order${n} was declined`, body: rejectionLine(o) ?? 'The canteen could not take this order.' })
+        } else if (o.status === 'delivered' && !o.rating) {
+          askForRating(o._id, o.orderNumber)
         } else if (o.status === 'preparing') {
           void showAlert({ key: `${o._id}:preparing`, orderId: o._id, kind: 'preparing', title: `Order${n} is being prepared`, body: 'We will let you know when it is ready.' })
         }
       }
     } catch { /* offline or server asleep, try again next time */ }
-  }, [userId, showAlert])
+  }, [userId, showAlert, askForRating])
 
   const fetchRef = useRef(fetchOrders)
   useEffect(() => { fetchRef.current = fetchOrders }, [fetchOrders])
@@ -271,11 +299,14 @@ export default function OrderAlerts() {
             snapshot.current?.set(id, 'cancelled')
             const body = rejectionLine({ rejectionReason: data.reason, rejectionNote: data.note }) ?? 'The canteen could not take this order.'
             void showAlert({ key: `${id}:declined`, orderId: id, kind: 'declined', title: `Order${n} was declined`, body: data.refunded ? `${body}. Your refund has started.` : body })
+          } else if (data.type === 'orderDelivered') {
+            snapshot.current?.set(id, 'delivered')
+            askForRating(id, data.orderNumber)
           } else if (data.type === 'orderPreparing') {
             snapshot.current?.set(id, 'preparing')
             void showAlert({ key: `${id}:preparing`, orderId: id, kind: 'preparing', title: `Order${n} is being prepared`, body: 'We will let you know when it is ready.' })
           }
-          if (data.type === 'orderReady' || data.type === 'orderCancelled' || data.type === 'orderPreparing') void fetchRef.current()
+          if (data.type === 'orderReady' || data.type === 'orderCancelled' || data.type === 'orderPreparing' || data.type === 'orderDelivered') void fetchRef.current()
         } catch { /* not JSON */ }
       }
       const retry = () => {
@@ -297,7 +328,7 @@ export default function OrderAlerts() {
       try { ws?.close() } catch { /* ignore */ }
       setWsUp(false)
     }
-  }, [userId, showAlert])
+  }, [userId, showAlert, askForRating])
 
   // ─── Alert permission and install prompt ──────────────────────────────────
   useEffect(() => {

@@ -14,6 +14,7 @@ import {
     VerifyOrderQR,
     GetDailySales,
     VerifyPayment,
+    RateOrder,
 } from "../Controller/Order_Controller";
 import { verifyUserToken, verifyOwnerToken } from "../middleware/verifyToken";
 
@@ -41,6 +42,7 @@ Order_Router.get("/:orderId/qr",           verifyUserToken, GetOrderQR);      //
 Order_Router.get("/:order_id",             verifyUserToken, GetSingleOrder_Details);
 
 // ─── Status mutations ─────────────────────────────────────────────────────────
+Order_Router.post("/:orderId/rate",          verifyUserToken, RateOrder);       // student rates after pickup
 Order_Router.patch("/cancel/:order_id/:userId", verifyUserToken, CancelOrder);
 Order_Router.patch("/accept/:orderId",          verifyOwnerToken, AcceptOrder);
 Order_Router.patch("/reject/:orderId",          verifyOwnerToken, RejectOrder);

@@ -86,6 +86,10 @@ const OrderSchema = new Schema({
     rejectionReason: { type: String, enum: ["out_of_stock", "too_busy", "closing_soon", "order_issue", "other"], default: null },
     rejectionNote:   { type: String, default: "", maxlength: 120 },
 
+    // ─── Student's one-tap rating after pickup (1 to 5), set once ─────────────
+    rating:  { type: Number, min: 1, max: 5, default: null },
+    ratedAt: { type: Date, default: null },
+
 }, { timestamps: true })
 
 // ─── Performance Indexes ─────────────────────────────────────────────────────
