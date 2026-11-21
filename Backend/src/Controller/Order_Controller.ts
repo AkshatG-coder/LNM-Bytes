@@ -12,6 +12,7 @@ import crypto from "crypto";
 import logger from "../utils/logger";
 import { Store } from "../Models/Store.model";
 import axios from "axios";
+import { parseRejectReason, rejectionMessage } from "../utils/rejectReasons";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
@@ -526,8 +527,14 @@ const RejectOrder = asyncHandler(async (req, res) => {
 
     if (order.status !== "pending") return fail(res, 400, "Only pending orders can be rejected");
 
+    // The reason is optional (older owner apps send none) but must be valid when present
+    const parsedReason = parseRejectReason(req.body);
+    if (!parsedReason.ok) return fail(res, 400, parsedReason.error);
+
     // 1. Mark order as cancelled internally
     order.status = "cancelled";
+    order.rejectionReason = parsedReason.code;
+    order.rejectionNote = parsedReason.note;
 
     // 2. If it was paid online, issue a Cashfree Refund
     if (order.paymentType === "online" && order.paymentStatus === "paid") {
@@ -565,9 +572,10 @@ const RejectOrder = asyncHandler(async (req, res) => {
     emitOrderEvent("ORDER_REJECTED", order, order.userId.toString(), {
         type: "orderCancelled",
         orderId: order._id,
-        message: order.paymentStatus === "refunded" 
-            ? "❌ Sorry, your order was rejected. A full refund has been initiated to your account."
-            : "❌ Sorry, your order was rejected by the canteen.",
+        message: rejectionMessage(parsedReason.code, parsedReason.note, order.paymentStatus === "refunded"),
+        reason: parsedReason.code,
+        note: parsedReason.note,
+        refunded: order.paymentStatus === "refunded",
     });
 
     return res.json(new ApiResponse(200, true, "Order rejected and refund processed", order));
@@ -577,7 +585,7 @@ const RejectOrder = asyncHandler(async (req, res) => {
 const TrackOrderStatus = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const order = await OrderModel.findById(orderId)
-        .select("status paymentStatus paymentType totalAmount orderNumber createdAt updatedAt storeId userName userEmail userPhone items")
+        .select("status paymentStatus paymentType totalAmount orderNumber createdAt updatedAt storeId userName userEmail userPhone items rejectionReason rejectionNote")
         .lean();
     if (!order) return fail(res, 404, "Order not found");
     return res.json(new ApiResponse(200, true, "Order status fetched", order));

@@ -27,6 +27,23 @@ interface Order {
   storeId: string
   storeName?: string // Populated from backend
   orderNote?: string
+  rejectionReason?: string | null
+  rejectionNote?: string
+}
+
+// Keep in sync with Backend/src/utils/rejectReasons.ts
+const REJECT_REASON_TEXT: Record<string, string> = {
+  out_of_stock: 'An item in your order is out of stock',
+  too_busy: 'The kitchen is too busy right now',
+  closing_soon: 'The canteen is closing soon',
+  order_issue: 'There was a problem with the order',
+  other: 'The canteen could not take this order',
+}
+
+function rejectionLine(order: { rejectionReason?: string | null; rejectionNote?: string }): string | null {
+  if (!order.rejectionReason && !order.rejectionNote) return null
+  const base = REJECT_REASON_TEXT[order.rejectionReason ?? 'other'] ?? REJECT_REASON_TEXT.other
+  return order.rejectionNote ? `${base} (${order.rejectionNote})` : base
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: string; bg: string; step: number; fill: string; border: string }> = {
@@ -111,7 +128,10 @@ const OrderCard = memo(function OrderCard({
 }) {
   let cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending
   const isCancelled = order.status === 'cancelled' || order.status === 'payment_pending'
-  const isPaymentFailed = order.status === 'cancelled' && order.paymentStatus === 'failed'
+  const rejection = order.status === 'cancelled' ? rejectionLine(order) : null
+  // A rejected online order whose refund could not start is also stored as payment "failed"
+  const refundFailed = !!rejection && order.paymentType === 'online' && order.paymentStatus === 'failed'
+  const isPaymentFailed = order.status === 'cancelled' && order.paymentStatus === 'failed' && !rejection
 
   if (isPaymentFailed) {
     cfg = { label: 'Payment Failed', icon: '❌', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30', step: 0, fill: 'bg-red-500', border: 'border-red-500' }
@@ -228,8 +248,21 @@ const OrderCard = memo(function OrderCard({
       {order.status === 'cancelled' && (
         <div className={`mt-3 p-3 rounded-xl text-center border ${isPaymentFailed ? 'bg-red-900/10 border-red-700/30' : 'bg-red-900/10 border-red-700/20'}`}>
           <p className="text-red-400 font-bold text-sm">
-            {isPaymentFailed ? 'Payment failed and order was cancelled.' : 'Order cancelled. Contact the canteen if needed.'}
+            {isPaymentFailed
+              ? 'Payment failed and order was cancelled.'
+              : rejection
+                ? 'The canteen could not take this order.'
+                : 'Order cancelled. Contact the canteen if needed.'}
           </p>
+          {rejection && <p className="text-red-300 text-xs mt-1">Reason: {rejection}.</p>}
+          {order.paymentType === 'online' && order.paymentStatus === 'refunded' && (
+            <p className="text-green-400 text-xs mt-1 font-semibold">Your refund has been started.</p>
+          )}
+          {refundFailed && (
+            <p className="text-yellow-400 text-xs mt-1 font-semibold">
+              We could not start your refund automatically. Please contact the canteen.
+            </p>
+          )}
         </div>
       )}
 
@@ -303,7 +336,7 @@ export default function MyOrders() {
     }
   }
 
-  const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus) => {
+  const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus, extra: Partial<Order> = {}) => {
     setOrders(prev => prev.map(o => {
       if (o._id !== orderId) return o
       if (o.status !== newStatus) {
@@ -312,7 +345,7 @@ export default function MyOrders() {
         if (cfg) pushNotification(`LNM Bytes — Order${num}`, `${cfg.icon} ${cfg.label}`)
         prevStatuses.current[o._id] = newStatus
       }
-      return { ...o, status: newStatus }
+      return { ...o, ...extra, status: newStatus }
     }))
   }, [])
 
@@ -397,7 +430,15 @@ export default function MyOrders() {
           }
           const newStatus = statusMap[data.type]
           if (newStatus && data.orderId) {
-            updateOrderStatus(String(data.orderId), newStatus)
+            // A rejection also carries the owner's reason and whether a refund started
+            const extra: Partial<Order> = data.type === 'orderCancelled' && data.reason !== undefined
+              ? {
+                  rejectionReason: data.reason ?? null,
+                  rejectionNote: data.note ?? '',
+                  ...(data.refunded ? { paymentStatus: 'refunded' } : {}),
+                }
+              : {}
+            updateOrderStatus(String(data.orderId), newStatus, extra)
           }
         }
       } catch {

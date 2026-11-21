@@ -6,6 +6,7 @@ import asyncHandler from "../utils/AsyncHandler";
 import logger from "../utils/logger";
 import mongoose from "mongoose";
 import { generateWithFallback, createGeminiRun } from "../utils/geminiClient";
+import { rejectionReasonText } from "../utils/rejectReasons";
 import {
     DeliveryType,
     DraftLineInput,
@@ -242,6 +243,10 @@ function orderToUi(o: any, storeName: string) {
         paymentType: o.paymentType,
         paymentStatus: o.paymentStatus,
         placedAt: o.createdAt ? new Date(o.createdAt).toISOString() : undefined,
+        rejectionText:
+            o.status === "cancelled" && (o.rejectionReason || o.rejectionNote)
+                ? rejectionReasonText(o.rejectionReason ?? null, o.rejectionNote ?? "")
+                : undefined,
     };
 }
 
@@ -402,7 +407,7 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
         case "get_my_orders": {
             const limit = clampInt(args.limit, 1, 10, 5);
             const orders: any[] = await OrderModel.find({ userId: new mongoose.Types.ObjectId(userId) })
-                .select("orderNumber status items totalAmount paymentType paymentStatus createdAt storeId")
+                .select("orderNumber status items totalAmount paymentType paymentStatus createdAt storeId rejectionReason rejectionNote")
                 .sort({ createdAt: -1 })
                 .limit(limit)
                 .lean();
@@ -417,13 +422,14 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
                 paymentType: o.paymentType,
                 storeName: o.storeName,
                 placedAt: o.placedAt,
+                rejectionText: o.rejectionText,
             }));
             return out(forModel, uiOrders.length ? [{ type: "orders", orders: uiOrders }] : []);
         }
 
         case "get_order_status": {
             const order: any = await OrderModel.findOne({ orderNumber: args.orderNumber })
-                .select("orderNumber status items totalAmount paymentType paymentStatus createdAt storeId userId")
+                .select("orderNumber status items totalAmount paymentType paymentStatus createdAt storeId userId rejectionReason rejectionNote")
                 .lean();
 
             if (!order) return out({ error: `Order #${args.orderNumber} not found` });
@@ -454,6 +460,7 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
                     paymentStatus: order.paymentStatus,
                     storeName: ui.storeName,
                     placedAt: order.createdAt,
+                    rejectionText: ui.rejectionText,
                 },
                 [{ type: "orders", orders: [ui] }],
             );

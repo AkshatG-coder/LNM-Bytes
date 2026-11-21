@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import api from '../hooks/api';
+import RejectReasonPicker from './RejectReasonPicker';
+import type { RejectPayload } from './RejectReasonPicker';
 
 // ─── Types (mirror Backend/src/utils/copilotHelpers.ts) ──────────────────────
 export interface OwnerUiOrder {
@@ -146,12 +148,12 @@ function OrderRow({ order }: { order: OwnerUiOrder }) {
     const [error, setError] = useState('');
     const [confirmReject, setConfirmReject] = useState(false);
 
-    const act = async (action: 'accept' | 'reject' | 'ready', next: string) => {
+    const act = async (action: 'accept' | 'reject' | 'ready', next: string, body?: RejectPayload) => {
         if (busy) return;
         setBusy(true);
         setError('');
         try {
-            assertOk(await api.patch(`/order/${action}/${order.id}`));
+            assertOk(await api.patch(`/order/${action}/${order.id}`, body));
             setStatus(next);
             setConfirmReject(false);
         } catch (err: any) {
@@ -220,7 +222,7 @@ function OrderRow({ order }: { order: OwnerUiOrder }) {
                                 {busy ? 'Updating…' : 'Mark ready'}
                             </button>
                         )}
-                        {!confirmReject ? (
+                        {status !== 'pending' ? null : !confirmReject ? (
                             <button
                                 disabled={busy}
                                 onClick={() => setConfirmReject(true)}
@@ -230,17 +232,12 @@ function OrderRow({ order }: { order: OwnerUiOrder }) {
                                 Reject
                             </button>
                         ) : (
-                            <div className="flex flex-wrap items-center gap-2 w-full rounded-lg px-3 py-2" style={{ background: 'rgba(239,68,68,0.10)' }} role="alert">
-                                <span className="text-xs font-medium text-red-700 dark:text-red-300 flex-1 min-w-[10rem]">
-                                    Reject this order? The student is notified{order.paymentType === 'online' ? ' and refunded' : ''}.
-                                </span>
-                                <button disabled={busy} onClick={() => act('reject', 'rejected')} className={`${btn} text-white`} style={{ background: '#dc2626' }}>
-                                    {busy ? 'Rejecting…' : 'Reject order'}
-                                </button>
-                                <button disabled={busy} onClick={() => setConfirmReject(false)} className={`${btn} border`} style={divider}>
-                                    Keep
-                                </button>
-                            </div>
+                            <RejectReasonPicker
+                                paidOnline={order.paymentType === 'online'}
+                                busy={busy}
+                                onCancel={() => setConfirmReject(false)}
+                                onConfirm={(payload) => act('reject', 'rejected', payload)}
+                            />
                         )}
                     </div>
                 )}

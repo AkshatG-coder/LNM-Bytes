@@ -112,9 +112,9 @@ export const useOrders = () => {
     return () => ws.close();
   }, []);
 
-  const callEndpoint = async (action: string, orderId: string) => {
+  const callEndpoint = async (action: string, orderId: string, body?: Record<string, unknown>) => {
     try {
-      await api.patch(`/order/${action}/${orderId}`);
+      await api.patch(`/order/${action}/${orderId}`, body);
       fetchRef.current(true);
     } catch (err) {
       console.error(`Failed to call /order/${action}:`, err);
@@ -122,10 +122,9 @@ export const useOrders = () => {
   };
 
   const acceptOrder = (orderId: string) => callEndpoint("accept", orderId);
-  const rejectOrder = (orderId: string) => {
-    if (window.confirm("Reject this order? The student will be notified."))
-      callEndpoint("reject", orderId);
-  };
+  // The reason picker in the UI is the confirmation step, so there is no window.confirm here.
+  const rejectOrder = (orderId: string, payload?: { reason: string; note?: string }) =>
+    callEndpoint("reject", orderId, payload);
   const markReady = (orderId: string) => callEndpoint("ready", orderId);
 
   return { users, loading, error, wsConnected, acceptOrder, rejectOrder, markReady, refreshOrders: fetchOrders, STORE_ID: getStoreId() };

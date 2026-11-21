@@ -82,6 +82,10 @@ const OrderSchema = new Schema({
     qrVerified:   { type: Boolean, default: false },
     qrVerifiedAt: { type: Date,   default: null },
 
+    // ─── Why the owner rejected the order (shown to the student) ──────────────
+    rejectionReason: { type: String, enum: ["out_of_stock", "too_busy", "closing_soon", "order_issue", "other"], default: null },
+    rejectionNote:   { type: String, default: "", maxlength: 120 },
+
 }, { timestamps: true })
 
 // ─── Performance Indexes ─────────────────────────────────────────────────────

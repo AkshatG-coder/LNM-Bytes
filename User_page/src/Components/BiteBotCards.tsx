@@ -44,6 +44,8 @@ export interface UiOrder {
   paymentType: string;
   paymentStatus?: string;
   placedAt?: string;
+  /** Why the canteen rejected the order, when it did. */
+  rejectionText?: string;
 }
 
 export interface DraftLine {
@@ -364,6 +366,20 @@ function stepIndex(status: string): number {
   }
 }
 
+// Keep in sync with Backend/src/utils/rejectReasons.ts
+const REJECT_TEXT: Record<string, string> = {
+  out_of_stock: 'An item in your order is out of stock',
+  too_busy: 'The kitchen is too busy right now',
+  closing_soon: 'The canteen is closing soon',
+  order_issue: 'There was a problem with the order',
+  other: 'The canteen could not take this order',
+};
+
+function rejectionSentence(code?: string | null, note?: string): string {
+  const base = REJECT_TEXT[code ?? 'other'] ?? REJECT_TEXT.other;
+  return note ? `${base} (${note})` : base;
+}
+
 function statusHeadline(status: string): { text: string; color: string } {
   switch (status) {
     case 'pending':
@@ -398,7 +414,12 @@ function OrderCard({ order: initial, onViewOrders }: { order: UiOrder; onViewOrd
         const { data } = await api.get(`/order/${initial.id}`);
         const o = data?.data;
         if (o?.status) {
-          setOrder((prev) => ({ ...prev, status: o.status, paymentStatus: o.paymentStatus ?? prev.paymentStatus }));
+          setOrder((prev) => ({
+            ...prev,
+            status: o.status,
+            paymentStatus: o.paymentStatus ?? prev.paymentStatus,
+            rejectionText: o.rejectionReason || o.rejectionNote ? rejectionSentence(o.rejectionReason, o.rejectionNote) : prev.rejectionText,
+          }));
         }
       } catch {
         /* keep showing the last known status */
@@ -443,7 +464,10 @@ function OrderCard({ order: initial, onViewOrders }: { order: UiOrder; onViewOrd
   const idx = stepIndex(order.status);
   const stopped = order.status === 'cancelled' || order.status === 'rejected';
   const awaitingPayment = order.status === 'payment_pending';
-  const headline = statusHeadline(order.status);
+  const headline =
+    stopped && order.rejectionText
+      ? { text: 'Declined by the canteen', color: '#dc2626' }
+      : statusHeadline(order.status);
 
   return (
     <div className="relative rounded-xl border overflow-hidden" style={cardStyle}>
@@ -467,6 +491,11 @@ function OrderCard({ order: initial, onViewOrders }: { order: UiOrder; onViewOrd
         <p className="text-[13px] font-semibold" style={{ color: headline.color }} aria-live="polite">
           {headline.text}
         </p>
+        {stopped && order.rejectionText && (
+          <p className="text-xs mt-1" style={mutedStyle}>
+            Reason: {order.rejectionText}.
+          </p>
+        )}
 
         {awaitingPayment ? (
           <button onClick={onViewOrders} className="mt-1.5 text-xs font-semibold underline underline-offset-2" style={{ color: BRAND }}>

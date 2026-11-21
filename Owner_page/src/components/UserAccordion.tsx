@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { type UserData } from '../types';
+import RejectReasonPicker, { type RejectPayload } from './RejectReasonPicker';
 
 interface UserAccordionProps extends UserData {
   onAccept: (orderId: string) => void;
-  onReject: (orderId: string) => void;
+  onReject: (orderId: string, payload?: RejectPayload) => void;
   onReady:  (orderId: string) => void;
   orderNumber?: number;
 }
@@ -23,6 +24,7 @@ const UserAccordion = ({
   onAccept, onReject, onReady,
 }: UserAccordionProps) => {
   const [isOpen, setIsOpen] = useState(status === 'pending');
+  const [rejecting, setRejecting] = useState(false);
 
   const grandTotal = totalAmount ??
     orders.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
@@ -192,10 +194,17 @@ const UserAccordion = ({
 
           {/* Action buttons */}
           <div className="mt-5 flex flex-wrap justify-end gap-3 pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
-            {status === 'pending' && (
+            {status === 'pending' && rejecting && (
+              <RejectReasonPicker
+                paidOnline={paymentType === 'online' && paymentStatus === 'paid'}
+                onCancel={() => setRejecting(false)}
+                onConfirm={payload => { onReject(userId, payload); setRejecting(false); }}
+              />
+            )}
+            {status === 'pending' && !rejecting && (
               <>
                 <button
-                  onClick={e => { e.stopPropagation(); onReject(userId); }}
+                  onClick={e => { e.stopPropagation(); setRejecting(true); }}
                   className="px-4 py-2.5 rounded-xl text-sm font-black text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/30 transition-all"
                 >
                   ❌ Reject

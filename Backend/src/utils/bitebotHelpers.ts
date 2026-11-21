@@ -69,6 +69,8 @@ export interface UiOrder {
     paymentType: string;
     paymentStatus?: string;
     placedAt?: string;
+    /** Sentence explaining why the canteen rejected the order, when it did. */
+    rejectionText?: string;
 }
 
 export interface DraftLine {
