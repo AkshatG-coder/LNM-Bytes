@@ -1,3 +1,4 @@
+import { loadDemandHints } from "./Order_Controller";
 import { GoogleGenAI, Type, FunctionCallingConfigMode } from "@google/genai";
 import { MenuItemModel } from "../Models/Menu_Item.model";
 import { OrderModel } from "../Models/Order_Schema.model";
@@ -138,6 +139,12 @@ const tools: any = [
                     },
                     required: [],
                 },
+            },
+            {
+                name: "get_demand_hints",
+                description:
+                    "What the store usually sells at this time: the average items and order count for the current meal slot and the next one, on this weekday, over the last 8 weeks. Use for 'how much should I prepare', 'kitna banana hai', 'what will be busy today', 'prep for lunch'. Numbers are already rounded averages, not forecasts.",
+                parameters: { type: Type.OBJECT, properties: {}, required: [] },
             },
             {
                 name: "get_store_info",
@@ -391,6 +398,17 @@ async function executeTool(name: string, args: Record<string, any>, storeId: str
                 .limit(limit)
                 .lean();
             return ordersOutput(orders, "Recent orders", 8);
+        }
+
+        case "get_demand_hints": {
+            const result: any = await loadDemandHints(storeId);
+            if (!result.hints.length) {
+                return out({ note: "Not enough order history yet for this weekday and time. At least two past matching days with orders are needed." });
+            }
+            return out({
+                basedOn: `the same weekday over the last ${result.windowWeeks} weeks`,
+                hints: result.hints.map((h: any) => ({ when: `${h.weekday} ${h.slotLabel}${h.isNow ? " (now)" : " (next)"}`, usuallySells: h.items, typicalOrders: h.typicalOrders, busiestAround: h.peakHour, pastDaysUsed: h.sampleDays })),
+            });
         }
 
         case "get_store_info": {

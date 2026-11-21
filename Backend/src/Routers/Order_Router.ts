@@ -15,6 +15,7 @@ import {
     GetDailySales,
     VerifyPayment,
     RateOrder,
+    GetDemandHints,
 } from "../Controller/Order_Controller";
 import { verifyUserToken, verifyOwnerToken } from "../middleware/verifyToken";
 
@@ -30,6 +31,8 @@ Order_Router.get("/store/:storeId",        verifyOwnerToken, GetOwnerAll_Orders)
 
 // ─── Analytics (must come before /:order_id to avoid route clash) ─────────────
 Order_Router.get("/sales/daily/:storeId",  verifyOwnerToken, GetDailySales);
+
+Order_Router.get("/demand/:storeId",       verifyOwnerToken, GetDemandHints);
 
 // ─── Tracking ─────────────────────────────────────────────────────────────────
 Order_Router.get("/track/:orderId",        TrackOrderStatus);

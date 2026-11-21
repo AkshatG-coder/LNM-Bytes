@@ -3,6 +3,7 @@ import { StatsCard } from '../components/StatsCard';
 import TabButton from '../components/TabFilter';
 import EmptyState from '../components/EmptyState';
 import UserAccordion from '../components/UserAccordion';
+import DemandHints from '../components/DemandHints';
 import { useOrders } from '../hooks/useOrders';
 import { type OrderStatus } from '../types';
 
@@ -66,6 +67,8 @@ function Admin() {
         <StatsCard title="Ready" value={count('ready')} icon="✅" color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-900/20" borderColor="border-green-200 dark:border-green-800/30" />
         <StatsCard title="Revenue" value={`₹${revenue}`} icon="💰" color="text-white" bg="bg-gradient-to-r from-primary to-primary-dark" borderColor="border-primary-dark/20" />
       </div>
+
+      <DemandHints />
 
       {/* Tabs */}
       <div

@@ -17,6 +17,8 @@ import { pushOrderEvent } from "../utils/pushService";
 import { parseStars, addRatingPipeline } from "../utils/ratingHelpers";
 import { MenuItemModel } from "../Models/Menu_Item.model";
 import appCache from "../utils/cache";
+import { buildDemandHints, DEMAND_WINDOW_DAYS } from "../utils/demandHelpers";
+import { startOfIstDay } from "../utils/copilotHelpers";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
@@ -591,6 +593,42 @@ const RejectOrder = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Order rejected and refund processed", order));
 });
 
+// ─── Demand hints for the owner dashboard ────────────────────────────────────
+// "Tuesday lunch you usually sell about 40 rolls", from the same weekday and meal over the last 8 weeks.
+const DEMAND_CACHE_SECONDS = 600;
+
+export async function loadDemandHints(storeId: string) {
+    const cacheKey = `demand_${storeId}`;
+    const cached = appCache.get<unknown>(cacheKey);
+    if (cached) return cached;
+
+    const since = startOfIstDay(new Date(), DEMAND_WINDOW_DAYS);
+    const orders = await OrderModel.find({
+        storeId: new mongoose.Types.ObjectId(storeId),
+        createdAt: { $gte: since },
+        status: { $nin: ["cancelled", "payment_pending"] },
+    })
+        .select("status createdAt items.name items.quantity")
+        .limit(50000)
+        .lean();
+
+    const result = { hints: buildDemandHints(orders as any[]), windowWeeks: DEMAND_WINDOW_DAYS / 7 };
+    appCache.set(cacheKey, result, DEMAND_CACHE_SECONDS);
+    return result;
+}
+
+const GetDemandHints = asyncHandler(async (req, res) => {
+    const { storeId } = req.params;
+    if (!mongoose.isValidObjectId(storeId)) return fail(res, 400, "Invalid store id");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && String(storeId) !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: Cannot access another shop's data");
+    }
+
+    return res.json(new ApiResponse(200, true, "Demand hints", await loadDemandHints(String(storeId))));
+});
+
 // ─── Rate an order after pickup ──────────────────────────────────────────────
 // One tap from the student. Counts once per order and feeds each item's star rating.
 const RateOrder = asyncHandler(async (req, res) => {
@@ -723,4 +761,5 @@ export {
     GetDailySales,
     VerifyPayment,
     RateOrder,
+    GetDemandHints,
 };

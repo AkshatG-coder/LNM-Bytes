@@ -23,7 +23,7 @@ const GREETING: Message = {
     timestamp: new Date(),
 };
 
-const STARTERS = ['Pending orders', "Today's sales", 'Sales for the last 7 days', 'Show unavailable items', 'Store status'];
+const STARTERS = ['Pending orders', "Today's sales", 'What should I prepare?', 'Sales for the last 7 days', 'Show unavailable items', 'Store status'];
 
 // Short note of the cards shown, so follow-ups like "reject the second one" have context.
 function blocksToHistoryNote(blocks?: OwnerUiBlock[]): string {
