@@ -206,3 +206,24 @@ html.dark {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   }
 }
+/* ── Charts on the Insights page ──────────────────────────────────────────── */
+.viz {
+  --viz-1: #2a78d6;   /* blue */
+  --viz-2: #eb6834;   /* orange */
+  --viz-3: #1baf7a;   /* aqua */
+  --viz-4: #eda100;   /* yellow */
+  --viz-other: #9ca3af;
+  --viz-grid: #e5e7eb;
+  --viz-good: #15803d;
+  --viz-bad: #dc2626;
+}
+html.dark .viz {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-other: #6b7280;
+  --viz-grid: #334155;
+  --viz-good: #4ade80;
+  --viz-bad: #f87171;
+}

@@ -1,3 +1,4 @@
+import Insights from "./Layouts/Insights";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Landing from "./Layouts/Landing";
 import AdminLayout from "./Layouts/AdminLayout";
@@ -23,6 +24,7 @@ function App() {
           <Route index element={<Admin />} />
           <Route path="menu" element={<MenuEditor />} />
           <Route path="sales" element={<DailySales />} />
+          <Route path="insights" element={<Insights />} />
           <Route path="scan" element={<QRScanner />} />
           <Route path="settings" element={<ShopSettings />} />
         </Route>  

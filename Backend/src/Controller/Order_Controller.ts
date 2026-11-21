@@ -18,6 +18,7 @@ import { parseStars, addRatingPipeline } from "../utils/ratingHelpers";
 import { MenuItemModel } from "../Models/Menu_Item.model";
 import appCache from "../utils/cache";
 import { buildDemandHints, DEMAND_WINDOW_DAYS } from "../utils/demandHelpers";
+import { buildInsights, INSIGHT_RANGES } from "../utils/insightsHelpers";
 import { startOfIstDay } from "../utils/copilotHelpers";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
@@ -629,6 +630,52 @@ const GetDemandHints = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, true, "Demand hints", await loadDemandHints(String(storeId))));
 });
 
+// ─── Detailed insights for the owner Insights page ───────────────────────────
+const INSIGHTS_CACHE_SECONDS = 300;
+
+const GetInsights = asyncHandler(async (req, res) => {
+    const { storeId } = req.params;
+    if (!mongoose.isValidObjectId(storeId)) return fail(res, 400, "Invalid store id");
+
+    const owner = (req as any).owner;
+    if (owner && owner.role === "owner" && String(storeId) !== String(owner.storeId)) {
+        return fail(res, 403, "Unauthorized: Cannot access another shop's data");
+    }
+
+    const requested = Number(req.query.days);
+    const days = (INSIGHT_RANGES as readonly number[]).includes(requested) ? requested : 30;
+
+    const cacheKey = `insights_${storeId}_${days}`;
+    const cached = appCache.get<unknown>(cacheKey);
+    if (cached) return res.json(new ApiResponse(200, true, "Insights", cached));
+
+    const sid = new mongoose.Types.ObjectId(String(storeId));
+    // Two periods of the same length, so the page can compare with the one before
+    const since = startOfIstDay(new Date(), 2 * days - 1);
+    const [orders, menu] = await Promise.all([
+        OrderModel.find({ storeId: sid, createdAt: { $gte: since } })
+            .select("status createdAt totalAmount paymentType userId userName qrVerifiedAt rating rejectionReason items.menuItemId items.name items.quantity items.price")
+            .limit(100000)
+            .lean(),
+        MenuItemModel.find({ storeId: sid }).select("name category isAvailable rating ratingCount").lean(),
+    ]);
+
+    const result = buildInsights(
+        orders as any[],
+        (menu as any[]).map((m) => ({
+            id: String(m._id),
+            name: m.name,
+            category: m.category || "other",
+            isAvailable: m.isAvailable !== false,
+            rating: m.rating ?? 0,
+            ratingCount: m.ratingCount ?? 0,
+        })),
+        days,
+    );
+    appCache.set(cacheKey, result, INSIGHTS_CACHE_SECONDS);
+    return res.json(new ApiResponse(200, true, "Insights", result));
+});
+
 // ─── Rate an order after pickup ──────────────────────────────────────────────
 // One tap from the student. Counts once per order and feeds each item's star rating.
 const RateOrder = asyncHandler(async (req, res) => {
@@ -762,4 +809,5 @@ export {
     VerifyPayment,
     RateOrder,
     GetDemandHints,
+    GetInsights,
 };
