@@ -37,7 +37,7 @@ Order_Router.get("/insights/:storeId",     verifyOwnerToken, GetInsights);
 Order_Router.get("/demand/:storeId",       verifyOwnerToken, GetDemandHints);
 
 // ─── Tracking ─────────────────────────────────────────────────────────────────
-Order_Router.get("/track/:orderId",        TrackOrderStatus);
+Order_Router.get("/track/:orderId",        verifyUserToken, TrackOrderStatus);
 
 // ─── QR code ──────────────────────────────────────────────────────────────────
 Order_Router.post("/verify-qr",            verifyOwnerToken, VerifyOrderQR);   // owner scans student's QR

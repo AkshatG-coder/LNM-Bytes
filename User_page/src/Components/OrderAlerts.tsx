@@ -282,7 +282,8 @@ export default function OrderAlerts() {
       ws = new WebSocket(wsUrl)
       ws.onopen = () => {
         attempt = 0
-        ws?.send(JSON.stringify({ type: 'register', userId }))
+        // The server trusts the signed token, not the id; userId is sent for older servers
+        ws?.send(JSON.stringify({ type: 'register', userId, token: localStorage.getItem('user_token') }))
         setWsUp(true)
         void fetchRef.current() // catch anything that happened while disconnected
       }
@@ -317,7 +318,9 @@ export default function OrderAlerts() {
         attempt += 1
         timer = window.setTimeout(() => { timer = null; connect() }, delay)
       }
-      ws.onclose = retry
+      // 4401 = the server rejected our login token. Retrying cannot fix that, and the
+      // polling fallback keeps alerts working until the user signs in again.
+      ws.onclose = (e) => { if (e.code === 4401) { setWsUp(false); return } retry() }
       ws.onerror = () => { try { ws?.close() } catch { /* ignore */ } }
     }
 

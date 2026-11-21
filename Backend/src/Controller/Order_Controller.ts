@@ -717,9 +717,16 @@ const RateOrder = asyncHandler(async (req, res) => {
 const TrackOrderStatus = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const order = await OrderModel.findById(orderId)
-        .select("status paymentStatus paymentType totalAmount orderNumber createdAt updatedAt storeId userName userEmail userPhone items rejectionReason rejectionNote")
+        .select("userId status paymentStatus paymentType totalAmount orderNumber createdAt updatedAt storeId userName userEmail userPhone items rejectionReason rejectionNote")
         .lean();
     if (!order) return fail(res, 404, "Order not found");
+
+    // Tracking shows the student's name, email and phone, so only the student who
+    // placed the order may see it
+    const user = (req as any).user;
+    if (!user || String(order.userId) !== String(user.userId)) {
+        return fail(res, 403, "Unauthorized: Cannot track order of another user.");
+    }
     return res.json(new ApiResponse(200, true, "Order status fetched", order));
 });
 

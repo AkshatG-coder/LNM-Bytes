@@ -371,7 +371,7 @@ export default function MyOrders() {
 
     ws.onopen = () => {
       // Register this client so the server can push to this user
-      ws.send(JSON.stringify({ type: 'register', userId: user.id }))
+      ws.send(JSON.stringify({ type: 'register', userId: user.id, token: localStorage.getItem('user_token') }))
       setWsConnected(true)
     }
 

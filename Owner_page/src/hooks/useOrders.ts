@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { type UserData, type OrderStatus } from "../types";
 import api from "./api";
-import { getStoreId } from "./config";
+import { getStoreId, getAuthToken } from "./config";
 import { useOrderSound } from "./useOrderSound";
 
 export const useOrders = () => {
@@ -91,7 +91,8 @@ export const useOrders = () => {
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "register", userId: storeId }));
+      // The server trusts the signed token, not the id; userId is sent for older servers
+      ws.send(JSON.stringify({ type: "register", userId: storeId, token: getAuthToken() }));
       setWsConnected(true);
       wsConnectedRef.current = true;
     };

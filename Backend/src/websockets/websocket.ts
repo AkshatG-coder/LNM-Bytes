@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import logger from "../utils/logger";
+import { roomFromToken, WS_AUTH_FAILED_CODE, WS_REGISTER_DEADLINE_MS } from "./wsAuth";
 
 /**
  * Multi-socket client registry.
@@ -27,6 +28,12 @@ export const initWebSocket = (server: any) => {
     wss.on("connection", (ws: any) => {
         ws.isAlive = true;
 
+        // A connection that never signs in is not kept around
+        const deadline = setTimeout(() => {
+            if (!ws.userId) ws.close(WS_AUTH_FAILED_CODE, "register required");
+        }, WS_REGISTER_DEADLINE_MS);
+        ws.on("close", () => clearTimeout(deadline));
+
         ws.on("pong", () => {
             ws.isAlive = true;
         });
@@ -34,8 +41,19 @@ export const initWebSocket = (server: any) => {
         ws.on("message", (mess: any) => {
             try {
                 const data = JSON.parse(mess.toString());
-                if (data.type === "register" && data.userId) {
-                    ws.userId = data.userId;
+                if (data.type === "register") {
+                    // The room comes from the signed login token, never from what the client says
+                    const room = roomFromToken(data.token, process.env.JWT_SECRET);
+                    if (!room) {
+                        logger.warn("WS register rejected");
+                        ws.send(JSON.stringify({ type: "authFailed" }));
+                        ws.close(WS_AUTH_FAILED_CODE, "invalid token");
+                        return;
+                    }
+                    if (ws.userId && ws.userId !== room) {
+                        clients.get(ws.userId)?.delete(ws);
+                    }
+                    ws.userId = room;
 
                     // Add this socket to the user's set (supports multi-tab)
                     if (!clients.has(ws.userId)) {
@@ -43,6 +61,7 @@ export const initWebSocket = (server: any) => {
                     }
                     clients.get(ws.userId)!.add(ws);
 
+                    ws.send(JSON.stringify({ type: "registered" }));
                     logger.info({ userId: ws.userId }, "WS client registered");
                 }
             } catch {
