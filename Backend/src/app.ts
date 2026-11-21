@@ -11,6 +11,7 @@ import { Auth_Router } from './Routers/Auth_Router'
 import { Order_Router } from './Routers/Order_Router'
 import { Copilot_Router } from './Routers/Copilot_Router'
 import { BiteBot_Router } from './Routers/BiteBot_Router'
+import { Push_Router } from './Routers/Push_Router'
 
 const app = express()
 
@@ -70,6 +71,7 @@ app.use("/auth", Auth_Router)   // OTP routes have per-route authLimiter inside 
 app.use("/order", Order_Router)
 app.use("/copilot", Copilot_Router)
 app.use("/bitebot", BiteBot_Router)
+app.use("/push", Push_Router)
 
 // ─── Global Error Handler (must be last middleware) ───────────────────────────
 app.use((

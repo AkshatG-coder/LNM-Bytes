@@ -3,6 +3,7 @@ import { CartItemCard } from "./Cart_ItemCard"
 import { clear_all_item } from "../Util/CartReducer"
 import { useAppSelector as useSelector } from "../Util/hook"
 import api from "../Util/api"
+import { announceOrdersChanged } from '../Util/orderText'
 import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
 
@@ -69,6 +70,7 @@ export function Cart_Details() {
       if (response.data?.success) {
         if (paymentType === 'cash') {
           dispatch(clear_all_item())
+          announceOrdersChanged()
           if (isNightDelivery) {
             toast.success("Night Delivery order placed! Your food will be delivered to you soon. 🌙")
           } else {

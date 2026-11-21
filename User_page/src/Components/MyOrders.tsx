@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { RootState } from '../Util/store'
 import { add_item, clear_all_item } from '../Util/CartReducer'
 import api from '../Util/api'
+import { rejectionLine, announceOrdersChanged } from '../Util/orderText'
 import toast from 'react-hot-toast'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered' | 'payment_pending'
@@ -29,21 +30,6 @@ interface Order {
   orderNote?: string
   rejectionReason?: string | null
   rejectionNote?: string
-}
-
-// Keep in sync with Backend/src/utils/rejectReasons.ts
-const REJECT_REASON_TEXT: Record<string, string> = {
-  out_of_stock: 'An item in your order is out of stock',
-  too_busy: 'The kitchen is too busy right now',
-  closing_soon: 'The canteen is closing soon',
-  order_issue: 'There was a problem with the order',
-  other: 'The canteen could not take this order',
-}
-
-function rejectionLine(order: { rejectionReason?: string | null; rejectionNote?: string }): string | null {
-  if (!order.rejectionReason && !order.rejectionNote) return null
-  const base = REJECT_REASON_TEXT[order.rejectionReason ?? 'other'] ?? REJECT_REASON_TEXT.other
-  return order.rejectionNote ? `${base} (${order.rejectionNote})` : base
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: string; bg: string; step: number; fill: string; border: string }> = {
@@ -303,7 +289,6 @@ export default function MyOrders() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active')
   const [, setWsConnected] = useState(false)
-  const prevStatuses = useRef<Record<string, OrderStatus>>({})
   const wsRef = useRef<WebSocket | null>(null)
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -323,28 +308,9 @@ export default function MyOrders() {
     navigate('/cart')
   }, [dispatch, navigate])
 
-  // Request browser notification permission once
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-  }, [])
-
-  function pushNotification(title: string, body: string) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/favicon.ico' })
-    }
-  }
-
   const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus, extra: Partial<Order> = {}) => {
     setOrders(prev => prev.map(o => {
       if (o._id !== orderId) return o
-      if (o.status !== newStatus) {
-        const cfg = STATUS_CONFIG[newStatus]
-        const num = o.orderNumber ? ` #${o.orderNumber}` : ''
-        if (cfg) pushNotification(`LNM Bytes — Order${num}`, `${cfg.icon} ${cfg.label}`)
-        prevStatuses.current[o._id] = newStatus
-      }
       return { ...o, ...extra, status: newStatus }
     }))
   }, [])
@@ -356,17 +322,6 @@ export default function MyOrders() {
       if (res.data?.success) {
         const fetched: Order[] = res.data.data || []
         setOrders(fetched)
-
-        // Fire browser notification on status change detected via polling
-        fetched.forEach(order => {
-          const prev = prevStatuses.current[order._id]
-          if (prev && prev !== order.status) {
-            const cfg = STATUS_CONFIG[order.status]
-            const num = order.orderNumber ? ` #${order.orderNumber}` : ''
-            if (cfg) pushNotification(`LNM Bytes — Order${num}`, `${cfg.icon} ${cfg.label}`)
-          }
-          prevStatuses.current[order._id] = order.status
-        })
       }
     } catch (e) {
       console.error('Failed to fetch orders:', e)
@@ -386,6 +341,7 @@ export default function MyOrders() {
           if (res.data?.success) {
             // Payment verified — NOW it is safe to clear the cart
             dispatch(clear_all_item())
+            announceOrdersChanged()
             fetchOrders()
           } else {
             toast.error("⚠️ Payment could not be verified. Please show your order ID at the counter.")

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../Util/api';
+import { announceOrdersChanged } from '../Util/orderText';
 import { useAppDispatch, useAppSelector } from '../Util/hook';
 import { add_item, clear_all_item, decrease_item, increase_item } from '../Util/CartReducer';
 
@@ -632,6 +633,7 @@ function DraftCard({
 
       const o = response.data.data;
       if (paymentType === 'cash') {
+        announceOrdersChanged();
         toast.success("Order placed! Please pick it up at the counter after it's ready.");
         setPlaced({
           id: String(o?._id),

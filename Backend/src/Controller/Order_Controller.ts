@@ -13,6 +13,7 @@ import logger from "../utils/logger";
 import { Store } from "../Models/Store.model";
 import axios from "axios";
 import { parseRejectReason, rejectionMessage } from "../utils/rejectReasons";
+import { pushOrderEvent } from "../utils/pushService";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
@@ -50,6 +51,10 @@ const emitOrderEvent = (
         receiverId: wsReceiverId,
         payload: wsPayload,
     } satisfies NotificationEvent);
+
+    // Phone / browser notification for the student ("ready", "declined"). Sent here, once per event,
+    // so it works the same whether Kafka is on or the in-memory fallback is used.
+    pushOrderEvent(wsReceiverId, wsPayload);
 };
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
@@ -573,6 +578,8 @@ const RejectOrder = asyncHandler(async (req, res) => {
         type: "orderCancelled",
         orderId: order._id,
         message: rejectionMessage(parsedReason.code, parsedReason.note, order.paymentStatus === "refunded"),
+        orderNumber: (order as any).orderNumber,
+        rejected: true,
         reason: parsedReason.code,
         note: parsedReason.note,
         refunded: order.paymentStatus === "refunded",

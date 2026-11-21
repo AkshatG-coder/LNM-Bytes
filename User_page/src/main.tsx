@@ -13,6 +13,7 @@ import ErrorPage from './Components/Error_Page.tsx'
 import LoginPage from './Components/LoginPage.tsx'
 import MyOrders from './Components/MyOrders.tsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import { registerServiceWorker } from './Util/pushClient.ts'
 
 /**
  * Reactive auth guard — uses useSelector so it re-renders and redirects
@@ -55,6 +56,9 @@ const router = createBrowserRouter([
     ]
   }
 ])
+
+// The service worker only exists in production builds, so dev reloads are not cached
+if (import.meta.env.PROD) registerServiceWorker()
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ""
 

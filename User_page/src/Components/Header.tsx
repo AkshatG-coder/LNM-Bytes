@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { useTheme } from "../Util/useTheme"
 import { logout } from "../Util/UserReducer"
+import { disableAlerts } from "../Util/pushClient"
 
 export function Header() {
   const cart_items = useAppSelector((state) => state.Cart.items)
@@ -11,7 +12,9 @@ export function Header() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
 
-  function handleLogout() {
+  async function handleLogout() {
+    // Stop order alerts for this account on this device while the token is still valid
+    await Promise.race([disableAlerts().catch(() => undefined), new Promise((r) => setTimeout(r, 1500))])
     dispatch(logout())
     navigate('/login')
   }

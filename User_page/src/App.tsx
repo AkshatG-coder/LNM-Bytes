@@ -4,6 +4,7 @@ import { Header } from './Components/Header'
 import BiteBotChat from './Components/BiteBotChat'
 import { useTheme } from './Util/useTheme'
 import { Toaster } from 'react-hot-toast'
+import OrderAlerts from './Components/OrderAlerts'
 
 function App() {
   // Initialize theme on app load
@@ -18,6 +19,7 @@ function App() {
       <Header/>
       <Outlet/>
       <BiteBotChat />
+      <OrderAlerts />
     </div>
   )
 }
