@@ -6,6 +6,9 @@ import { BlocksView, blocksToHistoryNote } from './BiteBotCards';
 import type { UiBlock } from './BiteBotCards';
 import ChatText from './ChatText';
 import VoiceInput from './VoiceInput';
+import BiteBotPreferences from './BiteBotPreferences';
+import { streamChat, ChatStreamError } from '../Util/chatStream';
+import { loadChat, saveChat, clearChat } from '../Util/chatStore';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -15,6 +18,8 @@ interface Message {
   suggestions?: string[];
   isError?: boolean;
   retryText?: string;
+  /** Still being written. Not saved and not sent back as history. */
+  streaming?: boolean;
 }
 
 const QUICK_PROMPTS = [
@@ -46,22 +51,43 @@ export default function BiteBotChat() {
   const [expanded, setExpanded] = useState(false);
   const isAuthenticated = useSelector((s: RootState) => s.User.isAuthenticated);
   const userName = useSelector((s: RootState) => s.User.user?.name);
+  const userId = useSelector((s: RootState) => s.User.user?.id);
+  const chatKey = userId ? `lnm:bitebot:chat:${userId}` : null;
 
   const [messages, setMessages] = useState<Message[]>(() => [greeting(userName)]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
+  const [showPrefs, setShowPrefs] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, []);
+    messagesEndRef.current?.scrollIntoView({ behavior: loading ? 'auto' : 'smooth', block: 'end' });
+  }, [loading]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
+
+  // Bring back this student's chat after a refresh (text only)
+  useEffect(() => {
+    if (!chatKey) return;
+    const saved = loadChat(chatKey);
+    if (saved) {
+      setMessages(saved.map((m) => ({ role: m.role, text: m.text, timestamp: new Date(m.at) })));
+    }
+  }, [chatKey]);
+
+  // Keep it saved as the conversation grows
+  useEffect(() => {
+    if (!chatKey || loading) return;
+    const finished = messages.filter((m) => !m.isError && !m.streaming);
+    if (finished.length <= 1) return; // just the greeting
+    saveChat(chatKey, finished.map((m) => ({ role: m.role, text: m.text, at: m.timestamp.getTime() })));
+  }, [messages, loading, chatKey]);
 
   useEffect(() => {
     if (isOpen) inputRef.current?.focus();
@@ -91,40 +117,60 @@ export default function BiteBotChat() {
       return;
     }
 
-    setMessages((prev) => [...prev, { role: 'user', text: msg, timestamp: new Date() }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', text: msg, timestamp: new Date() },
+      { role: 'assistant', text: '', timestamp: new Date(), streaming: true },
+    ]);
     setInput('');
+    setStatus('');
     setLoading(true);
+
+    // The streaming placeholder is always the last message
+    const patchLast = (change: (m: Message) => Message) =>
+      setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? change(m) : m)));
 
     try {
       const history = messages
-        .filter((m, i) => i > 0 && !m.isError)
+        .filter((m, i) => i > 0 && !m.isError && !m.streaming)
         .map((m) => ({
           role: m.role === 'user' ? 'user' : 'model',
           // hidden note lists the cards shown, so "add the first one" can be understood
           text: m.text + blocksToHistoryNote(m.blocks),
         }));
 
-      // AI replies can take a while (model + tool-call loop), so allow more than the default 15s
-      const { data } = await api.post('/bitebot/chat', { message: msg, history }, { timeout: 60000 });
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: data.message || "I couldn't work that out. Try rephrasing it.",
-          timestamp: new Date(),
-          blocks: Array.isArray(data.blocks) ? data.blocks : [],
-          suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+      const data = await streamChat({
+        url: `${api.defaults.baseURL}/bitebot/chat`,
+        token: localStorage.getItem('user_token'),
+        body: { message: msg, history },
+        handlers: {
+          onStatus: setStatus,
+          onDelta: (t) => patchLast((m) => ({ ...m, text: m.text + t })),
         },
-      ]);
-    } catch (err: any) {
-      const errorText = err.response?.data?.message || 'Could not reach BiteBot. Check your connection and try again.';
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', text: errorText, timestamp: new Date(), isError: true, retryText: msg },
-      ]);
+        onUnauthorized: () => {
+          localStorage.removeItem('user_info');
+          localStorage.removeItem('user_token');
+          if (!window.location.pathname.startsWith('/login')) window.location.href = '/login';
+        },
+      });
+
+      patchLast((m) => ({
+        ...m,
+        streaming: false,
+        text: data.message || "I couldn't work that out. Try rephrasing it.",
+        blocks: Array.isArray(data.blocks) ? (data.blocks as UiBlock[]) : [],
+        suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+      }));
+    } catch (err) {
+      const errorText = err instanceof ChatStreamError ? err.message : 'Could not reach BiteBot. Check your connection and try again.';
+      patchLast((m) =>
+        m.text.trim()
+          ? { ...m, streaming: false, isError: true, retryText: msg, text: `${m.text}\n\n${errorText}` } // keep what was already written
+          : { ...m, streaming: false, isError: true, retryText: msg, text: errorText },
+      );
     } finally {
       setLoading(false);
+      setStatus('');
     }
   };
 
@@ -187,6 +233,7 @@ export default function BiteBotChat() {
               onClick={() => {
                 setMessages([greeting(userName)]);
                 setInput('');
+                if (chatKey) clearChat(chatKey);
               }}
               disabled={loading || messages.length <= 1}
               aria-label="Start a new chat"
@@ -196,6 +243,15 @@ export default function BiteBotChat() {
               <Icon d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" size={16} />
             </button>
 
+          <button
+              onClick={() => setShowPrefs((v) => !v)}
+              aria-label="Food preferences"
+              aria-expanded={showPrefs}
+              title="Food preferences"
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+              <Icon d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" size={16} />
+          </button>
           <button
               onClick={() => setExpanded((v) => !v)}
               aria-label={expanded ? 'Make the chat smaller' : 'Make the chat larger'}
@@ -213,9 +269,11 @@ export default function BiteBotChat() {
             </button>
           </div>
 
+          {showPrefs && <BiteBotPreferences accent={BRAND} onClose={() => setShowPrefs(false)} />}
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3" role="log" aria-live="polite">
-            {messages.map((msg, i) => (
+            {messages.map((msg, i) => (msg.streaming && !msg.text ? null : (
               <div key={i} className="space-y-2">
                 <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
@@ -250,14 +308,15 @@ export default function BiteBotChat() {
                   <BlocksView blocks={msg.blocks} onAsk={sendMessage} onClose={() => setIsOpen(false)} />
                 )}
               </div>
-            ))}
+            )))}
 
-            {loading && (
+            {loading && !last?.text && (
               <div className="flex justify-start" aria-label="BiteBot is typing">
                 <div className="px-4 py-3 rounded-xl rounded-bl-sm border flex items-center gap-1.5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
                   {[0, 150, 300].map((d) => (
                     <span key={d} className="w-1.5 h-1.5 rounded-full motion-safe:animate-bounce" style={{ background: BRAND, animationDelay: `${d}ms` }} />
                   ))}
+                  {status && <span className="ml-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>{status}</span>}
                 </div>
               </div>
             )}
@@ -295,7 +354,7 @@ export default function BiteBotChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about food, canteens or orders"}
+                placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about food or orders"}
                 aria-label="Message BiteBot"
                 disabled={loading}
                 className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"

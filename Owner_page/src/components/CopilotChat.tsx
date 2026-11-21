@@ -4,6 +4,9 @@ import { BlocksView } from './CopilotCards';
 import type { OwnerUiBlock } from './CopilotCards';
 import ChatText from './ChatText';
 import VoiceInput from './VoiceInput';
+import { streamChat, ChatStreamError } from '../hooks/chatStream';
+import { loadChat, saveChat, clearChat } from '../hooks/chatStore';
+import { getStoreId, getAuthToken } from '../hooks/config';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -13,6 +16,8 @@ interface Message {
     suggestions?: string[];
     isError?: boolean;
     retryText?: string;
+    /** Still being written. Not saved and not sent back as history. */
+    streaming?: boolean;
 }
 
 const ACCENT = '#4f46e5';
@@ -59,16 +64,34 @@ export default function CopilotChat() {
     const [loading, setLoading] = useState(false);
     const [listening, setListening] = useState(false);
     const [voiceError, setVoiceError] = useState<string | null>(null);
+    const [status, setStatus] = useState('');
+    const storeId = getStoreId();
+    const chatKey = storeId ? `lnm:copilot:chat:${storeId}` : null;
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = useCallback(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, []);
+        messagesEndRef.current?.scrollIntoView({ behavior: loading ? 'auto' : 'smooth', block: 'end' });
+    }, [loading]);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages, loading, scrollToBottom]);
+
+    // Bring back this store's chat after a refresh (text only)
+    useEffect(() => {
+        if (!chatKey) return;
+        const saved = loadChat(chatKey);
+        if (saved) setMessages(saved.map((m) => ({ role: m.role, text: m.text, timestamp: new Date(m.at) })));
+    }, [chatKey]);
+
+    // Keep it saved as the conversation grows
+    useEffect(() => {
+        if (!chatKey || loading) return;
+        const finished = messages.filter((m) => !m.isError && !m.streaming);
+        if (finished.length <= 1) return; // just the greeting
+        saveChat(chatKey, finished.map((m) => ({ role: m.role, text: m.text, at: m.timestamp.getTime() })));
+    }, [messages, loading, chatKey]);
 
     useEffect(() => {
         if (isOpen) inputRef.current?.focus();
@@ -88,37 +111,52 @@ export default function CopilotChat() {
         const msg = (text ?? input).trim();
         if (!msg || loading) return;
 
-        setMessages((prev) => [...prev, { role: 'user', text: msg, timestamp: new Date() }]);
+        setMessages((prev) => [
+            ...prev,
+            { role: 'user', text: msg, timestamp: new Date() },
+            { role: 'assistant', text: '', timestamp: new Date(), streaming: true },
+        ]);
         setInput('');
+        setStatus('');
         setLoading(true);
 
+        // The streaming placeholder is always the last message
+        const patchLast = (change: (m: Message) => Message) =>
+            setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? change(m) : m)));
+
         try {
-            // Build history from prior messages (skip greeting and error bubbles)
+            // Build history from prior messages (skip greeting, error bubbles and the one being written)
             const history = messages
-                .filter((m, i) => i > 0 && !m.isError)
+                .filter((m, i) => i > 0 && !m.isError && !m.streaming)
                 .map((m) => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text + blocksToHistoryNote(m.blocks) }));
 
-            // AI replies can take a while (model + tool-call loop), so allow more than the default 10s
-            const { data } = await api.post('/copilot/chat', { message: msg, history }, { timeout: 60000 });
-
-            setMessages((prev) => [
-                ...prev,
-                {
-                    role: 'assistant',
-                    text: data.message || "I couldn't work that out. Try rephrasing it.",
-                    timestamp: new Date(),
-                    blocks: Array.isArray(data.blocks) ? data.blocks : [],
-                    suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+            const data = await streamChat({
+                url: `${api.defaults.baseURL}/copilot/chat`,
+                token: getAuthToken() || null,
+                body: { message: msg, history },
+                handlers: {
+                    onStatus: setStatus,
+                    onDelta: (t) => patchLast((m) => ({ ...m, text: m.text + t })),
                 },
-            ]);
-        } catch (err: any) {
-            const errorText = err.response?.data?.message || 'Could not reach the server. Check your connection and try again.';
-            setMessages((prev) => [
-                ...prev,
-                { role: 'assistant', text: errorText, timestamp: new Date(), isError: true, retryText: msg },
-            ]);
+            });
+
+            patchLast((m) => ({
+                ...m,
+                streaming: false,
+                text: data.message || "I couldn't work that out. Try rephrasing it.",
+                blocks: Array.isArray(data.blocks) ? (data.blocks as OwnerUiBlock[]) : [],
+                suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+            }));
+        } catch (err) {
+            const errorText = err instanceof ChatStreamError ? err.message : 'Could not reach the server. Check your connection and try again.';
+            patchLast((m) =>
+                m.text.trim()
+                    ? { ...m, streaming: false, isError: true, retryText: msg, text: `${m.text}\n\n${errorText}` } // keep what was already written
+                    : { ...m, streaming: false, isError: true, retryText: msg, text: errorText },
+            );
         } finally {
             setLoading(false);
+            setStatus('');
         }
     };
 
@@ -183,6 +221,7 @@ export default function CopilotChat() {
                             onClick={() => {
                                 setMessages([GREETING]);
                                 setInput('');
+                                if (chatKey) clearChat(chatKey);
                             }}
                             disabled={loading || messages.length <= 1}
                             aria-label="Start a new chat"
@@ -211,7 +250,7 @@ export default function CopilotChat() {
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3" role="log" aria-live="polite">
-                        {messages.map((msg, i) => (
+                        {messages.map((msg, i) => (msg.streaming && !msg.text ? null : (
                             <div key={i} className="space-y-2">
                                 <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div
@@ -241,14 +280,15 @@ export default function CopilotChat() {
 
                                 {msg.role === 'assistant' && msg.blocks && msg.blocks.length > 0 && <BlocksView blocks={msg.blocks} />}
                             </div>
-                        ))}
+                        )))}
 
-                        {loading && (
+                        {loading && !last?.text && (
                             <div className="flex justify-start" aria-label="Copilot is typing">
                                 <div className="px-4 py-3 rounded-xl rounded-bl-sm border flex items-center gap-1.5" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                                     {[0, 150, 300].map((d) => (
                                         <span key={d} className="w-1.5 h-1.5 rounded-full motion-safe:animate-bounce" style={{ background: ACCENT, animationDelay: `${d}ms` }} />
                                     ))}
+                                    {status && <span className="ml-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>{status}</span>}
                                 </div>
                             </div>
                         )}
@@ -286,7 +326,7 @@ export default function CopilotChat() {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about orders, sales or menu"}
+                                placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about orders or sales"}
                                 aria-label="Message Copilot"
                                 disabled={loading}
                                 className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"

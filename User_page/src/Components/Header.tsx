@@ -4,6 +4,7 @@ import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { useTheme } from "../Util/useTheme"
 import { logout } from "../Util/UserReducer"
 import { disableAlerts } from "../Util/pushClient"
+import { clearChatsWithPrefix } from "../Util/chatStore"
 
 export function Header() {
   const cart_items = useAppSelector((state) => state.Cart.items)
@@ -15,6 +16,7 @@ export function Header() {
   async function handleLogout() {
     // Stop order alerts for this account on this device while the token is still valid
     await Promise.race([disableAlerts().catch(() => undefined), new Promise((r) => setTimeout(r, 1500))])
+    clearChatsWithPrefix('lnm:bitebot:chat:')
     dispatch(logout())
     navigate('/login')
   }

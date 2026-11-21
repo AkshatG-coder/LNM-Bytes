@@ -1,3 +1,4 @@
+import { clearChatsWithPrefix } from "./chatStore";
 import { useState } from "react";
 import api from "./api";
 
@@ -40,6 +41,7 @@ export function readAuth(): AuthState | null {
 }
 
 export function clearAuth() {
+  clearChatsWithPrefix("lnm:copilot:chat:");
   localStorage.removeItem("OWNER_TOKEN");
   localStorage.removeItem("OWNER_STORE_ID");
   localStorage.removeItem("OWNER_NAME");
