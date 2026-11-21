@@ -7,7 +7,8 @@ import asyncHandler from "../utils/AsyncHandler";
 import logger from "../utils/logger";
 import mongoose from "mongoose";
 import appCache from "../utils/cache";
-import { generateWithFallback, createGeminiRun } from "../utils/geminiClient";
+import { generateWithFallback, generateStreamWithFallback, createGeminiRun } from "../utils/geminiClient";
+import { startSse, toolStatus } from "../utils/sse";
 import { clampInt, escapeRegExp, idOf } from "../utils/bitebotHelpers";
 import {
     NOT_SALES_STATUSES,
@@ -437,6 +438,20 @@ async function executeTool(name: string, args: Record<string, any>, storeId: str
 // ─── Chat endpoint — multi-turn with automatic tool calling ──────────────────
 const MAX_BLOCKS = 3;
 
+const TOOL_STATUS: Record<string, string> = {
+    get_today_sales: "Adding up today's sales…",
+    get_sales_summary: "Adding up sales…",
+    get_pending_orders: "Checking pending orders…",
+    get_active_orders: "Checking the kitchen queue…",
+    get_menu: "Opening your menu…",
+    toggle_item_availability: "Updating the item…",
+    update_item_price: "Updating the price…",
+    toggle_store_status: "Updating the store…",
+    get_order_history: "Looking at recent orders…",
+    get_demand_hints: "Checking what usually sells…",
+    get_store_info: "Checking the store…",
+};
+
 const CopilotChat = asyncHandler(async (req, res) => {
     if (!GEMINI_KEY) {
         return res.status(500).json({ success: false, message: "GEMINI_API_KEY not configured on server" });
@@ -493,8 +508,14 @@ CORE GUIDELINES:
 
     const run = createGeminiRun();
 
+    const sse = req.body?.stream === true ? startSse(res) : null;
+    const callGemini = (client: any, params: any, r: any) =>
+        sse
+            ? generateStreamWithFallback(client, params, r, (text) => sse.send("delta", { text }))
+            : generateWithFallback(client, params, r);
+
     const callModel = () =>
-        generateWithFallback(
+        callGemini(
             ai,
             {
                 contents,
@@ -535,6 +556,7 @@ CORE GUIDELINES:
             for (const part of functionCalls) {
                 const fc = (part as any).functionCall;
                 logger.info({ tool: fc.name, args: fc.args }, "Copilot tool call");
+                sse?.send("status", { text: toolStatus(TOOL_STATUS, fc.name) });
 
                 let result: ToolOutput;
                 try {
@@ -572,14 +594,25 @@ CORE GUIDELINES:
                 .join("") || "";
         const finalText = text || (finalBlocks.length ? "Here you go 👇" : "Sorry, I couldn't process that. Try again?");
 
-        return res.json({
+        const payload = {
             success: true,
             message: finalText,
             blocks: finalBlocks,
             suggestions: ownerSuggestionsFor(new Set<string>(finalBlocks.map((b) => b.type))),
-        });
+        };
+        if (sse) {
+            sse.send("done", payload);
+            sse.end();
+            return;
+        }
+        return res.json(payload);
     } catch (err: any) {
         logger.error({ err: err.message, stack: err.stack }, "Copilot AI error");
+        if (sse) {
+            sse.send("error", { message: err.message || "The AI is busy right now. Please try again in a moment." });
+            sse.end();
+            return;
+        }
         return res.status(500).json({
             success: false,
             message: err.message || "AI service error — please try again in a moment.",

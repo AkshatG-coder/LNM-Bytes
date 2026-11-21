@@ -63,16 +63,17 @@ function isModelGone(err: any): boolean {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * generateContent with retry + model fallback.
+ * Runs `attempt` with retry + model fallback.
  * - busy (503/429/timeout): retry the primary model once, then try the fallback models
  * - model retired (404): skip straight to the next model
  * - anything else (e.g. 400 bad request): thrown as-is, not hidden
+ * `canRetry` lets a streaming call refuse to start over once the student has already seen text.
  */
-export async function generateWithFallback(
-    ai: GoogleGenAI,
-    params: Omit<GenerateContentParameters, "model">,
+async function runWithFallback<T>(
+    attempt: (model: string) => Promise<T>,
     run?: GeminiRun,
-): Promise<GenerateContentResponse> {
+    canRetry: () => boolean = () => true,
+): Promise<T> {
     const started = Date.now();
     const chain = modelChain(run);
     let sawBusy = false;
@@ -81,32 +82,26 @@ export async function generateWithFallback(
         const model = chain[i];
         const attempts = i === 0 ? 2 : 1;
 
-        for (let attempt = 1; attempt <= attempts; attempt++) {
+        for (let n = 1; n <= attempts; n++) {
             try {
-                const response = await ai.models.generateContent({
-                    ...params,
-                    model,
-                    config: {
-                        ...params.config,
-                        httpOptions: { ...params.config?.httpOptions, timeout: PER_CALL_TIMEOUT_MS },
-                    },
-                });
+                const result = await attempt(model);
                 if (run) run.model = model;
                 if (i > 0) logger.info({ model }, "Gemini fallback model answered");
-                return response;
+                return result;
             } catch (err: any) {
                 const gone = isModelGone(err);
                 const busy = !gone && isBusy(err);
                 logger.warn(
-                    { model, attempt, status: statusOf(err), busy, gone, err: String(err?.message ?? err).slice(0, 300) },
+                    { model, attempt: n, status: statusOf(err), busy, gone, err: String(err?.message ?? err).slice(0, 300) },
                     "Gemini call failed",
                 );
 
                 if (!gone && !busy) throw err; // real error — don't mask it
+                if (!canRetry()) throw err;    // text already reached the student, so cannot start over
                 if (busy) sawBusy = true;
                 if (gone) break;               // this model is out — go to the next one
                 if (Date.now() - started > TOTAL_BUDGET_MS) break;
-                if (attempt < attempts) await sleep(RETRY_DELAY_MS);
+                if (n < attempts) await sleep(RETRY_DELAY_MS);
             }
         }
 
@@ -117,5 +112,54 @@ export async function generateWithFallback(
         sawBusy
             ? "The AI service is very busy right now. Please try again in a few seconds."
             : "The AI model is unavailable for this API key. Set GEMINI_MODEL to a model that is currently available.",
+    );
+}
+
+const withTimeout = (params: Omit<GenerateContentParameters, "model">) => ({
+    ...params.config,
+    httpOptions: { ...params.config?.httpOptions, timeout: PER_CALL_TIMEOUT_MS },
+});
+
+/** generateContent with retry + model fallback. */
+export async function generateWithFallback(
+    ai: GoogleGenAI,
+    params: Omit<GenerateContentParameters, "model">,
+    run?: GeminiRun,
+): Promise<GenerateContentResponse> {
+    return runWithFallback(
+        (model) => ai.models.generateContent({ ...params, model, config: withTimeout(params) }),
+        run,
+    );
+}
+
+/**
+ * Same as generateWithFallback, but the answer is read as a stream and every piece of text is passed to
+ * `onText` as it arrives. Returns a response shaped like generateContent's, so tool-call loops need no change.
+ * A busy or retired model is still skipped, but only while nothing has been sent to `onText` yet.
+ */
+export async function generateStreamWithFallback(
+    ai: GoogleGenAI,
+    params: Omit<GenerateContentParameters, "model">,
+    run: GeminiRun | undefined,
+    onText: (text: string) => void,
+): Promise<GenerateContentResponse> {
+    let emitted = false;
+    return runWithFallback(
+        async (model) => {
+            const stream = await ai.models.generateContentStream({ ...params, model, config: withTimeout(params) });
+            const parts: any[] = []; // kept exactly as received, so tool-call signatures survive
+            for await (const chunk of stream) {
+                for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+                    parts.push(part);
+                    if (part.text && !(part as any).thought) {
+                        emitted = true;
+                        onText(part.text);
+                    }
+                }
+            }
+            return { candidates: [{ content: { role: "model", parts } }] } as unknown as GenerateContentResponse;
+        },
+        run,
+        () => !emitted,
     );
 }

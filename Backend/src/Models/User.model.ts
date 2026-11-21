@@ -37,6 +37,12 @@ const UserSchema = new Schema(
       enum: ["student", "superadmin"],
       default: "student",
     },
+    // Saved food preferences used by BiteBot
+    preferences: {
+      vegOnly: { type: Boolean, default: false },
+      budget: { type: Number, default: null, min: 10, max: 2000 },
+      notes: { type: String, default: "", maxlength: 120 },
+    },
   },
   { timestamps: true }
 );
