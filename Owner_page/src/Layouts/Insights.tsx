@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../hooks/api';
+import WeeklyEmail from '../components/WeeklyEmail';
 import { getStoreId } from '../hooks/config';
 import { BarList, Card, Heatmap, Skeleton, SplitBar, StatTile, TrendChart, type DayPoint } from '../components/InsightCharts';
 
@@ -213,6 +214,8 @@ export default function Insights() {
           )}
         </div>
       )}
+
+      <WeeklyEmail />
     </div>
   );
 }

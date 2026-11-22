@@ -42,6 +42,12 @@ const OwnerSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    // ── Weekly summary email (opt-in) ──
+    weeklySummary: {
+      enabled: { type: Boolean, default: false },
+      enabledAt: { type: Date, default: null },
+      lastSentAt: { type: Date, default: null },
+    },
     // ── Forgot-password OTP (temporary, cleared after reset) ──
     passwordResetOtp: {
       type: String,

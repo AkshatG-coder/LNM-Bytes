@@ -12,6 +12,7 @@ import { Order_Router } from './Routers/Order_Router'
 import { Copilot_Router } from './Routers/Copilot_Router'
 import { BiteBot_Router } from './Routers/BiteBot_Router'
 import { Push_Router } from './Routers/Push_Router'
+import { Summary_Router } from './Routers/Summary_Router'
 
 const app = express()
 
@@ -72,6 +73,7 @@ app.use("/order", Order_Router)
 app.use("/copilot", Copilot_Router)
 app.use("/bitebot", BiteBot_Router)
 app.use("/push", Push_Router)
+app.use("/summary", Summary_Router)
 
 // ─── Global Error Handler (must be last middleware) ───────────────────────────
 app.use((

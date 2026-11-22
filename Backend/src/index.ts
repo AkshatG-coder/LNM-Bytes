@@ -6,6 +6,7 @@ import { app } from "./app";
 import { DbConnection } from "./Database_Connection/DbConnect";
 import { initWebSocket } from "./websockets/websocket"
 import { producer, startOrderConsumer, startNotificationConsumer } from "./kafka";
+import { startWeeklySummaryJob } from "./services/weeklySummary.service";
 
 const Port = process.env.PORT || 8081;
 
@@ -19,6 +20,8 @@ const startServer = async () => {
   await producer.connect();
   startOrderConsumer();
   startNotificationConsumer();
+
+  startWeeklySummaryJob();
 
   server.listen(Port, () => {
     console.log(`🚀 Server running on http://localhost:${Port}`);

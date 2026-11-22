@@ -104,3 +104,14 @@ export async function sendOtpEmail(toEmail: string, otp: string, ownerName?: str
         html,
     });
 }
+
+
+export function isEmailConfigured(): boolean {
+    return !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+// ─── Send a ready-made email (used by the weekly summary) ─────────────────────
+export async function sendSummaryEmail(toEmail: string, mail: { subject: string; html: string; text: string }): Promise<void> {
+    const from = process.env.SMTP_FROM || `"LNM Bytes" <${process.env.SMTP_USER}>`;
+    await getTransporter().sendMail({ from, to: toEmail, subject: mail.subject, html: mail.html, text: mail.text });
+}
