@@ -19,7 +19,7 @@ import { MenuItemModel } from "../Models/Menu_Item.model";
 import appCache from "../utils/cache";
 import { buildDemandHints, DEMAND_WINDOW_DAYS } from "../utils/demandHelpers";
 import { buildInsights, INSIGHT_RANGES } from "../utils/insightsHelpers";
-import { startOfIstDay } from "../utils/copilotHelpers";
+import { startOfIstDay, NOT_SALES_STATUSES } from "../utils/copilotHelpers";
 import { planReorder, buildFavorites } from "../utils/reorderHelpers";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
@@ -806,8 +806,10 @@ const GetDailySales = asyncHandler(async (req, res) => {
         return fail(res, 403, "Unauthorized: Cannot access daily sales of another shop");
     }
 
-    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
+    // "Today" is the IST calendar day, whatever timezone the server runs in. Totals count real
+    // sales only (not rejected or unpaid orders), the same as Insights and the Copilot.
+    const startOfDay = startOfIstDay();
+    const endOfDay   = new Date(startOfDay.getTime() + 24 * 3600 * 1000 - 1);
 
     // Heavy lifting done in MongoDB (index: storeId + createdAt)
     const [aggResult, todayOrders] = await Promise.all([
@@ -816,6 +818,7 @@ const GetDailySales = asyncHandler(async (req, res) => {
                 $match: {
                     storeId:   new mongoose.Types.ObjectId(String(storeId)),
                     createdAt: { $gte: startOfDay, $lte: endOfDay },
+                    status:    { $nin: NOT_SALES_STATUSES },
                 }
             },
             {

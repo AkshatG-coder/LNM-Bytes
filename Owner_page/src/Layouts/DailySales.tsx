@@ -159,7 +159,7 @@ function DailySales() {
             className="text-xs font-black px-3 py-1 rounded-full"
             style={{ color: 'var(--color-text-muted)', backgroundColor: 'var(--color-background)' }}
           >
-            {data.orders.length} orders
+            {data.orderCount} {data.orderCount === 1 ? "order" : "orders"}{data.orders.length > data.orderCount ? ` · ${data.orders.length - data.orderCount} cancelled` : ""}
           </span>
         </div>
 
