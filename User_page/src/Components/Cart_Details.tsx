@@ -6,6 +6,7 @@ import api from "../Util/api"
 import { announceOrdersChanged } from '../Util/orderText'
 import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
+import { Link } from "react-router-dom"
 
 export function Cart_Details() {
   const cart_details = useAppSelector((state) => state.Cart.items)
@@ -13,7 +14,7 @@ export function Cart_Details() {
   const dispatch = useAppDispatch()
   const [placing, setPlacing] = useState(false)
   const [isNightDelivery, setIsNightDelivery] = useState(false)
-  const [storeStatus, setStoreStatus] = useState({ open: true, onlineAvailable: true, nightDeliveryCharge: 10, nightDeliveryEnabled: false })
+  const [storeStatus, setStoreStatus] = useState({ name: '', open: true, onlineAvailable: true, nightDeliveryCharge: 10, nightDeliveryEnabled: false })
 
   // Fetch store status for the canteen in cart
   const canteenId = cart_details[0]?.canteen_id
@@ -23,6 +24,7 @@ export function Cart_Details() {
         .then(res => {
           if (res.data?.success) {
             setStoreStatus({
+              name: res.data.data.name ?? '',
               open: res.data.data.status === 'open',
               onlineAvailable: res.data.data.isOnlineOrderAvailable ?? true,
               nightDeliveryCharge: res.data.data.nightDeliveryCharge ?? 10,
@@ -44,7 +46,7 @@ export function Cart_Details() {
 
   async function placeOrder(paymentType: 'cash' | 'online') {
     if (!user) {
-      toast.error("Please login to place an order!")
+      toast.error("Sign in to place an order.")
       return
     }
 
@@ -72,9 +74,9 @@ export function Cart_Details() {
           dispatch(clear_all_item())
           announceOrdersChanged()
           if (isNightDelivery) {
-            toast.success("Night Delivery order placed! Your food will be delivered to you soon. 🌙")
+            toast.success("Order placed. It will be delivered to you after hours.")
           } else {
-            toast.success("Order placed! Please pick it up at the counter after it's ready.")
+            toast.success("Order placed. Pick it up at the counter when it is ready.")
           }
         } else {
           // ── Cashfree online payment flow ──────────────────────────────────
@@ -89,161 +91,135 @@ export function Cart_Details() {
             // Cashfree redirects back to /orders?order_id=... on success
             // MyOrders page calls /verify-payment and then clears the cart
           } else if (sessionId && !window.Cashfree) {
-            toast.error("Cashfree SDK not loaded. Please refresh and try again.")
+            toast.error("Payment could not load. Refresh the page and try again.")
           } else {
-            toast.error("No payment session returned. Please try again.")
+            toast.error("The payment could not start. Try again.")
           }
         }
       } else {
         const errMsg = response.data?.message || "Failed to place order."
         toast.error(errMsg)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      const msg = err.response?.data?.message || "Failed to place order. Please try again."
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "The order could not be placed. Try again."
       toast.error(msg)
     } finally {
       setPlacing(false)
     }
   }
 
+  const cannotOrder = !storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))
+  const totalQty = cart_details.reduce((n, c) => n + c.qty, 0)
+
+  if (cart_details.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 pt-16 pb-10 text-center">
+        <h1 className="text-3xl font-extrabold" style={{ color: 'var(--text-main)' }}>Your cart is empty</h1>
+        <p className="mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>Pick a canteen and add what you feel like eating.</p>
+        <Link to="/" className="inline-flex items-center mt-6 px-5 h-11 rounded-xl bg-primary text-on-primary font-extrabold hover:bg-primary-dark">
+          Browse canteens
+        </Link>
+      </div>
+    )
+  }
+
   return (
-    <div
-      className="min-h-screen flex flex-col transition-colors duration-300"
-      style={{ backgroundColor: 'var(--bg)' }}
-    >
-      {/* Header */}
-      <div
-        className="border-b px-4 py-4 sticky top-0 z-10 backdrop-blur-sm"
-        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-      >
-        <div className="max-w-2xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">
-              🛒 Your Cart
-            </h1>
-            <p className="text-xs sm:text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {cart_details.length} item{cart_details.length !== 1 ? 's' : ''} · Review before checkout
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-10">
+      <h1 className="text-3xl font-extrabold mb-4" style={{ color: 'var(--text-main)' }}>Your cart</h1>
+
+      {/* The order slip. The notches line up with the tear line under the header. */}
+      <div className="slip" style={{ ['--notch-y' as string]: 'calc(5rem - 1px)' }}>
+        <div className="perf h-20 px-5 flex items-center justify-between" style={{ borderTop: 'none', borderBottom: '2px dashed var(--border)' }}>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Ordering from</p>
+            <p className="font-display text-xl font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
+              {storeStatus.name || 'Your canteen'}
             </p>
           </div>
-
-          {cart_details.length > 0 && (
-            <button
-              onClick={handleClearCart}
-              className="text-xs sm:text-sm font-bold text-red-400 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Cart Items */}
-      <div className="flex-1 px-3 sm:px-4 py-4 sm:py-6 space-y-3 max-w-2xl mx-auto w-full">
-        {cart_details.length > 0 ? (
-          cart_details.map((item, index) => (
-            <CartItemCard
-              key={`${item.id}__${item.portionSize}__${index}`}
-              item_name={item.item_name}
-              price={item.price}
-              qty={item.qty}
-              portionSize={item.portionSize}
-              itemId={item.id}
-            />
-          ))
-        ) : (
-          <div
-            className="flex flex-col items-center justify-center py-24 rounded-3xl border-2 border-dashed"
-            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
+          <button
+            onClick={handleClearCart}
+            className="shrink-0 px-3 h-9 rounded-lg text-sm font-bold hover:bg-[var(--surface-2)]"
+            style={{ color: 'var(--text-muted)' }}
           >
-            <span className="text-5xl sm:text-6xl mb-4 opacity-50">🛒</span>
-            <h3 className="text-lg sm:text-xl font-black" style={{ color: 'var(--text-main)' }}>Cart is empty</h3>
-            <p className="mt-2 font-medium text-center px-4" style={{ color: 'var(--text-muted)' }}>
-              Browse canteens and add some delicious items!
-            </p>
-          </div>
-        )}
-      </div>
+            Clear cart
+          </button>
+        </div>
 
-      {/* Checkout Bar */}
-      {cart_details.length > 0 && (
-        <div
-          className="sticky bottom-0 border-t px-3 sm:px-4 py-4 backdrop-blur-sm"
-          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-        >
-          <div className="max-w-2xl mx-auto space-y-3">
-            {/* Night Delivery Toggle */}
-            <div className="flex justify-between items-center px-1">
-              <label htmlFor="nightDelivery" className="font-bold flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-muted)' }}>
-                <input
-                  id="nightDelivery"
-                  type="checkbox"
-                  checked={isNightDelivery}
-                  onChange={(e) => setIsNightDelivery(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                🌙 Night Delivery
-              </label>
-              <span className="text-xs font-bold text-gray-400 dark:text-gray-500">(If available)</span>
+        <ul className="px-5 py-2 divide-y" style={{ borderColor: 'var(--border)' }}>
+          {cart_details.map((item, index) => (
+            <li key={`${item.id}__${item.portionSize}__${index}`} className="py-3.5" style={{ borderColor: 'var(--border)' }}>
+              <CartItemCard
+                item_name={item.item_name}
+                price={item.price}
+                qty={item.qty}
+                portionSize={item.portionSize}
+                itemId={item.id}
+              />
+            </li>
+          ))}
+        </ul>
+
+        <div className="perf px-5 pt-4 pb-5 space-y-3" style={{ borderTop: '2px dashed var(--border)' }}>
+          {storeStatus.nightDeliveryEnabled && (
+            <label htmlFor="nightDelivery" className="flex items-center justify-between gap-3 cursor-pointer py-1">
+              <span>
+                <span className="block text-sm font-bold" style={{ color: 'var(--text-main)' }}>Night delivery</span>
+                <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Brought to you after hours for ₹{storeStatus.nightDeliveryCharge} extra</span>
+              </span>
+              <input
+                id="nightDelivery"
+                type="checkbox"
+                role="switch"
+                checked={isNightDelivery}
+                onChange={(e) => setIsNightDelivery(e.target.checked)}
+                className="w-5 h-5 accent-[#F5B400]"
+              />
+            </label>
+          )}
+
+          <dl className="space-y-1.5 text-sm font-semibold tnum" style={{ color: 'var(--text-main)' }}>
+            <div className="flex items-end gap-2">
+              <dt>Items ({totalQty})</dt><span className="leader" aria-hidden /><dd>₹{subtotal.toFixed(2)}</dd>
             </div>
-
-            {/* Subtotal (Optional but good if fee applies) */}
             {isNightDelivery && (
-              <>
-                <div className="flex justify-between items-center px-1">
-                  <span className="font-bold text-sm" style={{ color: 'var(--text-muted)' }}>Items Subtotal</span>
-                  <span className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>₹{subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center px-1 mb-1">
-                  <span className="font-bold text-sm flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                    <span>Delivery Charge</span>
-                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">Night</span>
-                  </span>
-                  <span className="font-black text-sm text-primary">+ ₹{deliveryCharge.toFixed(2)}</span>
-                </div>
-              </>
-            )}
-
-            {/* Total */}
-            <div className="flex justify-between items-center px-1 border-t pt-2" style={{ borderColor: 'var(--border)' }}>
-              <span className="font-black" style={{ color: 'var(--text-main)' }}>Grand Total</span>
-              <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
-            </div>
-
-            {/* Paused Banner */}
-            {(!storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))) && (
-              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-center">
-                <p className="text-yellow-600 font-bold text-xs">
-                  {!storeStatus.open ? '🔴 Canteen is currently CLOSED' : '⚠️ App Ordering is Paused'}
-                </p>
-                <p className="text-gray-500 text-[10px] mt-0.5">
-                  {!storeStatus.open && storeStatus.nightDeliveryEnabled
-                    ? 'Check "Night Delivery" above to order after-hours!'
-                    : 'The kitchen is not accepting new app orders right now.'}
-                </p>
+              <div className="flex items-end gap-2">
+                <dt>Night delivery</dt><span className="leader" aria-hidden /><dd>₹{deliveryCharge.toFixed(2)}</dd>
               </div>
             )}
+            <div className="flex items-end gap-2 pt-1 text-xl font-extrabold font-display">
+              <dt>Total</dt><span className="leader" aria-hidden /><dd>₹{total.toFixed(2)}</dd>
+            </div>
+          </dl>
 
-            {/* Pay Online */}
-            <button
-              onClick={() => placeOrder('online')}
-              disabled={placing || !storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))}
-              className="w-full bg-primary text-white py-4 rounded-xl font-black text-sm sm:text-base hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-40 disabled:grayscale-[0.5]"
-            >
-              {placing ? '⏳ Placing...' : `💳 Pay Online ₹${total.toFixed(2)}`}
-            </button>
+          {cannotOrder && (
+            <div className="rounded-xl border p-3 text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 14%, transparent)', borderColor: 'color-mix(in srgb, var(--primary) 55%, transparent)', color: 'var(--text-main)' }} role="alert">
+              <p className="font-extrabold">{!storeStatus.open ? 'This canteen is closed' : 'App orders are paused'}</p>
+              <p className="mt-0.5">
+                {!storeStatus.open && storeStatus.nightDeliveryEnabled
+                  ? 'Turn on night delivery above to order after hours.'
+                  : 'The kitchen is not taking app orders right now. Try again in a little while.'}
+              </p>
+            </div>
+          )}
 
-            {/* Pay at Counter */}
-            <button
-              onClick={() => placeOrder('cash')}
-              disabled={placing || !storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))}
-              className="w-full border-2 border-primary/30 text-primary py-3.5 rounded-xl font-black text-sm sm:text-base hover:bg-primary/5 transition-all active:scale-[0.98] disabled:opacity-40"
-            >
-              {placing ? '⏳ Placing...' : `💵 Pay at Counter · ₹${total.toFixed(2)}`}
-            </button>
-          </div>
+          <button
+            onClick={() => placeOrder('online')}
+            disabled={placing || cannotOrder}
+            className="w-full h-12 rounded-xl bg-primary text-on-primary font-extrabold hover:bg-primary-dark active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {placing ? 'Placing your order…' : `Pay online ₹${total.toFixed(2)}`}
+          </button>
+          <button
+            onClick={() => placeOrder('cash')}
+            disabled={placing || cannotOrder}
+            className="w-full h-12 rounded-xl border-2 font-extrabold hover:bg-[var(--surface-2)] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ borderColor: 'var(--text-main)', color: 'var(--text-main)' }}
+          >
+            {placing ? 'Placing your order…' : `Pay at counter ₹${total.toFixed(2)}`}
+          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

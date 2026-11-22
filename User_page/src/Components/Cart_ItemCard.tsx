@@ -10,84 +10,52 @@ interface CartItemCardProps {
   itemId: string
 }
 
-export const CartItemCard: FC<CartItemCardProps> = ({
-  item_name,
-  price,
-  qty,
-  portionSize,
-  itemId,
-}) => {
+/** One line on the order slip: name ........ price, with the quantity controls underneath. */
+export const CartItemCard: FC<CartItemCardProps> = ({ item_name, price, qty, portionSize, itemId }) => {
   const dispatch = useAppDispatch()
 
   return (
-    <div
-      className="rounded-xl border shadow-sm p-4 transition-colors duration-200"
-      style={{
-        backgroundColor: 'var(--surface)',
-        borderColor: 'var(--border)',
-      }}
-    >
-      <div className="flex justify-between items-start">
-        {/* Left Info */}
-        <div className="flex-1 min-w-0 mr-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2
-              className="text-base font-bold"
-              style={{ color: 'var(--text-main)' }}
-            >
-              {item_name}
-            </h2>
-            {/* Portion badge */}
-            <span
-              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                portionSize === 'full'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}
-            >
-              {portionSize === 'full' ? '🍱 Full' : '🍜 Half'}
+    <div>
+      <div className="flex items-end gap-2">
+        <span className="font-bold leading-snug" style={{ color: 'var(--text-main)' }}>
+          {item_name}
+          {portionSize === 'half' && (
+            <span className="ml-1.5 px-1.5 py-0.5 rounded text-[11px] font-extrabold align-middle" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+              Half
             </span>
-          </div>
-          <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            ₹{price} each
-          </p>
-        </div>
-
-        {/* Right Info */}
-        <div className="text-right flex-shrink-0">
-          <p className="text-lg font-black text-primary">
-            ₹{(price * qty).toFixed(0)}
-          </p>
-        </div>
+          )}
+        </span>
+        <span className="leader" aria-hidden />
+        <span className="font-extrabold tnum" style={{ color: 'var(--text-main)' }}>₹{(price * qty).toFixed(0)}</span>
       </div>
 
-      {/* Quantity Controls */}
-      <div className="mt-3 flex items-center justify-between">
-        <div
-          className="flex items-center gap-3 rounded-lg px-3 py-1.5 border"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}
-        >
-          <button
-            onClick={() => dispatch(decrease_item({ id: itemId, portionSize }))}
-            className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-lg transition-colors hover:bg-red-50 hover:text-red-500"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            −
-          </button>
-          <span className="font-bold text-base w-5 text-center" style={{ color: 'var(--text-main)' }}>
-            {qty}
-          </span>
-          <button
-            onClick={() => dispatch(increase_item({ id: itemId, portionSize }))}
-            className="w-7 h-7 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors font-bold text-lg"
-          >
-            +
-          </button>
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <div className="inline-flex items-center h-9 rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+            <button
+              onClick={() => dispatch(decrease_item({ id: itemId, portionSize }))}
+              aria-label={`Remove one ${item_name}`}
+              className="w-9 h-full flex items-center justify-center text-lg font-extrabold rounded-l-lg hover:bg-[var(--surface-2)]"
+              style={{ color: 'var(--text-main)' }}
+            >
+              −
+            </button>
+            <span className="w-8 text-center font-extrabold text-sm tnum" style={{ color: 'var(--text-main)' }} aria-live="polite">{qty}</span>
+            <button
+              onClick={() => dispatch(increase_item({ id: itemId, portionSize }))}
+              aria-label={`Add one more ${item_name}`}
+              className="w-9 h-full flex items-center justify-center text-lg font-extrabold bg-primary text-on-primary rounded-r-[7px] hover:bg-primary-dark"
+            >
+              +
+            </button>
+          </div>
+          <span className="ml-2 text-xs font-medium tnum" style={{ color: 'var(--text-muted)' }}>₹{price} each</span>
         </div>
 
         <button
           onClick={() => dispatch(delete_item({ id: itemId, portionSize }))}
-          className="text-xs font-bold text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+          className="px-2 h-8 rounded-lg text-xs font-bold hover:bg-[var(--surface-2)]"
+          style={{ color: 'var(--text-muted)' }}
         >
           Remove
         </button>

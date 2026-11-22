@@ -107,9 +107,9 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
         {/* Success state */}
         {step === 'success' && (
           <div className="text-center py-6">
-            <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>Phone Verified!</h2>
-            <p className="mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>Redirecting you to the canteen...</p>
+            
+            <h2 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>Phone verified</h2>
+            <p className="mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>Taking you to the canteens…</p>
           </div>
         )}
 
@@ -120,8 +120,8 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
             {step === 'enter_phone' && (
               <>
                 <div className="text-center mb-6">
-                  <div className="text-4xl mb-3">📱</div>
-                  <h2 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>Verify Your Mobile</h2>
+                  
+                  <h2 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>Verify your mobile number</h2>
                   <p className="mt-2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                     We need your phone number so canteen owners can contact you about your order.
                   </p>
@@ -134,7 +134,7 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
                 )}
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                  <label className="text-xs font-extrabold" style={{ color: 'var(--text-muted)' }}>
                     Mobile Number
                   </label>
                   <div
@@ -164,7 +164,7 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
                 <button
                   type="submit"
                   disabled={loading || (phoneValue?.length || 0) !== 10}
-                  className="mt-6 w-full py-4 bg-primary text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-6 w-full py-4 bg-primary text-on-primary rounded-xl font-black text-sm shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? '⏳ Sending OTP...' : 'Send OTP →'}
                 </button>
@@ -175,10 +175,10 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
             {step === 'enter_otp' && (
               <>
                 <div className="text-center mb-6">
-                  <div className="text-4xl mb-3">🔐</div>
+                  
                   <h2 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>Enter OTP</h2>
                   <p className="mt-2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-                    6-digit code sent to <span className="font-black text-primary"> +91 {phoneValue}</span>
+                    6-digit code sent to <span className="font-black text-brand"> +91 {phoneValue}</span>
                   </p>
                 </div>
 
@@ -210,7 +210,7 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
                 <button
                   type="submit"
                   disabled={loading || (otpValue?.length || 0) !== 6}
-                  className="mt-6 w-full py-4 bg-primary text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-6 w-full py-4 bg-primary text-on-primary rounded-xl font-black text-sm shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? '⏳ Verifying...' : '✅ Verify & Continue'}
                 </button>
@@ -225,7 +225,7 @@ export default function PhoneModal({ userId, onComplete }: PhoneModalProps) {
                     <button
                       type="button"
                       onClick={() => { handleSendOtp(phoneValue); }}
-                      className="text-xs font-black text-primary hover:underline"
+                      className="text-xs font-black text-brand hover:underline"
                     >
                       Resend OTP
                     </button>

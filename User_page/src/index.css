@@ -1,27 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 /* ─── Light mode CSS variables ────────────────────────────────────────────── */
 :root {
-  --primary: #4f46e5;
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --border: #e2e8f0;
-  --text-main: #111827;
-  --text-muted: #6b7280;
-  --shadow: 0 4px 12px -2px rgb(0 0 0 / 0.06);
+  --primary: #F5B400;          /* haldi */
+  --c-brand: 138 97 0;         /* haldi as text on light surfaces */
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --surface-2: #E9ECF1;
+  --border: #DADFE7;
+  --text-main: #121B2E;        /* ink */
+  --text-muted: #566075;
+  --veg: #1E8E3E;
+  --nonveg: #C62828;
+  --shadow: 0 1px 2px rgb(18 27 46 / 0.06);
 }
 
 /* ─── Dark mode CSS variable overrides ────────────────────────────────────── */
 html.dark {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --border: #334155;
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --shadow: 0 4px 12px -2px rgb(0 0 0 / 0.4);
+  --c-brand: 245 180 0;
+  --bg: #0C121E;
+  --surface: #151D2E;
+  --surface-2: #1E2840;
+  --border: #2A3550;
+  --text-main: #EEF1F7;
+  --text-muted: #9AA5BA;
+  --veg: #3DBA63;
+  --nonveg: #EF5350;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
@@ -35,10 +43,26 @@ html.dark {
     transition-timing-function: ease;
   }
 
+  h1, h2, h3, .font-display {
+    font-family: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  :focus-visible {
+    outline: 2px solid var(--text-main);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  }
+
   body {
     background-color: var(--bg);
     color: var(--text-main);
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Figtree', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -47,7 +71,7 @@ html.dark {
 /* ─── Component classes ────────────────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition-colors duration-200 shadow-md;
+    @apply px-4 py-2 bg-primary text-on-primary rounded-lg font-bold hover:bg-primary-dark transition-colors duration-200 shadow-md;
   }
 
   .btn-secondary {
@@ -61,6 +85,35 @@ html.dark {
     border-radius: 0.75rem;
     box-shadow: var(--shadow);
     padding: 1.5rem;
+  }
+
+  /* Canteen token slip: a ticket with half-round notches cut into both edges at --notch-y.
+     Used for the cart and for orders, the one place the design gets playful. */
+  .slip {
+    --notch-y: 5.5rem;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    -webkit-mask:
+      radial-gradient(circle 9px at 0 var(--notch-y), #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle 9px at 100% var(--notch-y), #0000 97%, #000) right / 51% 100% no-repeat;
+            mask:
+      radial-gradient(circle 9px at 0 var(--notch-y), #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle 9px at 100% var(--notch-y), #0000 97%, #000) right / 51% 100% no-repeat;
+  }
+
+  /* Dashed tear line */
+  .perf {
+    border-top: 2px dashed var(--border);
+  }
+
+  /* Dotted leader between a name and its price, like a menu board */
+  .leader {
+    flex: 1 1 auto;
+    min-width: 1rem;
+    align-self: flex-end;
+    margin-bottom: 0.3em;
+    border-bottom: 2px dotted color-mix(in srgb, var(--text-muted) 55%, transparent);
   }
 
   /* Utility: hide scrollbars */

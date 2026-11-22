@@ -197,7 +197,7 @@ export default function BiteBotChat() {
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close BiteBot' : 'Open BiteBot, your food assistant'}
         aria-expanded={isOpen}
-        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="fixed bottom-20 md:bottom-5 right-4 md:right-5 z-50 h-14 w-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         style={{ background: BRAND, outlineColor: BRAND }}
       >
         {isOpen ? (

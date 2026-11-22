@@ -17,7 +17,7 @@ function App() {
     >
       <Toaster position="top-center" />
       <Header/>
-      <Outlet/>
+      <main className="pb-20 md:pb-0"><Outlet/></main>
       <BiteBotChat />
       <OrderAlerts />
     </div>

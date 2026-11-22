@@ -1,5 +1,8 @@
 import type { CanteenStoreInterface } from "../Util/CanteenStoreInterface"
 import { Link } from "react-router-dom"
+import { Clock, MapPin, Moon } from "lucide-react"
+
+const FOOD_TYPE: Record<string, string> = { veg: 'Veg only', 'non-veg': 'Non-veg' }
 
 export function CanteenStoreCard({
   name,
@@ -11,70 +14,46 @@ export function CanteenStoreCard({
   operationTime,
   _id
 }: CanteenStoreInterface) {
+  const open = status === "open"
   return (
-    <Link className="block group" to={`/menu_card_shop/${_id}`}>
-      <div
-        className="rounded-xl shadow-lg overflow-hidden border transition-all duration-300 transform group-hover:-translate-y-1 group-hover:shadow-2xl"
-        style={{
-          backgroundColor: 'var(--surface)',
-          borderColor: 'var(--border)',
-        }}
-      >
+    <Link
+      to={`/menu_card_shop/${_id}`}
+      className="group block rounded-2xl border p-4 sm:p-5 transition-colors hover:border-[var(--text-main)]"
+      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', opacity: open ? 1 : 0.78 }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: 'var(--text-main)' }}>
+          {name}
+        </h2>
+        <span
+          className="shrink-0 flex items-center gap-1.5 px-2.5 h-7 rounded-full text-xs font-extrabold"
+          style={open
+            ? { backgroundColor: 'color-mix(in srgb, var(--veg) 16%, transparent)', color: 'var(--veg)' }
+            : { backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'currentColor' }} />
+          {open ? 'Open' : 'Closed'}
+        </span>
+      </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-5">
+      <p className="mt-1.5 text-sm line-clamp-2 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+        {description}
+      </p>
 
-          {/* Name */}
-          <h2
-            className="text-base sm:text-xl font-black tracking-tight group-hover:text-primary transition-colors"
-            style={{ color: 'var(--text-main)' }}
-          >
-            {name}
-          </h2>
-
-          {/* Description */}
-          <p
-            className="mt-2 text-sm font-medium line-clamp-2 leading-relaxed"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            {description}
-          </p>
-
-          {/* Details */}
-          <div
-            className="mt-4 space-y-2 border-t pt-4"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-secondary text-base">📍</span> {location}
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-primary text-base">🍽️</span> {foodType === 'veg' ? 'Veg only' : foodType === 'non-veg' ? 'Non-veg' : 'Veg & non-veg'}
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-accent text-base">⏰</span> {operationTime.openTime} - {operationTime.closeTime}
-            </div>
-          </div>
-
-          {/* Status + Night Delivery */}
-          <div className="flex items-center justify-between mt-5">
-            <span
-              className={`text-[10px] uppercase tracking-widest font-black px-3 py-1 rounded-md ${
-                status === "open"
-                  ? "bg-green-100 text-green-700 border border-green-200"
-                  : "bg-red-100 text-red-700 border border-red-200"
-              }`}
-            >
-              {status}
+      <div className="mt-4 pt-3 border-t flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-semibold" style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}>
+        <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} aria-hidden />{location}</span>
+        <span className="flex items-center gap-1.5 tnum"><Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} aria-hidden />{operationTime.openTime} to {operationTime.closeTime}</span>
+        {FOOD_TYPE[foodType] && (
+          <span className="flex items-center gap-1.5">
+            <span className="flex w-3.5 h-3.5 items-center justify-center rounded-[3px] border-2" style={{ borderColor: foodType === 'veg' ? 'var(--veg)' : 'var(--nonveg)' }} aria-hidden>
+              <span className="block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: foodType === 'veg' ? 'var(--veg)' : 'var(--nonveg)' }} />
             </span>
-
-            {nightDelivery && (
-              <span className="text-[10px] uppercase tracking-widest font-black bg-primary/10 text-primary px-3 py-1 rounded-md border border-primary/20">
-                Night Owl 🌙
-              </span>
-            )}
-          </div>
-        </div>
+            {FOOD_TYPE[foodType]}
+          </span>
+        )}
+        {nightDelivery && (
+          <span className="flex items-center gap-1.5"><Moon className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} aria-hidden />Night delivery</span>
+        )}
       </div>
     </Link>
   )

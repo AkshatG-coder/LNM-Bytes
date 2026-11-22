@@ -45,11 +45,11 @@ export default function Favorites() {
   return (
     <section className="mb-6" aria-label="Your favourites">
       <div className="flex items-baseline justify-between mb-2">
-        <h2 className="text-sm font-black" style={{ color: 'var(--text-main)' }}>Your favourites</h2>
+        <h2 className="text-lg font-extrabold" style={{ color: 'var(--text-main)' }}>Your favourites</h2>
         {cart.length > 0 && (
           <button
             onClick={() => navigate('/cart')}
-            className="text-xs font-bold text-primary hover:underline"
+            className="text-sm font-bold text-brand hover:underline"
           >
             View cart ({cart.reduce((n, c) => n + c.qty, 0)})
           </button>
@@ -59,7 +59,7 @@ export default function Favorites() {
         {items.map((f) => (
           <div
             key={f.id}
-            className="snap-start shrink-0 w-40 rounded-2xl border p-3 flex flex-col"
+            className="snap-start shrink-0 w-44 rounded-2xl border p-3 flex flex-col"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', opacity: f.canOrder ? 1 : 0.6 }}
           >
             <div className="flex items-center gap-1.5">
@@ -78,7 +78,7 @@ export default function Favorites() {
               <button
                 onClick={() => add(f)}
                 aria-disabled={!f.canOrder}
-                className="px-3 py-1 rounded-lg text-xs font-black bg-primary text-white active:scale-95 transition-transform"
+                className="px-3 h-8 rounded-lg text-sm font-extrabold bg-primary text-on-primary active:scale-95 transition-transform"
               >
                 {f.canOrder ? 'Add' : 'Closed'}
               </button>

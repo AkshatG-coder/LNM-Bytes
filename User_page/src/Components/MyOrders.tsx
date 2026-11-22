@@ -36,16 +36,24 @@ interface Order {
   rating?: number | null
 }
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: string; color: string; bg: string; step: number; fill: string; border: string }> = {
-  pending:   { label: 'Order Placed',     icon: '🕐', color: 'text-yellow-500', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 1, fill: 'bg-yellow-500', border: 'border-yellow-500' },
-  preparing: { label: 'Being Prepared',   icon: '🍳', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/30', step: 2, fill: 'bg-orange-500', border: 'border-orange-500' },
-  ready:     { label: 'Ready for Pickup', icon: '🛎️', color: 'text-green-500',  bg: 'bg-green-500/10  border-green-500/30',  step: 3, fill: 'bg-green-500', border: 'border-green-500' },
-  delivered: { label: 'Delivered',        icon: '✅', color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/30', step: 4, fill: 'bg-purple-500', border: 'border-purple-500' },
-  cancelled: { label: 'Cancelled',        icon: '❌', color: 'text-red-500',    bg: 'bg-red-500/10   border-red-500/30',     step: 0, fill: 'bg-red-500', border: 'border-red-500' },
-  payment_pending: { label: 'Payment Pending', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0, fill: 'bg-yellow-600', border: 'border-yellow-600' },
+type StatusLook = { label: string; step: number; pill: React.CSSProperties }
+
+// Pills use the design tokens only: yellow = being worked on, green = go and collect, red = problem
+const STATUS_CONFIG: Record<OrderStatus, StatusLook> = {
+  pending:   { label: 'Order placed',    step: 1, pill: { backgroundColor: 'var(--surface-2)', color: 'var(--text-main)' } },
+  preparing: { label: 'Being prepared',  step: 2, pill: { backgroundColor: 'var(--primary)', color: '#121B2E' } },
+  ready:     { label: 'Ready to collect', step: 3, pill: { backgroundColor: 'var(--veg)', color: '#fff' } },
+  delivered: { label: 'Picked up',       step: 4, pill: { backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' } },
+  cancelled: { label: 'Cancelled',       step: 0, pill: { backgroundColor: 'color-mix(in srgb, var(--nonveg) 14%, transparent)', color: 'var(--nonveg)' } },
+  payment_pending: { label: 'Payment incomplete', step: 0, pill: { backgroundColor: 'color-mix(in srgb, var(--primary) 25%, transparent)', color: 'var(--text-main)' } },
 }
 
-const STEPS: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered']
+const STEPS: { status: OrderStatus; label: string }[] = [
+  { status: 'pending', label: 'Placed' },
+  { status: 'preparing', label: 'Preparing' },
+  { status: 'ready', label: 'Ready' },
+  { status: 'delivered', label: 'Picked up' },
+]
 
 function formatDateTime(iso: string) {
   const date = new Date(iso)
@@ -62,52 +70,32 @@ function formatDateTime(iso: string) {
 // memo: only re-renders if orderId changes, not on parent list re-renders
 const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
   const [qrCode, setQrCode] = useState<string | null>(null)
-  const [orderNumber, setOrderNumber] = useState<number | null>(null)
   const [error, setError] = useState(false)
 
   useEffect(() => {
     api.get(`/order/${orderId}/qr`)
-      .then(r => {
-        setQrCode(r.data?.data?.qrCode ?? null)
-        setOrderNumber(r.data?.data?.orderNumber ?? null)
-      })
+      .then(r => setQrCode(r.data?.data?.qrCode ?? null))
       .catch(() => setError(true))
   }, [orderId])
 
   if (error) return (
-    <p className="text-xs text-red-400 mt-2">QR code expired or unavailable. Ask the counter staff.</p>
+    <p className="text-sm font-semibold mt-3" style={{ color: 'var(--nonveg)' }}>The QR code is unavailable. Show your token number at the counter.</p>
   )
 
   return (
-    <div className="mt-4 flex flex-col items-center gap-3">
-      <p className="text-xs font-bold text-green-400 uppercase tracking-widest">Show this at the counter</p>
-
-      {/* ── Bold Token Number ── */}
-      {orderNumber ? (
-        <div className="flex flex-col items-center gap-1">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Token Number</p>
-          <div className="bg-green-500 text-white font-black text-4xl px-8 py-3 rounded-2xl shadow-lg shadow-green-500/30 tracking-wider">
-            #{orderNumber}
-          </div>
-        </div>
-      ) : (
-        <div className="w-24 h-14 rounded-xl bg-green-900/20 animate-pulse" />
-      )}
-
-      {/* ── QR Code ── */}
+    <div className="mt-3 flex flex-col items-center gap-2">
       {qrCode
-        ? <img src={qrCode} alt="Order QR Code" className="w-44 h-44 rounded-xl border-4 border-green-500/40 bg-white p-1 shadow-xl" />
-        : <div className="w-44 h-44 rounded-xl border-2 border-green-500/20 bg-green-900/10 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-400 rounded-full animate-spin" />
-          </div>
+        ? <img src={qrCode} alt="Order QR code" className="w-44 h-44 rounded-xl bg-white p-1.5 border" style={{ borderColor: 'var(--border)' }} />
+        : <div className="w-44 h-44 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--surface-2)' }} />
       }
-      <p className="text-[10px] text-gray-500 font-medium">QR expires 1 hour after order is ready</p>
+      <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>The QR code works for 1 hour after your order is ready.</p>
     </div>
   )
 })
 
+const NOTE_BOX = 'mt-4 p-3.5 rounded-xl text-sm'
 
-// ─── Single order card ────────────────────────────────────────────────────────
+// ─── Single order slip ────────────────────────────────────────────────────────
 // memo: prevents re-rendering all cards when only one order's status changes
 const OrderCard = memo(function OrderCard({
   order,
@@ -124,167 +112,122 @@ const OrderCard = memo(function OrderCard({
   // A rejected online order whose refund could not start is also stored as payment "failed"
   const refundFailed = !!rejection && order.paymentType === 'online' && order.paymentStatus === 'failed'
   const isPaymentFailed = order.status === 'cancelled' && order.paymentStatus === 'failed' && !rejection
-
-  if (isPaymentFailed) {
-    cfg = { label: 'Payment Failed', icon: '❌', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30', step: 0, fill: 'bg-red-500', border: 'border-red-500' }
-  } else if (order.status === 'payment_pending') {
-    cfg = { label: 'Payment Incomplete', icon: '⏳', color: 'text-yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30', step: 0, fill: 'bg-yellow-600', border: 'border-yellow-600' }
-  }
+  if (isPaymentFailed) cfg = { ...cfg, label: 'Payment failed' }
 
   return (
-    <div
-      className={`rounded-2xl border p-5 mb-4 transition-all ${cfg.bg}`}
-      style={{ backgroundColor: 'var(--surface)', backdropFilter: 'blur(4px)' }}
-    >
-
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2 gap-2">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap pb-1">
-            {order.orderNumber && (
-              <span
-                className="text-xs font-black px-2 py-0.5 rounded-full"
-                style={{ color: 'var(--text-main)', backgroundColor: 'var(--surface)' }}
-              >
-                # {order.orderNumber}
-              </span>
-            )}
-            {order.storeName && (
-              <span className="text-xs font-bold text-primary/80">
-                • {order.storeName}
-              </span>
-            )}
-            <span className="text-xs font-medium text-gray-500">
-              {formatDateTime(order.createdAt)}
-            </span>
-          </div>
+    <article className="slip mb-4" style={{ ['--notch-y' as string]: 'calc(5rem - 1px)' }} aria-label={`Order ${order.orderNumber ?? ''}`}>
+      {/* Stub: token number, canteen, status */}
+      <div className="h-20 px-5 flex items-center justify-between gap-3" style={{ borderBottom: '2px dashed var(--border)' }}>
+        <div className="min-w-0">
+          <p className="font-display text-3xl font-extrabold leading-none tnum" style={{ color: 'var(--text-main)' }}>
+            {order.orderNumber ? `#${order.orderNumber}` : 'Order'}
+          </p>
+          <p className="mt-1.5 text-xs font-semibold truncate" style={{ color: 'var(--text-muted)' }}>
+            {order.storeName ? `${order.storeName}, ` : ''}{formatDateTime(order.createdAt)}
+          </p>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-xl font-black" style={{ color: 'var(--text-main)' }}>₹{order.totalAmount}</div>
-          <div className="text-xs font-medium text-gray-500">
-            {order.paymentType === 'cash' ? '💵 Pay at Counter' : '💳 Online'}
-          </div>
-        </div>
+        <span className="shrink-0 px-3 h-8 flex items-center rounded-full text-xs font-extrabold" style={cfg.pill}>
+          {cfg.label}
+        </span>
       </div>
 
-      {/* Swiggy-style Stepper UI */}
-      {!isCancelled && (
-        <div className="mt-5 mb-2 px-1 pb-8">
-          <div className="flex items-center justify-between relative w-full" role="progressbar">
-            {/* Background Path */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 dark:bg-gray-700/50 rounded-full z-0" />
-            
-            {/* Active Path Fill */}
-            <div 
-               className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-full transition-all duration-700 ease-in-out ${cfg.fill} z-0`}
-               style={{ width: `${Math.max(0, (cfg.step - 1) / (STEPS.length - 1) * 100)}%` }}
-            />
-
-            {STEPS.map((s) => {
-              const sCfg = STATUS_CONFIG[s]
-              const isActive = sCfg.step <= cfg.step
-              const isCurrent = s === order.status
-
+      <div className="px-5 py-4">
+        {/* Progress */}
+        {!isCancelled && (
+          <ol className="grid grid-cols-4 gap-1.5 mb-4" aria-label="Order progress">
+            {STEPS.map((st) => {
+              const done = STATUS_CONFIG[st.status].step <= cfg.step
+              const current = st.status === order.status
               return (
-                <div key={s} className="relative flex flex-col items-center z-10 w-16 group">
-                  {/* Step Node */}
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base border-[2px] sm:border-[3px] transition-all duration-500 z-10 ${
-                    isCurrent ? `${cfg.border} ${cfg.color} bg-white dark:bg-dark-surface shadow-lg scale-110` :
-                    isActive ? `${sCfg.border} ${sCfg.fill} text-white` :
-                    'border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-surface text-gray-400 dark:text-gray-500'
-                  }`}>
-                    <span className={`transition-all duration-500 ${isCurrent ? 'animate-pulse' : ''}`}>
-                      {isActive && !isCurrent ? '✓' : sCfg.icon}
-                    </span>
-                  </div>
-                  
-                  {/* Step Label */}
-                  <span className={`absolute top-full mt-2 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-center transition-colors duration-300 w-20 ${
-                    isCurrent ? cfg.color :
-                    isActive ? 'text-gray-700 dark:text-gray-300' :
-                    'text-gray-400 dark:text-gray-600'
-                  }`}>
-                    {sCfg.label.replace('for Pickup', '').trim()}
-                  </span>
-                </div>
+                <li key={st.status} aria-current={current ? 'step' : undefined}>
+                  <div className="h-1.5 rounded-full" style={{ backgroundColor: done ? (st.status === 'ready' || order.status === 'ready' ? 'var(--veg)' : 'var(--primary)') : 'var(--surface-2)' }} />
+                  <p className={`mt-1.5 text-[11px] ${current ? 'font-extrabold' : 'font-semibold'}`} style={{ color: current ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                    {st.label}
+                  </p>
+                </li>
               )
             })}
+          </ol>
+        )}
+
+        {/* Items, like lines on a receipt */}
+        <ul className="space-y-1.5 text-sm tnum">
+          {order.items.map((item, i) => (
+            <li key={i} className="flex items-end gap-2" style={{ color: 'var(--text-main)' }}>
+              <span className="font-semibold">
+                {item.quantity} × {item.name}
+                {item.portionSize === 'half' && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-[11px] font-extrabold" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' }}>Half</span>
+                )}
+              </span>
+              <span className="leader" aria-hidden />
+              <span className="font-bold">₹{item.price * item.quantity}</span>
+            </li>
+          ))}
+          <li className="flex items-end gap-2 pt-1.5 font-display text-lg font-extrabold" style={{ color: 'var(--text-main)' }}>
+            <span>Total</span>
+            <span className="leader" aria-hidden />
+            <span>₹{order.totalAmount}</span>
+          </li>
+        </ul>
+        <p className="mt-1 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+          {order.paymentType === 'cash' ? 'Pay at the counter' : 'Paid online'}
+        </p>
+
+        {/* Ready: show the QR */}
+        {order.status === 'ready' && (
+          <div className={`${NOTE_BOX} text-center`} style={{ backgroundColor: 'color-mix(in srgb, var(--veg) 12%, transparent)' }}>
+            <p className="font-extrabold" style={{ color: 'var(--text-main)' }}>Your order is ready. Show this at the counter.</p>
+            <QRDisplay orderId={order._id} />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Items */}
-      <div className="space-y-1.5 mb-1">
-        {order.items.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm" style={{ color: 'var(--text-muted)' }}>
-            <span className="font-medium" style={{ color: 'var(--text-main)' }}>
-              {item.name}
-              {item.portionSize === 'half' && (
-                <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Half</span>
-              )}
-            </span>
-            <span className="font-bold" style={{ color: 'var(--text-muted)' }}>×{item.quantity} · ₹{item.price * item.quantity}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Ready & QR */}
-      {order.status === 'ready' && (
-        <div className="mt-3 p-4 rounded-xl bg-green-900/20 border border-green-700/30 text-center">
-          <p className="text-green-400 font-black text-sm">🛎️ Your order is ready! Come pick it up.</p>
-          <QRDisplay orderId={order._id} />
-        </div>
-      )}
-
-      {/* Cancelled / Failed */}
-      {order.status === 'cancelled' && (
-        <div className={`mt-3 p-3 rounded-xl text-center border ${isPaymentFailed ? 'bg-red-900/10 border-red-700/30' : 'bg-red-900/10 border-red-700/20'}`}>
-          <p className="text-red-400 font-bold text-sm">
-            {isPaymentFailed
-              ? 'Payment failed and order was cancelled.'
-              : rejection
-                ? 'The canteen could not take this order.'
-                : 'Order cancelled. Contact the canteen if needed.'}
-          </p>
-          {rejection && <p className="text-red-300 text-xs mt-1">Reason: {rejection}.</p>}
-          {order.paymentType === 'online' && order.paymentStatus === 'refunded' && (
-            <p className="text-green-400 text-xs mt-1 font-semibold">Your refund has been started.</p>
-          )}
-          {refundFailed && (
-            <p className="text-yellow-400 text-xs mt-1 font-semibold">
-              We could not start your refund automatically. Please contact the canteen.
+        {/* Cancelled / failed */}
+        {order.status === 'cancelled' && (
+          <div className={NOTE_BOX} style={{ backgroundColor: 'color-mix(in srgb, var(--nonveg) 10%, transparent)', color: 'var(--text-main)' }}>
+            <p className="font-extrabold">
+              {isPaymentFailed
+                ? 'The payment failed, so the order was cancelled.'
+                : rejection
+                  ? 'The canteen could not take this order.'
+                  : 'This order was cancelled. Ask the canteen if you need details.'}
             </p>
-          )}
-        </div>
-      )}
+            {rejection && <p className="mt-1">Reason: {rejection}.</p>}
+            {order.paymentType === 'online' && order.paymentStatus === 'refunded' && (
+              <p className="mt-1 font-semibold">Your refund has started.</p>
+            )}
+            {refundFailed && (
+              <p className="mt-1 font-semibold">We could not start your refund automatically. Please contact the canteen.</p>
+            )}
+          </div>
+        )}
 
-      {/* Payment Pending */}
-      {order.status === 'payment_pending' && (
-        <div className="mt-3 p-3 rounded-xl bg-yellow-900/10 border border-yellow-700/30 text-center">
-          <p className="text-yellow-500 font-bold text-sm">Online payment did not complete.</p>
-        </div>
-      )}
+        {order.status === 'payment_pending' && (
+          <div className={NOTE_BOX} style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 16%, transparent)', color: 'var(--text-main)' }}>
+            <p className="font-extrabold">The online payment did not go through.</p>
+          </div>
+        )}
 
-      {/* Delivered */}
-      {order.status === 'delivered' && (
-        <div className="mt-3 p-3 rounded-xl bg-purple-900/10 border border-purple-700/20 text-center">
-          <p className="text-purple-400 font-bold text-sm">✅ Picked up successfully. Enjoy your meal!</p>
-          <RateOrder orderId={order._id} rating={order.rating} />
-        </div>
-      )}
+        {/* Picked up: rate it */}
+        {order.status === 'delivered' && (
+          <div className={`${NOTE_BOX} text-center`} style={{ backgroundColor: 'var(--surface-2)' }}>
+            <p className="font-extrabold" style={{ color: 'var(--text-main)' }}>Picked up. Enjoy your meal.</p>
+            <RateOrder orderId={order._id} rating={order.rating} />
+          </div>
+        )}
 
-      {/* Reorder button — shown on completed orders */}
-      {(order.status === 'delivered' || order.status === 'cancelled' || order.status === 'payment_pending') && (
-        <button
-          onClick={() => onReorder(order)}
-          disabled={reordering}
-          className="mt-3 w-full py-2.5 rounded-xl text-sm font-black border-2 border-primary/30 text-primary
-            hover:bg-primary hover:text-white transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
-        >
-          {reordering ? 'Checking the menu…' : <>🔁 {isPaymentFailed || order.status === 'payment_pending' ? 'Try Ordering Again' : 'Reorder'}</>}
-        </button>
-      )}
-    </div>
+        {/* Order again */}
+        {(order.status === 'delivered' || order.status === 'cancelled' || order.status === 'payment_pending') && (
+          <button
+            onClick={() => onReorder(order)}
+            disabled={reordering}
+            className="mt-4 w-full h-11 rounded-xl text-sm font-extrabold bg-primary text-on-primary hover:bg-primary-dark active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait"
+          >
+            {reordering ? 'Checking the menu…' : order.status === 'delivered' ? 'Order again' : 'Try ordering again'}
+          </button>
+        )}
+      </div>
+    </article>
   )
 })
 
@@ -455,90 +398,60 @@ export default function MyOrders() {
   const completed = orders.filter(o => ['cancelled', 'delivered', 'payment_pending'].includes(o.status))
 
   return (
-    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black" style={{ color: 'var(--text-main)' }}>My Orders</h1>
-          <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Track the live status of your orders
-          </p>
-        </div>
+    <div className="max-w-xl mx-auto px-4 pt-6 pb-10">
+      <div className="flex items-end justify-between mb-5">
+        <h1 className="text-3xl font-extrabold" style={{ color: 'var(--text-main)' }}>My orders</h1>
         <button
           onClick={fetchOrders}
-          className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black border transition-all hover:border-primary/40 hover:text-primary"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+          className="px-3 h-9 rounded-lg text-sm font-bold border hover:bg-[var(--surface-2)]"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
         >
-          🔄 Refresh
+          Refresh
         </button>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center py-20 gap-3">
-          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-primary font-black tracking-widest animate-pulse uppercase text-sm">Finding the best food for you...</p>
+        <div className="space-y-4" aria-busy="true" aria-label="Loading orders">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-56 rounded-2xl border animate-pulse" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }} />
+          ))}
         </div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="text-6xl mb-4 opacity-30">📋</div>
-          <p className="font-black text-lg" style={{ color: 'var(--text-main)' }}>No orders yet</p>
-          <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Your orders will appear here once placed</p>
+        <div className="text-center py-16">
+          <p className="font-display text-2xl font-extrabold" style={{ color: 'var(--text-main)' }}>No orders yet</p>
+          <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Your orders show up here as soon as you place one.</p>
+          <button onClick={() => navigate('/')} className="mt-5 px-5 h-11 rounded-xl bg-primary text-on-primary font-extrabold hover:bg-primary-dark">
+            Browse canteens
+          </button>
         </div>
       ) : (
         <>
           <Favorites />
 
-          {/* Tabs */}
-          <div className="flex gap-2 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`pb-3 px-2 text-sm font-black transition-colors relative ${
-                activeTab === 'active' ? 'text-primary' : 'text-gray-400 hover:text-gray-300'
-              }`}
-              style={activeTab !== 'active' ? { color: 'var(--text-muted)' } : {}}
-            >
-              Active ({active.length})
-              {activeTab === 'active' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('completed')}
-              className={`pb-3 px-2 text-sm font-black transition-colors relative ${
-                activeTab === 'completed' ? 'text-primary' : 'text-gray-400 hover:text-gray-300'
-              }`}
-              style={activeTab !== 'completed' ? { color: 'var(--text-muted)' } : {}}
-            >
-              Completed ({completed.length})
-              {activeTab === 'completed' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />
-              )}
-            </button>
+          <div role="tablist" className="inline-flex p-1 rounded-xl mb-5" style={{ backgroundColor: 'var(--surface-2)' }}>
+            {([['active', 'Active', active.length], ['completed', 'Past orders', completed.length]] as const).map(([key, label, n]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={activeTab === key}
+                onClick={() => setActiveTab(key)}
+                className={`px-4 h-9 rounded-lg text-sm font-extrabold ${activeTab === key ? 'bg-primary text-on-primary' : ''}`}
+                style={activeTab === key ? undefined : { color: 'var(--text-muted)' }}
+              >
+                {label} <span className="tnum">({n})</span>
+              </button>
+            ))}
           </div>
 
-          {/* Tab Content */}
-          <div>
-            {activeTab === 'active' && (
-              active.length > 0 ? (
-                active.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} reordering={reorderingId === o._id} />)
-              ) : (
-                <div className="text-center py-10">
-                  <p className="font-bold border-2 border-dashed p-8 rounded-2xl" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
-                    No active orders.
-                  </p>
-                </div>
-              )
-            )}
-
-            {activeTab === 'completed' && (
-              completed.length > 0 ? (
-                completed.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} reordering={reorderingId === o._id} />)
-              ) : (
-                <div className="text-center py-10">
-                  <p className="font-bold border-2 border-dashed p-8 rounded-2xl" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
-                    No completed orders.
-                  </p>
-                </div>
-              )
+          <div role="tabpanel">
+            {(activeTab === 'active' ? active : completed).length > 0 ? (
+              (activeTab === 'active' ? active : completed).map(o => (
+                <OrderCard key={o._id} order={o} onReorder={handleReorder} reordering={reorderingId === o._id} />
+              ))
+            ) : (
+              <p className="py-10 text-center rounded-2xl border border-dashed font-semibold" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
+                {activeTab === 'active' ? 'Nothing in progress right now.' : 'No past orders yet.'}
+              </p>
             )}
           </div>
         </>

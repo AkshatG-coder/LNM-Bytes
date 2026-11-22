@@ -4,6 +4,7 @@ import { MenuItemCard } from "./MenuItemCard"
 import type { MenuCardItemInterface } from "../Util/MenuItemInterface"
 import { useSearch } from "../Util/useSearch"
 import api from "../Util/api"
+import { Pause, Search } from "lucide-react"
 
 const CACHE_TTL = 60_000 // 60 seconds
 
@@ -131,61 +132,58 @@ export function MenuCard() {
 
   return (
     <section
-      className="min-h-screen py-6 sm:py-10 px-3 sm:px-4 transition-colors duration-300"
-      style={{ backgroundColor: 'var(--bg)' }}
+      className="min-h-screen pt-6 pb-10 sm:pt-8 px-4 max-w-6xl mx-auto"
     >
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-6 sm:mb-10">
-        <div className="flex items-center gap-2 sm:gap-3 mb-1">
-          <h2
-            className="text-2xl sm:text-3xl font-black tracking-tight"
-            style={{ color: 'var(--text-main)' }}
+      <div className="max-w-6xl mx-auto mb-4 sm:mb-6">
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
+          <h1 className="text-2xl sm:text-4xl font-extrabold leading-tight" style={{ color: 'var(--text-main)' }}>
+            {storeName}
+          </h1>
+          <span
+            className="flex items-center gap-1.5 px-2.5 h-7 rounded-full text-xs font-extrabold"
+            style={storeStatus === 'closed'
+              ? { backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' }
+              : { backgroundColor: 'color-mix(in srgb, var(--veg) 16%, transparent)', color: 'var(--veg)' }}
           >
-            {storeName} <span className="text-primary">Menu</span>
-          </h2>
-          {storeStatus === "closed" && (
-            <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold text-xs">
-              Closed
-            </span>
-          )}
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'currentColor' }} />
+            {storeStatus === 'closed' ? 'Closed' : 'Open'}
+          </span>
         </div>
-        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-          Freshly prepared items available here
-        </p>
 
-        {/* Global Pause Alert */}
+        {storeStatus === 'closed' && (
+          <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+            You can look at the menu, but orders open when the canteen does.
+          </p>
+        )}
+
+        {/* Orders paused alert */}
         {!isOnlineOrderAvailable && storeStatus === "open" && (
-          <div className="mt-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-yellow-600 text-xl">⚠️</span>
+          <div className="mt-4 rounded-xl border p-4 flex items-start gap-3" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 14%, transparent)', borderColor: 'color-mix(in srgb, var(--primary) 55%, transparent)' }}>
+            <Pause className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--text-main)' }} aria-hidden />
             <div>
-              <h4 className="text-sm font-black text-yellow-700 dark:text-yellow-500">App Orders Paused</h4>
-              <p className="text-xs font-semibold text-yellow-600/80 dark:text-yellow-500/80 mt-0.5">
-                The kitchen is currently busy. You can browse the menu but cannot place orders through the app right now.
+              <p className="text-sm font-extrabold" style={{ color: 'var(--text-main)' }}>App orders are paused</p>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--text-main)' }}>
+                The kitchen is busy. You can browse the menu, but you can't order through the app right now.
               </p>
             </div>
           </div>
         )}
 
-        <div className="mt-5 sm:mt-8">
-          <div className="relative w-full max-w-md">
-            <input
-              type="text"
-              value={searchText}
-              onChange={(e) => setsearchText(e.target.value)}
-              placeholder="What are you craving today?"
-              className="w-full px-4 py-2.5 sm:py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-sm"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-main)',
-              }}
-            />
-            {searchText !== debounceSearch && (
-              <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-              </div>
-            )}
-          </div>
+        <div className="relative mt-4 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style={{ color: 'var(--text-muted)' }} aria-hidden />
+          <input
+            type="search"
+            value={searchText}
+            onChange={(e) => setsearchText(e.target.value)}
+            placeholder="Search this menu"
+            aria-label="Search this menu"
+            className="w-full h-11 pl-12 pr-10 rounded-xl border font-semibold placeholder:font-medium focus:outline-none focus:border-[var(--text-main)]"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
+          />
+          {searchText !== debounceSearch && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
+          )}
         </div>
       </div>
 
@@ -193,7 +191,7 @@ export function MenuCard() {
       {!isLoading && categories.length > 0 && (
         <div
           ref={stripRef}
-          className="sticky z-40 -mx-3 sm:-mx-4 px-3 sm:px-4 py-3 mb-6 overflow-x-auto no-scrollbar backdrop-blur-md border-b"
+          className="sticky z-40 -mx-4 px-4 py-2.5 mb-5 overflow-x-auto no-scrollbar backdrop-blur-md border-b"
           style={{
             top: headerH,
             backgroundColor: 'color-mix(in srgb, var(--bg) 88%, transparent)',
@@ -214,8 +212,8 @@ export function MenuCard() {
                     window.scrollTo({ top: y, behavior: 'smooth' })
                   }
                 }}
-                className={`px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap capitalize transition-colors active:scale-95 ${
-                  activeCat === cat ? 'bg-primary border-primary text-white' : ''
+                className={`px-3.5 h-9 rounded-full text-sm font-bold border whitespace-nowrap capitalize active:scale-95 ${
+                  activeCat === cat ? 'bg-primary border-primary text-on-primary' : ''
                 }`}
                 style={activeCat === cat ? undefined : { backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
               >
@@ -227,21 +225,24 @@ export function MenuCard() {
       )}
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          <p className="text-primary font-bold animate-pulse">Loading menu...</p>
+        <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading menu">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-32 rounded-2xl border animate-pulse" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }} />
+          ))}
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto flex flex-col gap-12">
+        <div className="flex flex-col gap-9">
           {categories.length > 0 ? (
             categories.map(cat => (
-              <div key={cat} id={`category-${cat}`} className="space-y-6">
-                <h3 className="text-xl sm:text-2xl font-black capitalize tracking-tight relative inline-block" style={{ color: 'var(--text-main)' }}>
-                  {cat}
-                  <div className="absolute -bottom-2 left-0 w-12 h-1 bg-primary rounded-full"></div>
-                </h3>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 pt-4">
+              <div key={cat} id={`category-${cat}`}>
+                <h2 className="mb-3 flex items-baseline gap-2.5 text-2xl font-extrabold" style={{ color: 'var(--text-main)' }}>
+                  <span className="capitalize">{cat}</span>
+                  <span className="text-sm font-semibold tnum" style={{ color: 'var(--text-muted)' }}>
+                    {groupedByCategory[cat].length} {groupedByCategory[cat].length === 1 ? 'item' : 'items'}
+                  </span>
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {groupedByCategory[cat].map((item) => (
                     <MenuItemCard
                       key={item._id}
@@ -263,13 +264,13 @@ export function MenuCard() {
               </div>
             ))
           ) : (
-            <div
-              className="col-span-full flex flex-col items-center justify-center py-20 rounded-3xl border border-dashed transition-colors duration-300"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-            >
-              <span className="text-5xl mb-4">🍽️</span>
-              <h3 className="text-xl font-bold" style={{ color: 'var(--text-main)' }}>No items found</h3>
-              <p className="mt-1" style={{ color: 'var(--text-muted)' }}>Try searching for something else!</p>
+            <div className="py-16 text-center rounded-2xl border border-dashed" style={{ borderColor: 'var(--border)' }}>
+              <h2 className="text-xl font-extrabold" style={{ color: 'var(--text-main)' }}>
+                {searchText ? `Nothing matches "${searchText}"` : 'This menu is empty'}
+              </h2>
+              <p className="mt-1 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                {searchText ? 'Try a different dish name.' : 'The canteen has not added items yet.'}
+              </p>
             </div>
           )}
         </div>

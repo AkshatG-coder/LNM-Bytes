@@ -8,11 +8,17 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Haldi yellow: buttons, active states, highlights. Always carries ink text (on-primary).
         primary: {
-          light: '#818cf8',
-          DEFAULT: '#4f46e5',
-          dark: '#3730a3',
+          light: '#FFD152',
+          DEFAULT: '#F5B400',
+          dark: '#D99E00',
         },
+        'on-primary': '#121B2E',
+        // The accent used AS TEXT: dark amber on light surfaces, haldi on dark ones
+        brand: 'rgb(var(--c-brand) / <alpha-value>)',
+        veg: '#1E8E3E',
+        nonveg: '#C62828',
         secondary: {
           light: '#fbbf24',
           DEFAULT: '#f59e0b',
@@ -27,7 +33,8 @@ export default {
         'dark-border': '#334155',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Figtree', 'system-ui', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', 'Figtree', 'system-ui', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fade-in 0.35s ease both',

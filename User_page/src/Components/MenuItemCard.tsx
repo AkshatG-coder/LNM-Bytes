@@ -50,11 +50,11 @@ export function MenuItemCard({
 
   function handleAdd() {
     if (storeStatus !== "open") {
-      toast.error("Sorry, this shop is currently closed 🚫")
+      toast.error("This canteen is closed right now.")
       return
     }
     if (!isOnlineOrderAvailable) {
-      toast.error("App orders are currently paused for this shop ⏸️")
+      toast.error("This canteen has paused app orders for now.")
       return
     }
     if (cart_items.length === 0) {
@@ -62,7 +62,7 @@ export function MenuItemCard({
       return
     }
     if (cart_items[0].canteen_id !== storeId) {
-      toast.error("You can only add items from the same canteen 🍽️")
+      toast.error("Your cart has items from another canteen. Finish or clear that order first.")
       return
     }
     if (cartItem) {
@@ -76,128 +76,99 @@ export function MenuItemCard({
     if (qty > 0) dispatch(decrease_item({ id: _id, portionSize: selectedPortion }))
   }
 
+  const portionPicker = hasHalf && halfPrice && isAvailable
+
   return (
     <div
-      className="rounded-xl overflow-hidden border shadow-md hover:shadow-xl transition-all duration-300 group"
+      className="flex gap-3 rounded-2xl border p-3 sm:p-4"
       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
     >
-      {/* Image */}
-      <div className="h-32 sm:h-40 relative overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-        {displayImage ? (
-          <img
-            src={displayImage}
-            alt={name}
-            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          /* Shimmer skeleton while Pexels loads */
-          <div className="h-full w-full animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700" />
+      {/* Text */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-start gap-2">
+          {isVeg !== undefined && (
+            <span
+              role="img"
+              aria-label={isVeg ? 'Vegetarian' : 'Non-vegetarian'}
+              className="mt-1 shrink-0 flex w-4 h-4 items-center justify-center rounded-[3px] border-2"
+              style={{ borderColor: isVeg ? 'var(--veg)' : 'var(--nonveg)' }}
+            >
+              <span className="block w-2 h-2 rounded-full" style={{ backgroundColor: isVeg ? 'var(--veg)' : 'var(--nonveg)' }} />
+            </span>
+          )}
+          <h3 className="text-base font-bold leading-snug line-clamp-2" style={{ color: isAvailable ? 'var(--text-main)' : 'var(--text-muted)' }}>
+            {name}
+          </h3>
+        </div>
+
+        <p className="mt-1.5 text-lg font-extrabold tnum" style={{ color: isAvailable ? 'var(--text-main)' : 'var(--text-muted)' }}>
+          ₹{selectedPrice}
+        </p>
+
+        {portionPicker && (
+          <div role="radiogroup" aria-label={`Portion for ${name}`} className="mt-2 inline-flex self-start rounded-lg p-0.5 gap-0.5" style={{ backgroundColor: 'var(--surface-2)' }}>
+            {(['full', 'half'] as const).map((p) => (
+              <button
+                key={p}
+                role="radio"
+                aria-checked={selectedPortion === p}
+                onClick={() => setSelectedPortion(p)}
+                className={`px-3 h-7 rounded-md text-xs font-bold ${selectedPortion === p ? 'bg-primary text-on-primary' : ''}`}
+                style={selectedPortion === p ? undefined : { color: 'var(--text-muted)' }}
+              >
+                {p === 'full' ? 'Full' : 'Half'}
+              </button>
+            ))}
+          </div>
         )}
 
         {!isAvailable && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-white/90 text-red-600 px-3 py-1 rounded-full font-bold text-xs shadow-sm">
-              Sold Out
-            </span>
-          </div>
-        )}
-        {isVeg !== undefined && (
-          <div className="absolute top-2 right-2" role="img" aria-label={isVeg ? 'Vegetarian' : 'Non-vegetarian'}>
-            {/* The standard Indian food-label mark: a square outline with a dot */}
-            <span className={`flex w-5 h-5 items-center justify-center rounded-[4px] border-2 bg-white shadow-sm ${isVeg ? 'border-green-600' : 'border-red-600'}`}>
-              <span className={`block w-2.5 h-2.5 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
-            </span>
-          </div>
+          <p className="mt-2 text-xs font-bold" style={{ color: 'var(--nonveg)' }}>Sold out for now</p>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-3 sm:p-4 flex flex-col gap-2 sm:gap-3">
-        <div>
-          <h2 className="text-sm sm:text-base font-bold line-clamp-1" style={{ color: 'var(--text-main)' }}>
-            {name}
-          </h2>
-        </div>
-
-        {/* Full / Half Toggle */}
-        {hasHalf && halfPrice && isAvailable && (
-          <div
-            className="flex rounded-lg p-0.5 gap-0.5 border"
-            style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
-          >
-            <button
-              onClick={() => setSelectedPortion('full')}
-              className={`flex-1 py-1 rounded-md text-[11px] font-black transition-all ${
-                selectedPortion === 'full'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Full · ₹{price}
-            </button>
-            <button
-              onClick={() => setSelectedPortion('half')}
-              className={`flex-1 py-1 rounded-md text-[11px] font-black transition-all ${
-                selectedPortion === 'half'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Half · ₹{halfPrice}
-            </button>
-          </div>
-        )}
-
-        {/* Price row */}
-        <div className="flex justify-between items-center">
-          <span className="text-primary font-extrabold text-lg sm:text-xl">₹{selectedPrice}</span>
-          {isAvailable && (
-            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-green-100 text-green-700 font-bold border border-green-200">
-              In Stock
-            </span>
+      {/* Photo with the order control tucked under it */}
+      <div className="shrink-0 w-28 flex flex-col items-center">
+        <div className="w-28 h-24 rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface-2)' }}>
+          {displayImage ? (
+            <img
+              src={displayImage}
+              alt=""
+              loading="lazy"
+              className={`h-full w-full object-cover ${isAvailable ? '' : 'grayscale opacity-60'}`}
+            />
+          ) : (
+            <div className="h-full w-full animate-pulse" style={{ backgroundColor: 'var(--surface-2)' }} />
           )}
         </div>
 
-        {/* Quantity Controls or Paused Badge */}
         {isAvailable && (
           isOnlineOrderAvailable ? (
             qty === 0 ? (
               <button
                 onClick={handleAdd}
-                className="w-full h-11 rounded-lg bg-primary text-white font-black text-sm hover:bg-primary-dark active:scale-[0.98] transition-all shadow-sm"
+                aria-label={`Add ${name}${portionPicker ? ` (${selectedPortion})` : ''} to cart`}
+                className="relative z-10 -mt-4 w-24 h-9 rounded-lg bg-primary text-on-primary font-extrabold text-sm border-2 hover:bg-primary-dark active:scale-95 transition-transform"
+                style={{ borderColor: 'var(--surface)' }}
               >
-                Add{hasHalf && halfPrice ? ` ${selectedPortion}` : ''}
+                Add
               </button>
             ) : (
-            <div
-              className="flex items-center justify-between rounded-lg p-1.5 sm:p-2 mt-0.5"
-              style={{ backgroundColor: 'var(--bg)' }}
-            >
-              <button
-                onClick={handleRemove}
-                disabled={qty === 0}
-                aria-label={`Remove one ${name}`}
-                className="w-9 h-9 rounded-md border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed font-bold text-lg transition-colors"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
+              <div
+                className="relative z-10 -mt-4 w-24 h-9 rounded-lg border-2 flex items-center justify-between bg-primary text-on-primary"
+                style={{ borderColor: 'var(--surface)' }}
               >
-                −
-              </button>
-              <span className="font-bold text-base" style={{ color: 'var(--text-main)' }}>{qty}</span>
-              <button
-                onClick={handleAdd}
-                aria-label={`Add one more ${name}`}
-                className="w-9 h-9 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors shadow-sm font-bold text-lg"
-              >
-                +
-              </button>
-            </div>
+                <button onClick={handleRemove} aria-label={`Remove one ${name}`} className="w-8 h-full flex items-center justify-center text-lg font-extrabold active:scale-90">
+                  −
+                </button>
+                <span className="font-extrabold text-sm tnum" aria-live="polite">{qty}</span>
+                <button onClick={handleAdd} aria-label={`Add one more ${name}`} className="w-8 h-full flex items-center justify-center text-lg font-extrabold active:scale-90">
+                  +
+                </button>
+              </div>
             )
           ) : (
-            <div className="flex items-center justify-center rounded-lg p-3 mt-0.5 border border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50">
-              <span className="font-bold text-xs text-gray-400 uppercase tracking-widest">
-                ⏸️ Orders Paused
-              </span>
-            </div>
+            <p className="mt-2 text-xs font-bold text-center" style={{ color: 'var(--text-muted)' }}>Orders paused</p>
           )
         )}
       </div>

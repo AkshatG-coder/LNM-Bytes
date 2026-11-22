@@ -3,6 +3,8 @@ import { CanteenStoreCard } from './CanteenStoreCard'
 import { useSearch } from '../Util/useSearch'
 import { useEffect, useState } from 'react'
 import api from '../Util/api'
+import { Search, X } from 'lucide-react'
+import { useAppSelector } from '../Util/hook'
 
 
 
@@ -45,93 +47,87 @@ export function CanteenShop() {
     GetStoreDetails()
   }, [])
 
+  const user = useAppSelector((s) => s.User.user)
+  const firstName = user?.name?.split(' ')[0]
+  // Open canteens first, so the top of the list is always somewhere you can order from
+  const sorted = [...filteredData].sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open'))
+  const openCount = canteenStores.filter((s) => s.status === 'open').length
+
   return (
-    <section
-      className="min-h-screen py-8 sm:py-16 px-4 transition-colors duration-300"
-      style={{ backgroundColor: 'var(--bg)' }}
-    >
-      <div className="max-w-7xl mx-auto mb-8 sm:mb-12 text-center">
-        <h1
-          className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase transition-colors duration-300"
-          style={{ color: 'var(--text-main)' }}
-        >
-          LNMIIT <span className="text-primary border-b-4 border-secondary pb-1">Canteen</span> Services
+    <section className="max-w-6xl mx-auto px-4 pt-6 pb-10 sm:pt-10">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-4xl font-extrabold leading-tight" style={{ color: 'var(--text-main)' }}>
+          {firstName ? `What are you eating, ${firstName}?` : 'What are you eating today?'}
         </h1>
+        {!isLoading && canteenStores.length > 0 && (
+          <p className="mt-1.5 text-sm sm:text-base font-medium" style={{ color: 'var(--text-muted)' }}>
+            {openCount === 0
+              ? 'Every canteen is closed right now.'
+              : `${openCount} of ${canteenStores.length} ${canteenStores.length === 1 ? 'canteen is' : 'canteens are'} open now.`}
+          </p>
+        )}
 
-        <p
-          className="mt-3 sm:mt-6 font-bold max-w-2xl mx-auto text-sm sm:text-lg leading-relaxed"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          The heart of campus flavors. Explore food courts, cafes, and late-night snacks across the LNMIIT campus.
-        </p>
-
-        <div className="mt-10 flex flex-col items-center">
-          {/* Search Input */}
-          <div className="relative w-full max-w-xl">
-            <input
-              type="text"
-              value={searchText}
-              onChange={(e) => setsearchText(e.target.value)}
-              placeholder="Search your favorite store..."
-              className="w-full px-6 py-4 border rounded-2xl shadow-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold text-lg placeholder-gray-400"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-main)',
-              }}
-            />
-            <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              {searchText !== debounceSearch && (
-                <div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-              )}
-              <span className="text-2xl opacity-20">🔍</span>
-            </div>
-          </div>
+        <div className="relative mt-5 max-w-xl">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style={{ color: 'var(--text-muted)' }} aria-hidden />
+          <input
+            type="search"
+            value={searchText}
+            onChange={(e) => setsearchText(e.target.value)}
+            placeholder="Search canteens"
+            aria-label="Search canteens"
+            className="w-full h-12 pl-12 pr-12 rounded-xl border font-semibold placeholder:font-medium focus:outline-none focus:border-[var(--text-main)]"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
+          />
+          {searchText && (
+            <button
+              onClick={() => setsearchText('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-2)]"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          {searchText !== debounceSearch && (
+            <div className="absolute right-12 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
+          )}
         </div>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="w-16 h-16 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-          <p className="text-primary font-black tracking-widest animate-pulse uppercase text-sm">Finding the best food for you...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy="true" aria-label="Loading canteens">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-36 rounded-2xl border animate-pulse" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }} />
+          ))}
+        </div>
+      ) : sorted.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          {sorted.map((store) => (
+            <CanteenStoreCard
+              key={store?._id}
+              _id={store?._id}
+              name={store.name}
+              description={store.description}
+              location={store.location}
+              foodType={store.foodType}
+              status={store.status}
+              nightDelivery={store.nightDelivery}
+              operationTime={store.operationTime}
+            />
+          ))}
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {filteredData.length > 0 ? (
-            filteredData.map((store) => (
-              <CanteenStoreCard
-                key={store?._id}
-                _id={store?._id}
-                name={store.name}
-                description={store.description}
-                location={store.location}
-                foodType={store.foodType}
-                status={store.status}
-                nightDelivery={store.nightDelivery}
-                operationTime={store.operationTime}
-              />
-            ))
-          ) : (
-            <div
-              className="col-span-full flex flex-col items-center justify-center py-24 rounded-[2rem] border-2 border-dashed shadow-inner transition-colors duration-300"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)',
-              }}
-            >
-              <span className="text-7xl mb-6 grayscale opacity-50">🍔</span>
-              <h3
-                className="text-2xl font-black tracking-tight"
-                style={{ color: 'var(--text-main)' }}
-              >No canteens found</h3>
-              <p style={{ color: 'var(--text-muted)' }} className="font-bold mt-2">Maybe they are hiding? Try another search!</p>
-              <button
-                onClick={() => setsearchText('')}
-                className="mt-6 text-primary font-black underline hover:text-primary-dark transition-colors"
-              >
-                Clear Search
-              </button>
-            </div>
+        <div className="py-16 text-center rounded-2xl border border-dashed" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="text-xl font-extrabold" style={{ color: 'var(--text-main)' }}>
+            {searchText ? `No canteen matches "${searchText}"` : 'No canteens are listed yet'}
+          </h2>
+          <p className="mt-1 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+            {searchText ? 'Check the spelling or try a shorter name.' : 'Check back in a little while.'}
+          </p>
+          {searchText && (
+            <button onClick={() => setsearchText('')} className="mt-4 px-4 h-10 rounded-lg bg-primary text-on-primary font-extrabold text-sm hover:bg-primary-dark">
+              Clear search
+            </button>
           )}
         </div>
       )}
