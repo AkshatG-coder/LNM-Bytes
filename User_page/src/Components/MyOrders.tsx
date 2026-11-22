@@ -7,6 +7,8 @@ import api from '../Util/api'
 import { rejectionLine, announceOrdersChanged } from '../Util/orderText'
 import toast from 'react-hot-toast'
 import RateOrder from './RateOrder'
+import Favorites from './Favorites'
+import { cartHasOtherCanteen, fetchReorderPlan, planToCartItems, reorderSummary } from '../Util/reorder'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled' | 'delivered' | 'payment_pending'
 
@@ -110,9 +112,11 @@ const QRDisplay = memo(function QRDisplay({ orderId }: { orderId: string }) {
 const OrderCard = memo(function OrderCard({
   order,
   onReorder,
+  reordering,
 }: {
   order: Order
   onReorder: (order: Order) => void
+  reordering: boolean
 }) {
   let cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending
   const isCancelled = order.status === 'cancelled' || order.status === 'payment_pending'
@@ -273,10 +277,11 @@ const OrderCard = memo(function OrderCard({
       {(order.status === 'delivered' || order.status === 'cancelled' || order.status === 'payment_pending') && (
         <button
           onClick={() => onReorder(order)}
+          disabled={reordering}
           className="mt-3 w-full py-2.5 rounded-xl text-sm font-black border-2 border-primary/30 text-primary
-            hover:bg-primary hover:text-white transition-all active:scale-[0.98]"
+            hover:bg-primary hover:text-white transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
         >
-          🔁 {isPaymentFailed || order.status === 'payment_pending' ? 'Try Ordering Again' : 'Reorder'}
+          {reordering ? 'Checking the menu…' : <>🔁 {isPaymentFailed || order.status === 'payment_pending' ? 'Try Ordering Again' : 'Reorder'}</>}
         </button>
       )}
     </div>
@@ -297,19 +302,43 @@ export default function MyOrders() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // ─── Reorder handler ─────────────────────────────────────────────────────
-  const handleReorder = useCallback((order: Order) => {
-    order.items.forEach((item) => {
-      dispatch(add_item({
-        id:          item.name,   // use item name as id fallback (menuItemId not in order doc)
-        item_name:   item.name,
-        price:       item.price,
-        qty:         item.quantity,
-        canteen_id:  order.storeId,
-        portionSize: (item.portionSize as 'full' | 'half') || 'full',
-      }))
-    })
-    navigate('/cart')
-  }, [dispatch, navigate])
+  // Asks the server to re-check the order against today's menu, prices and canteen status,
+  // so the cart never gets sold-out items or last month's prices.
+  const [reorderingId, setReorderingId] = useState<string | null>(null)
+  const cartItems = useSelector((s: RootState) => s.Cart.items)
+
+  const handleReorder = useCallback(async (order: Order) => {
+    if (reorderingId) return
+    setReorderingId(order._id)
+    try {
+      const plan = await fetchReorderPlan(order._id)
+      const notes = reorderSummary(plan)
+
+      if (plan.lines.length === 0) {
+        toast.error(plan.closedReason || 'None of these items are available right now.')
+        return
+      }
+      if (!plan.canOrder) {
+        toast.error(plan.closedReason || `${plan.storeName} is not taking orders right now.`)
+        return
+      }
+      if (cartHasOtherCanteen(cartItems, plan.storeId)) {
+        const ok = window.confirm('Your cart has items from another canteen. Replace it with this order?')
+        if (!ok) return
+      }
+
+      // Start from a clean cart so quantities match the order exactly
+      dispatch(clear_all_item())
+      planToCartItems(plan).forEach((item) => dispatch(add_item(item)))
+      if (notes.length > 0) toast(notes.join(' '), { icon: 'ℹ️', duration: 6000 })
+      navigate('/cart')
+    } catch (e) {
+      console.error('Reorder failed:', e)
+      toast.error('Could not check this order right now. Please try again.')
+    } finally {
+      setReorderingId(null)
+    }
+  }, [cartItems, dispatch, navigate, reorderingId])
 
   const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus, extra: Partial<Order> = {}) => {
     setOrders(prev => prev.map(o => {
@@ -456,6 +485,8 @@ export default function MyOrders() {
         </div>
       ) : (
         <>
+          <Favorites />
+
           {/* Tabs */}
           <div className="flex gap-2 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
             <button
@@ -488,7 +519,7 @@ export default function MyOrders() {
           <div>
             {activeTab === 'active' && (
               active.length > 0 ? (
-                active.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)
+                active.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} reordering={reorderingId === o._id} />)
               ) : (
                 <div className="text-center py-10">
                   <p className="font-bold border-2 border-dashed p-8 rounded-2xl" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
@@ -500,7 +531,7 @@ export default function MyOrders() {
 
             {activeTab === 'completed' && (
               completed.length > 0 ? (
-                completed.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} />)
+                completed.map(o => <OrderCard key={o._id} order={o} onReorder={handleReorder} reordering={reorderingId === o._id} />)
               ) : (
                 <div className="text-center py-10">
                   <p className="font-bold border-2 border-dashed p-8 rounded-2xl" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>

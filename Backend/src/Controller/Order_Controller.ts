@@ -20,6 +20,7 @@ import appCache from "../utils/cache";
 import { buildDemandHints, DEMAND_WINDOW_DAYS } from "../utils/demandHelpers";
 import { buildInsights, INSIGHT_RANGES } from "../utils/insightsHelpers";
 import { startOfIstDay } from "../utils/copilotHelpers";
+import { planReorder, buildFavorites } from "../utils/reorderHelpers";
 
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
@@ -367,6 +368,71 @@ const GetSingleOrder_Details = asyncHandler(async (req, res) => {
     }
 
     return res.json(new ApiResponse(200, true, "Order Details Fetched Successfully", order));
+});
+
+// ─── Order again: re-checks a past order against today's menu and canteen status ──
+const STORE_STATUS_FIELDS =
+    "name location foodType operationTime nightDelivery nightDeliveryCharge isOnlineOrderAvailable status isActive";
+
+const GetReorderPlan = asyncHandler(async (req, res) => {
+    const orderId = String(req.params.orderId);
+    if (!mongoose.Types.ObjectId.isValid(orderId)) return fail(res, 400, "Invalid order id");
+
+    const order: any = await OrderModel.findById(orderId).select("userId storeId items").lean();
+    if (!order) return fail(res, 404, "Order not found");
+
+    const user = (req as any).user;
+    if (!user || String(order.userId) !== String(user.userId)) {
+        return fail(res, 403, "Unauthorized: Cannot reorder another user's order.");
+    }
+
+    const ids = (order.items || []).map((i: any) => i.menuItemId).filter(Boolean);
+    const [menuDocs, store] = await Promise.all([
+        MenuItemModel.find({ _id: { $in: ids } })
+            .select("name price hasHalf halfPrice isAvailable isVeg storeId")
+            .lean(),
+        Store.findById(order.storeId).select(STORE_STATUS_FIELDS).lean(),
+    ]);
+
+    const plan = planReorder(order.items || [], menuDocs as any[], (store as any) || undefined, String(order.storeId));
+    return res.json(new ApiResponse(200, true, "Reorder plan ready", plan));
+});
+
+// ─── Favourites: the student's most-ordered items that can still be ordered ───
+const GetFavorites = asyncHandler(async (req, res) => {
+    const user = (req as any).user;
+    if (!user?.userId) return fail(res, 401, "Unauthorized");
+
+    const grouped: any[] = await OrderModel.aggregate([
+        {
+            $match: {
+                userId: new mongoose.Types.ObjectId(String(user.userId)),
+                status: { $nin: ["cancelled", "payment_pending"] },
+            },
+        },
+        { $unwind: "$items" },
+        { $match: { "items.menuItemId": { $ne: null } } },
+        { $group: { _id: "$items.menuItemId", timesOrdered: { $sum: "$items.quantity" } } },
+        { $sort: { timesOrdered: -1 } },
+        { $limit: 20 },
+    ]);
+    if (grouped.length === 0) return res.json(new ApiResponse(200, true, "No favourites yet", []));
+
+    const menuDocs: any[] = await MenuItemModel.find({ _id: { $in: grouped.map((g) => g._id) } })
+        .select("name price hasHalf halfPrice isAvailable isVeg storeId")
+        .lean();
+    const stores: any[] = await Store.find({ _id: { $in: [...new Set(menuDocs.map((m) => String(m.storeId)))] } })
+        .select(STORE_STATUS_FIELDS)
+        .lean();
+    const storeMap = new Map<string, any>(stores.map((s) => [String(s._id), s]));
+
+    const favorites = buildFavorites(
+        grouped.map((g) => ({ menuItemId: g._id, timesOrdered: g.timesOrdered })),
+        menuDocs,
+        storeMap,
+        8,
+    );
+    return res.json(new ApiResponse(200, true, "Favourites fetched", favorites));
 });
 
 // ─── Cancel Order (User) ─────────────────────────────────────────────────────
@@ -810,6 +876,8 @@ export {
     MarkReady,
     RejectOrder,
     TrackOrderStatus,
+    GetReorderPlan,
+    GetFavorites,
     GetOrderQR,
     VerifyOrderQR,
     GetDailySales,

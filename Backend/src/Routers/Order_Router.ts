@@ -10,6 +10,8 @@ import {
     MarkReady,
     RejectOrder,
     TrackOrderStatus,
+    GetReorderPlan,
+    GetFavorites,
     GetOrderQR,
     VerifyOrderQR,
     GetDailySales,
@@ -38,6 +40,10 @@ Order_Router.get("/demand/:storeId",       verifyOwnerToken, GetDemandHints);
 
 // ─── Tracking ─────────────────────────────────────────────────────────────────
 Order_Router.get("/track/:orderId",        verifyUserToken, TrackOrderStatus);
+
+// ─── Order again and favourites (before /:order_id) ───────────────────────────
+Order_Router.get("/favorites",             verifyUserToken, GetFavorites);
+Order_Router.get("/:orderId/reorder",      verifyUserToken, GetReorderPlan);
 
 // ─── QR code ──────────────────────────────────────────────────────────────────
 Order_Router.post("/verify-qr",            verifyOwnerToken, VerifyOrderQR);   // owner scans student's QR
