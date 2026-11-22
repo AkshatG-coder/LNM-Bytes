@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import { MenuItemCard } from "./MenuItemCard"
 import type { MenuCardItemInterface } from "../Util/MenuItemInterface"
@@ -91,6 +91,44 @@ export function MenuCard() {
   // Sort categories (you can customize the order if needed)
   const categories = Object.keys(groupedByCategory).sort();
 
+  // Highlight the chip of the section that is under the sticky bars
+  const [activeCat, setActiveCat] = useState<string | null>(null)
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const stripRef = useRef<HTMLDivElement>(null)
+  const [headerH, setHeaderH] = useState(64)
+  useEffect(() => {
+    const measure = () => setHeaderH(document.querySelector('header')?.getBoundingClientRect().height ?? 64)
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+  const catKey = categories.join('|')
+  useEffect(() => {
+    if (isLoading || categories.length === 0) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const line = headerH + 70 + 160 // a little below the chip row, so a heading counts once it is clearly in view
+      let current = categories[0]
+      for (const c of categories) {
+        const el = document.getElementById(`category-${c}`)
+        if (el && el.getBoundingClientRect().top <= line) current = c
+      }
+      setActiveCat(current)
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); if (frame) cancelAnimationFrame(frame) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catKey, isLoading, headerH])
+  useEffect(() => {
+    // Move the chip row sideways only. scrollIntoView would also scroll the page up and down.
+    const strip = stripRef.current
+    const chip = activeCat ? chipRefs.current[activeCat] : null
+    if (strip && chip) strip.scrollTo({ left: chip.offsetLeft - strip.clientWidth / 2 + chip.clientWidth / 2, behavior: 'smooth' })
+  }, [activeCat])
+
   return (
     <section
       className="min-h-screen py-6 sm:py-10 px-3 sm:px-4 transition-colors duration-300"
@@ -148,53 +186,45 @@ export function MenuCard() {
               </div>
             )}
           </div>
-          
-          {/* Category Tabs / Quick Links (STICKY) */}
-          {!isLoading && categories.length > 0 && (
-            <div 
-              className="mt-4 w-full overflow-x-auto no-scrollbar sticky top-0 z-40 py-3 -mx-2 px-2 sm:-mx-4 sm:px-4 backdrop-blur-md border-b shadow-sm transition-all duration-300"
-              style={{
-                backgroundColor: 'rgba(var(--bg-rgb, 15, 23, 42), 0.85)',
-                borderColor: 'var(--border)'
-              }}
-            >
-              <div className="flex items-center gap-3 w-max">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      const element = document.getElementById(`category-${cat}`);
-                      if (element) {
-                        // Offset for sticky headers if any, or just scroll to center/start
-                        const y = element.getBoundingClientRect().top + window.scrollY - 100;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                      }
-                    }}
-                    className="px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap transition-all shadow-sm active:scale-95"
-                    style={{
-                      backgroundColor: 'var(--surface)',
-                      borderColor: 'var(--border)',
-                      color: 'var(--text-main)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--primary)';
-                      e.currentTarget.style.color = '#fff';
-                      e.currentTarget.style.borderColor = 'var(--primary)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--surface)';
-                      e.currentTarget.style.color = 'var(--text-main)';
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                    }}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Category chips. A direct child of the section so it stays pinned under the header for the whole menu */}
+      {!isLoading && categories.length > 0 && (
+        <div
+          ref={stripRef}
+          className="sticky z-40 -mx-3 sm:-mx-4 px-3 sm:px-4 py-3 mb-6 overflow-x-auto no-scrollbar backdrop-blur-md border-b"
+          style={{
+            top: headerH,
+            backgroundColor: 'color-mix(in srgb, var(--bg) 88%, transparent)',
+            borderColor: 'var(--border)',
+          }}
+        >
+          <div className="flex items-center gap-2 w-max max-w-none">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                ref={(el) => { chipRefs.current[cat] = el }}
+                aria-current={activeCat === cat ? 'true' : undefined}
+                onClick={() => {
+                  setActiveCat(cat)
+                  const element = document.getElementById(`category-${cat}`)
+                  if (element) {
+                    const y = element.getBoundingClientRect().top + window.scrollY - headerH - 70
+                    window.scrollTo({ top: y, behavior: 'smooth' })
+                  }
+                }}
+                className={`px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap capitalize transition-colors active:scale-95 ${
+                  activeCat === cat ? 'bg-primary border-primary text-white' : ''
+                }`}
+                style={activeCat === cat ? undefined : { backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -205,8 +235,8 @@ export function MenuCard() {
         <div className="max-w-7xl mx-auto flex flex-col gap-12">
           {categories.length > 0 ? (
             categories.map(cat => (
-              <div key={cat} id={`category-${cat}`} className="space-y-6 scroll-mt-24">
-                <h3 className="text-2xl font-black uppercase tracking-wider relative inline-block" style={{ color: 'var(--text-main)' }}>
+              <div key={cat} id={`category-${cat}`} className="space-y-6">
+                <h3 className="text-xl sm:text-2xl font-black capitalize tracking-tight relative inline-block" style={{ color: 'var(--text-main)' }}>
                   {cat}
                   <div className="absolute -bottom-2 left-0 w-12 h-1 bg-primary rounded-full"></div>
                 </h3>

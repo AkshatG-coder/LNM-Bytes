@@ -49,7 +49,7 @@ export function CanteenStoreCard({
               <span className="text-secondary text-base">📍</span> {location}
             </div>
             <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-primary text-base">🍽️</span> {foodType}
+              <span className="text-primary text-base">🍽️</span> {foodType === 'veg' ? 'Veg only' : foodType === 'non-veg' ? 'Non-veg' : 'Veg & non-veg'}
             </div>
             <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
               <span className="text-accent text-base">⏰</span> {operationTime.openTime} - {operationTime.closeTime}

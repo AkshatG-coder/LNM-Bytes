@@ -5,6 +5,7 @@
 @tailwind utilities;
 /* ─── Light mode CSS variables ────────────────────────────────────────────── */
 :root {
+  --primary: #4f46e5;
   --bg: #f8fafc;
   --surface: #ffffff;
   --border: #e2e8f0;

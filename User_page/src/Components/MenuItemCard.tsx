@@ -28,7 +28,6 @@ export function MenuItemCard({
   image,
   isAvailable,
   isVeg,
-  category,
   storeId,
   storeStatus = "open",
   isOnlineOrderAvailable = true,
@@ -103,9 +102,10 @@ export function MenuItemCard({
           </div>
         )}
         {isVeg !== undefined && (
-          <div className="absolute top-2 right-2">
-            <span className={`text-[10px] font-black px-2 py-1 rounded-full shadow-sm ${isVeg ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-              {isVeg ? '🟢' : '🔴'}
+          <div className="absolute top-2 right-2" role="img" aria-label={isVeg ? 'Vegetarian' : 'Non-vegetarian'}>
+            {/* The standard Indian food-label mark: a square outline with a dot */}
+            <span className={`flex w-5 h-5 items-center justify-center rounded-[4px] border-2 bg-white shadow-sm ${isVeg ? 'border-green-600' : 'border-red-600'}`}>
+              <span className={`block w-2.5 h-2.5 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
             </span>
           </div>
         )}
@@ -117,11 +117,6 @@ export function MenuItemCard({
           <h2 className="text-sm sm:text-base font-bold line-clamp-1" style={{ color: 'var(--text-main)' }}>
             {name}
           </h2>
-          {category && (
-            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--text-muted)' }}>
-              {category}
-            </span>
-          )}
         </div>
 
         {/* Full / Half Toggle */}
@@ -166,6 +161,14 @@ export function MenuItemCard({
         {/* Quantity Controls or Paused Badge */}
         {isAvailable && (
           isOnlineOrderAvailable ? (
+            qty === 0 ? (
+              <button
+                onClick={handleAdd}
+                className="w-full h-11 rounded-lg bg-primary text-white font-black text-sm hover:bg-primary-dark active:scale-[0.98] transition-all shadow-sm"
+              >
+                Add{hasHalf && halfPrice ? ` ${selectedPortion}` : ''}
+              </button>
+            ) : (
             <div
               className="flex items-center justify-between rounded-lg p-1.5 sm:p-2 mt-0.5"
               style={{ backgroundColor: 'var(--bg)' }}
@@ -173,7 +176,8 @@ export function MenuItemCard({
               <button
                 onClick={handleRemove}
                 disabled={qty === 0}
-                className="w-8 h-8 rounded-md border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed font-bold text-lg transition-colors"
+                aria-label={`Remove one ${name}`}
+                className="w-9 h-9 rounded-md border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed font-bold text-lg transition-colors"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
               >
                 −
@@ -181,11 +185,13 @@ export function MenuItemCard({
               <span className="font-bold text-base" style={{ color: 'var(--text-main)' }}>{qty}</span>
               <button
                 onClick={handleAdd}
-                className="w-8 h-8 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors shadow-sm font-bold text-lg"
+                aria-label={`Add one more ${name}`}
+                className="w-9 h-9 rounded-md bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors shadow-sm font-bold text-lg"
               >
                 +
               </button>
             </div>
+            )
           ) : (
             <div className="flex items-center justify-center rounded-lg p-3 mt-0.5 border border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50">
               <span className="font-bold text-xs text-gray-400 uppercase tracking-widest">
