@@ -67,7 +67,7 @@ export default function WeeklyEmail() {
     : null;
 
   return (
-    <section className="mt-6 rounded-2xl border p-5" aria-label="Weekly email"
+    <section className="mt-6 rounded-xl border p-5" aria-label="Weekly email"
       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       <div className="flex items-start justify-between gap-4">
         <div>

@@ -18,7 +18,7 @@ export function StatTile({ label, value, delta, goodWhenUp = true, note, title }
   const up = hasDelta && delta!.amount > 0;
   const good = hasDelta ? (up === goodWhenUp) : true;
   return (
-    <div className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+    <div className="rounded-xl border p-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       <p className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
       <p className="mt-1 text-2xl font-black truncate" style={{ color: 'var(--color-text-main)', fontVariantNumeric: 'tabular-nums' }} title={title ?? value}>{value}</p>
       <p className="mt-1 text-xs h-4" style={{ color: 'var(--color-text-muted)' }}>
@@ -36,10 +36,10 @@ export function StatTile({ label, value, delta, goodWhenUp = true, note, title }
 // ─── Card wrapper ────────────────────────────────────────────────────────────
 export function Card({ title, subtitle, children, right }: { title: string; subtitle?: string; children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+    <section className="rounded-xl border p-5" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>{title}</h2>
+          <h2 className="text-base font-extrabold" style={{ color: 'var(--color-text-main)' }}>{title}</h2>
           {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{subtitle}</p>}
         </div>
         {right}
@@ -261,5 +261,5 @@ export function Heatmap({ grid }: { grid: number[][] }) {
 export function Skeleton({ className = '' }: { className?: string }) {
   const [on, setOn] = useState(false);
   useEffect(() => { const t = setTimeout(() => setOn(true), 150); return () => clearTimeout(t); }, []);
-  return <div className={`rounded-2xl animate-pulse ${className}`} style={{ backgroundColor: 'var(--color-border)', opacity: on ? 0.5 : 0 }} />;
+  return <div className={`rounded-xl animate-pulse ${className}`} style={{ backgroundColor: 'var(--color-border)', opacity: on ? 0.5 : 0 }} />;
 }

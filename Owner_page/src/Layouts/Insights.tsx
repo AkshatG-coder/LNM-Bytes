@@ -79,7 +79,7 @@ export default function Insights() {
     <div className="viz animate-fade-in pb-10">
       <header className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--color-text-main)' }}>Insights</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">Insights</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
             {data ? `${data.from} to ${data.to}. Cancelled and unpaid orders are not counted as sales.` : 'How your canteen is doing'}
           </p>
@@ -88,7 +88,7 @@ export default function Insights() {
           {RANGES.map((r) => (
             <button key={r} type="button" role="radio" aria-checked={days === r} onClick={() => setDays(r)}
               className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-              style={days === r ? { background: 'var(--color-primary)', color: 'white' } : { color: 'var(--color-text-muted)' }}>
+              style={days === r ? { background: 'var(--color-primary)', color: '#121B2E' } : { color: 'var(--color-text-muted)' }}>
               {r} days
             </button>
           ))}
@@ -112,7 +112,7 @@ export default function Insights() {
       {data && k && p && (
         <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
           {k.orders === 0 ? (
-            <div className="rounded-2xl border p-10 text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+            <div className="rounded-xl border p-10 text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
               <p className="font-bold" style={{ color: 'var(--color-text-main)' }}>No sales in the last {data.days} days</p>
               <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Insights appear here once students start ordering. Try a longer range.</p>
             </div>
@@ -131,7 +131,7 @@ export default function Insights() {
               </div>
 
               {highlights.length > 0 && (
-                <ul className="mb-6 rounded-2xl border p-4 space-y-1.5 text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}>
+                <ul className="mb-6 rounded-xl border p-4 space-y-1.5 text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}>
                   {highlights.map((h) => <li key={h} className="flex gap-2"><span aria-hidden style={{ color: 'var(--viz-1)' }}>●</span><span>{h}</span></li>)}
                 </ul>
               )}
@@ -145,7 +145,7 @@ export default function Insights() {
                         {(['revenue', 'orders'] as const).map((m) => (
                           <button key={m} type="button" role="radio" aria-checked={metric === m} onClick={() => setMetric(m)}
                             className="px-2.5 py-1 rounded-md text-xs font-bold capitalize"
-                            style={metric === m ? { background: 'var(--color-primary)', color: 'white' } : { color: 'var(--color-text-muted)' }}>{m}</button>
+                            style={metric === m ? { background: 'var(--color-primary)', color: '#121B2E' } : { color: 'var(--color-text-muted)' }}>{m}</button>
                         ))}
                       </div>
                     }>

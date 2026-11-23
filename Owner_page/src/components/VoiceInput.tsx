@@ -5,13 +5,12 @@ interface Props {
   value: string
   onChange: (text: string) => void
   disabled?: boolean
-  accent: string
   onListening?: (listening: boolean) => void
   onError?: (message: string | null) => void
 }
 
 /** Language chip and mic button for a chat input. The spoken text lands in the input so it can be edited before sending. */
-export default function VoiceInput({ value, onChange, disabled, accent, onListening, onError }: Props) {
+export default function VoiceInput({ value, onChange, disabled, onListening, onError }: Props) {
   const base = useRef('')
   const { supported, listening, error, lang, start, stop, toggleLang } = useSpeechInput((text) => {
     onChange(base.current ? `${base.current} ${text}` : text)
@@ -50,7 +49,7 @@ export default function VoiceInput({ value, onChange, disabled, accent, onListen
         className={`w-10 h-10 rounded-lg flex items-center justify-center transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0 ${listening ? 'animate-pulse' : ''}`}
         style={listening
           ? { background: '#dc2626', color: 'white' }
-          : { border: `1px solid ${accent}55`, color: accent }}
+          : { border: '1px solid var(--color-border)', color: 'var(--brand)' }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" />

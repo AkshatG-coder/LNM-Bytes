@@ -1,36 +1,38 @@
 import { useState, useEffect } from 'react';
+import { Check, Save } from 'lucide-react';
 import { useStore } from '../hooks/useStore';
 import type { Store } from '../types';
 
-function ToggleSwitch({
-  label,
-  sublabel,
-  value,
-  onChange,
-  colorClass = 'bg-primary',
-  size = 'normal',
-}: {
-  label: string;
-  sublabel?: string;
-  value: boolean;
-  onChange: () => void;
-  colorClass?: string;
-  size?: 'normal' | 'large';
-}) {
+const labelCls = 'block text-[11px] font-bold uppercase tracking-widest mb-1.5';
+const muted = { color: 'var(--color-text-muted)' };
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-lg font-extrabold mb-3">{children}</h2>;
+}
+
+function ToggleSwitch({ label, sublabel, value, onChange }: { label: string; sublabel?: string; value: boolean; onChange: () => void }) {
   return (
     <div
-      className={`flex items-center justify-between ${size === 'large' ? 'p-5' : 'p-4'} rounded-2xl border hover:border-gray-300 dark:hover:border-gray-500 transition-all`}
+      className="flex items-center justify-between gap-4 p-4 rounded-xl border"
       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
     >
       <div>
-        <p className={`font-black ${size === 'large' ? 'text-base' : 'text-sm'}`} style={{ color: 'var(--color-text-main)' }}>{label}</p>
-        {sublabel && <p className="text-xs font-medium text-gray-400 mt-0.5">{sublabel}</p>}
+        <p className="font-bold text-sm">{label}</p>
+        {sublabel && <p className="text-xs mt-0.5" style={muted}>{sublabel}</p>}
       </div>
       <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        aria-label={label}
         onClick={onChange}
-        className={`relative w-14 h-7 rounded-full transition-all duration-300 flex-shrink-0 ${value ? colorClass : 'bg-gray-200'}`}
+        className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors ${value ? 'bg-primary' : 'bg-surface-2 border'}`}
+        style={value ? undefined : { borderColor: 'var(--color-border)' }}
       >
-        <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${value ? 'left-8' : 'left-1'}`} />
+        <span
+          className="absolute top-0.5 w-5 h-5 rounded-full shadow transition-all"
+          style={{ left: value ? '1.375rem' : '0.125rem', backgroundColor: value ? '#121B2E' : 'var(--color-text-muted)' }}
+        />
       </button>
     </div>
   );
@@ -101,228 +103,160 @@ function ShopSettings() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4">
-        <div className="w-12 h-12 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-        <p className="text-primary font-black text-sm uppercase tracking-widest animate-pulse">Loading settings...</p>
+      <div className="max-w-2xl space-y-4" aria-busy="true" aria-label="Loading settings">
+        {[0, 1, 2].map((i) => <div key={i} className="h-32 rounded-xl animate-pulse bg-surface-2" />)}
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-        <span className="text-6xl">⚠️</span>
-        <h2 className="text-xl font-black text-gray-700">Could not load store</h2>
-        <p className="text-gray-400 text-sm font-medium">{error || 'Unknown error'}</p>
+      <div className="flex flex-col items-center justify-center py-32 gap-2 text-center">
+        <h2 className="font-display text-xl font-bold">Could not load your store</h2>
+        <p className="text-sm" style={muted}>{error || 'Unknown error'}</p>
       </div>
     );
   }
 
+  const open = store.status === 'open';
+
   return (
     <div className="max-w-2xl animate-fade-in">
-      {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-2xl shadow-xl font-black text-sm text-white animate-slide-up ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div
+          role="status"
+          className="fixed top-16 md:top-6 right-4 md:right-6 z-[60] px-5 py-3 rounded-lg shadow-xl font-bold text-sm text-white animate-slide-up"
+          style={{ backgroundColor: toast.type === 'success' ? '#15803D' : '#C62828' }}
+        >
           {toast.msg}
         </div>
       )}
 
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--color-text-main)' }}>Shop Settings</h1>
-        <p className="text-gray-500 text-sm mt-1 font-medium">Manage your store configuration</p>
+      <header className="mb-6">
+        <p className="text-xs font-bold uppercase tracking-widest" style={muted}>{store.name}</p>
+        <h1 className="text-3xl font-extrabold tracking-tight mt-1">Shop settings</h1>
+        <p className="text-sm mt-1.5" style={muted}>{store.location} · Owner: {store.ownerName}{store.description ? ` · ${store.description}` : ''}</p>
       </header>
 
-      {/* Error Banner */}
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 text-red-700 dark:text-red-400 font-bold text-sm">
-          ⚠️ {error}
-        </div>
+        <div role="alert" className="mb-6 p-4 rounded-lg border text-sm font-semibold" style={{ borderColor: 'var(--bad)', color: 'var(--bad)' }}>{error}</div>
       )}
 
-      {/* Store Info */}
-      <section className="mb-6">
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Store Info</h2>
+      {/* Open / closed: the one big switch of the day */}
+      <section className="mb-8">
         <div
-          className="rounded-2xl border p-5"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-2xl shadow-inner">
-              {store.name.charAt(0)}
-            </div>
-            <div>
-              <h3 className="text-lg font-black" style={{ color: 'var(--color-text-main)' }}>{store.name}</h3>
-              <p className="text-sm text-gray-500 font-medium">Owner: {store.ownerName}</p>
-              <p className="text-xs text-gray-400 mt-1 font-medium">{store.location}</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-500 font-medium leading-relaxed border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>{store.description}</p>
-        </div>
-      </section>
-
-
-      {/* 🔴/🟢 Shop Open/Close — Big Toggle */}
-      <section className="mb-6">
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Shop Status</h2>
-        <div className={`p-6 rounded-2xl border-2 transition-all ${
-          store.status === 'open'
-            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50'
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/50'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-lg font-black ${
-                store.status === 'open'
-                  ? 'text-green-700 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
-              }`}>
-                {store.status === 'open' ? '🟢 Shop is OPEN' : '🔴 Shop is CLOSED'}
-              </p>
-              <p className="text-sm font-medium mt-1 opacity-70" style={{ color: 'var(--color-text-main)' }}>
-                {store.status === 'open' ? 'Customers can browse and order from your store' : 'Orders are paused — no new orders'}
-              </p>
-            </div>
-            <button
-              onClick={handleToggleStatus}
-              disabled={saving}
-              className={`px-6 py-3 rounded-xl font-black text-sm text-white transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
-                store.status === 'open' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
-              }`}
-            >
-              {saving ? '⏳...' : store.status === 'open' ? 'Close Shop' : 'Open Shop'}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact & Hours */}
-      <section className="mb-6">
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Contact & Hours</h2>
-        <div
-          className="rounded-2xl border p-5 space-y-4"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+          className={`p-5 rounded-xl flex items-center justify-between gap-4 flex-wrap ${open ? 'bg-primary text-on-primary' : ''}`}
+          style={open ? undefined : { backgroundColor: '#121B2E', color: '#EEF1F7' }}
         >
           <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
+            <p className="font-display text-2xl font-extrabold">{open ? 'Shop is open' : 'Shop is closed'}</p>
+            <p className="text-sm mt-0.5 opacity-80">
+              {open ? 'Students can browse and order right now.' : 'Orders are paused. Nobody can place a new order.'}
+            </p>
+          </div>
+          <button
+            onClick={handleToggleStatus}
+            disabled={saving}
+            className={`px-5 py-2.5 rounded-lg font-extrabold text-sm disabled:opacity-50 active:scale-[0.98] ${open ? 'bg-[#121B2E] text-white' : 'bg-primary text-on-primary'}`}
+          >
+            {saving ? 'Please wait…' : open ? 'Close shop' : 'Open shop'}
+          </button>
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <SectionTitle>Contact and hours</SectionTitle>
+        <div className="rounded-xl border p-5 space-y-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+          <div>
+            <label htmlFor="ss-phone" className={labelCls} style={muted}>Phone number</label>
             <input
+              id="ss-phone"
               type="tel"
               value={phone}
-              onChange={(e) => {
-                const sanitized = e.target.value.replace(/[^\d\s+]/g, '');
-                setPhone(sanitized);
-              }}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d\s+]/g, ''))}
               placeholder="+91 99999 99999"
-              className="mt-2 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
-              style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
+              className="field tnum"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Opens At</label>
-              <input
-                type="time"
-                value={openTime}
-                onChange={(e) => setOpenTime(e.target.value)}
-                className="mt-2 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
-                style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
-              />
+              <label htmlFor="ss-open" className={labelCls} style={muted}>Opens at</label>
+              <input id="ss-open" type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} className="field" />
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Closes At</label>
-              <input
-                type="time"
-                value={closeTime}
-                onChange={(e) => setCloseTime(e.target.value)}
-                className="mt-2 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
-                style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
-              />
+              <label htmlFor="ss-close" className={labelCls} style={muted}>Closes at</label>
+              <input id="ss-close" type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className="field" />
             </div>
           </div>
           <button
             onClick={handleSaveContact}
             disabled={saving}
-            className="w-full py-3.5 bg-primary text-white rounded-xl font-black text-sm hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50 active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-on-primary rounded-lg font-extrabold text-sm hover:bg-primary-dark disabled:opacity-50 active:scale-[0.98]"
           >
-            {saving ? '⏳ Saving...' : '💾 Save Contact & Hours'}
+            <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save contact and hours'}
           </button>
         </div>
       </section>
 
-      {/* Toggles */}
-      <section className="mb-6">
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Delivery & Orders</h2>
+      <section className="mb-8">
+        <SectionTitle>Delivery and orders</SectionTitle>
         <div className="space-y-3">
-          <ToggleSwitch
-            label="🌙 Night Delivery"
-            sublabel="Allow orders after regular hours"
-            value={store.nightDelivery}
-            onChange={() => handleToggle('nightDelivery')}
-            colorClass="bg-indigo-500"
-          />
-          <ToggleSwitch
-            label="📱 Online Orders"
-            sublabel="Accept orders through the app"
-            value={store.isOnlineOrderAvailable}
-            onChange={() => handleToggle('isOnlineOrderAvailable')}
-            colorClass="bg-primary"
-          />
+          <ToggleSwitch label="Night delivery" sublabel="Allow orders after regular hours" value={store.nightDelivery} onChange={() => handleToggle('nightDelivery')} />
+          <ToggleSwitch label="Online orders" sublabel="Accept orders through the app" value={store.isOnlineOrderAvailable} onChange={() => handleToggle('isOnlineOrderAvailable')} />
 
           {store.nightDelivery && (
-            <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}>
-              <div className="flex justify-between items-center">
+            <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+              <div className="flex justify-between items-center gap-4">
                 <div>
-                  <p className="font-black text-sm" style={{ color: 'var(--color-text-main)' }}>Night Delivery Charge (₹)</p>
-                  <p className="text-xs font-medium text-gray-400 mt-0.5">Amount added to cart for night delivery</p>
+                  <label htmlFor="ss-charge" className="font-bold text-sm">Night delivery charge</label>
+                  <p className="text-xs mt-0.5" style={muted}>Added to the student's cart for night orders</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-400 font-bold">₹</span>
+                  <span className="font-bold" style={muted}>₹</span>
                   <input
+                    id="ss-charge"
                     type="number"
                     value={deliveryCharge}
                     onChange={(e) => setDeliveryCharge(Number(e.target.value))}
                     min="0"
                     max="500"
-                    className="w-20 px-3 py-2 rounded-xl text-center font-black focus:outline-none focus:ring-2 focus:ring-primary/20 border"
-                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
+                    className="field w-20 text-center font-bold tnum"
                   />
                 </div>
               </div>
               <button
                 onClick={handleSaveContact}
                 disabled={saving}
-                className="mt-4 w-full py-2.5 bg-primary/10 text-primary rounded-xl font-black text-xs hover:bg-primary/20 transition-all active:scale-[0.98]"
+                className="mt-4 w-full py-2.5 rounded-lg font-bold text-sm border hover:bg-surface-2 disabled:opacity-50"
+                style={{ borderColor: 'var(--color-border)' }}
               >
-                💾 Save Charge
+                Save charge
               </button>
             </div>
           )}
         </div>
       </section>
 
-      {/* Food Type */}
       <section className="mb-10">
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Food Type</h2>
-        <div className="flex gap-3">
-          {(['veg', 'non-veg', 'both'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => handleFoodType(type)}
-              disabled={saving}
-              className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all border-2 disabled:opacity-50 ${
-                store.foodType === type
-                  ? type === 'veg'
-                    ? 'bg-green-100 text-green-700 border-green-300 shadow-md'
-                    : type === 'non-veg'
-                    ? 'bg-red-100 text-red-700 border-red-300 shadow-md'
-                    : 'bg-orange-100 text-orange-700 border-orange-300 shadow-md'
-                  : 'text-gray-400 border-gray-200 hover:border-gray-300'
-              }`}
-              style={store.foodType !== type ? { backgroundColor: 'var(--color-surface)' } : {}}
-            >
-              {type === 'veg' ? '🥦 Veg Only' : type === 'non-veg' ? '🍗 Non-Veg' : '🍱 Both'}
-            </button>
-          ))}
+        <SectionTitle>Food type</SectionTitle>
+        <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Food type">
+          {(['veg', 'non-veg', 'both'] as const).map((type) => {
+            const on = store.foodType === type;
+            return (
+              <button
+                key={type}
+                role="radio"
+                aria-checked={on}
+                onClick={() => handleFoodType(type)}
+                disabled={saving}
+                className={`py-3.5 rounded-xl font-bold text-sm border-2 disabled:opacity-50 flex items-center justify-center gap-1.5 ${on ? 'border-primary bg-primary/15' : 'hover:bg-surface-2'}`}
+                style={on ? undefined : { borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+              >
+                {on && <Check className="w-4 h-4" />}
+                {type === 'veg' ? 'Veg only' : type === 'non-veg' ? 'Non-veg' : 'Both'}
+              </button>
+            );
+          })}
         </div>
       </section>
     </div>

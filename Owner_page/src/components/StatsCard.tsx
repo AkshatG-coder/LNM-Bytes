@@ -1,22 +1,30 @@
+import type { LucideIcon } from 'lucide-react';
+
 interface StatsCardProps {
-    title: string;
-    value: string | number;
-    icon: string;
-    color: string; // Tailwind text color class (e.g., 'text-orange-400')
-    bg: string;    // Tailwind bg color class
-    borderColor: string;
+  title: string;
+  value: string | number;
+  Icon: LucideIcon;
+  /** "alert" = haldi fill (needs attention), "ink" = dark fill (the money number), default = plain surface */
+  tone?: 'default' | 'alert' | 'ink';
+  hint?: string;
 }
 
-export const StatsCard = ({ title, value, icon, color, bg, borderColor }: StatsCardProps) => {
-    return (
-        <div className={`p-5 rounded-2xl border ${borderColor} ${bg} backdrop-blur-sm transition-transform hover:scale-[1.02]`}>
-            <div className="flex justify-between items-start">
-                <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">{title}</p>
-                    <h3 className={`text-2xl font-bold ${color}`}>{value}</h3>
-                </div>
-                <div className="p-2 rounded-lg text-lg border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5">{icon}</div>
-            </div>
-        </div>
-    );
+const TONES = {
+  default: { box: 'border', style: { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }, muted: 'var(--color-text-muted)' },
+  alert:   { box: 'border border-transparent bg-primary text-on-primary', style: {}, muted: 'rgb(18 27 46 / 0.7)' },
+  ink:     { box: 'border border-transparent', style: { backgroundColor: '#121B2E', color: '#EEF1F7' }, muted: '#9AA5BA' },
+} as const;
+
+export const StatsCard = ({ title, value, Icon, tone = 'default', hint }: StatsCardProps) => {
+  const t = TONES[tone];
+  return (
+    <div className={`p-4 sm:p-5 rounded-xl ${t.box}`} style={t.style}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: t.muted }}>{title}</p>
+        <Icon className="w-4 h-4" style={{ color: t.muted }} aria-hidden />
+      </div>
+      <p className="mt-2 font-display font-extrabold text-3xl tnum leading-none">{value}</p>
+      {hint && <p className="mt-2 text-xs" style={{ color: t.muted }}>{hint}</p>}
+    </div>
+  );
 };

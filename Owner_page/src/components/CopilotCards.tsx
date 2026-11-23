@@ -65,7 +65,7 @@ export type OwnerUiBlock =
     | { type: 'store'; store: OwnerUiStore };
 
 // ─── Shared bits ─────────────────────────────────────────────────────────────
-const ACCENT = '#4f46e5';
+const ACCENT = '#F5B400';
 
 const cardStyle: React.CSSProperties = {
     backgroundColor: 'var(--color-surface)',
@@ -207,7 +207,7 @@ function OrderRow({ order }: { order: OwnerUiOrder }) {
 
                 <p className="text-[13px] mt-2 break-words">{order.items}</p>
                 {order.deliveryType && order.deliveryType !== 'pickup' && (
-                    <p className="text-xs mt-1 font-medium text-indigo-600 dark:text-indigo-300">Night delivery</p>
+                    <p className="text-xs mt-1 font-medium text-brand">Night delivery</p>
                 )}
 
                 {inQueue && (
@@ -218,7 +218,7 @@ function OrderRow({ order }: { order: OwnerUiOrder }) {
                             </button>
                         )}
                         {status === 'preparing' && (
-                            <button disabled={busy} onClick={() => act('ready', 'ready')} className={`${btn} text-white`} style={{ background: ACCENT }}>
+                            <button disabled={busy} onClick={() => act('ready', 'ready')} className={`${btn} text-on-primary`} style={{ background: ACCENT }}>
                                 {busy ? 'Updating…' : 'Mark ready'}
                             </button>
                         )}

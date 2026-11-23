@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clearAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, LogOut } from 'lucide-react';
+import TokenMark from '../components/TokenMark';
 import SuperAdminPanel from './SuperAdminPanel';
 
 function SuperAdminLayout() {
@@ -27,74 +28,37 @@ function SuperAdminLayout() {
   }
 
   return (
-    <div
-      className="min-h-screen transition-colors duration-300"
-      style={{ backgroundColor: 'var(--color-background)', color: 'var(--text-main)' }}
-    >
-      {/* ── Top bar ── */}
-      <header
-        className="sticky top-0 z-50 border-b shadow-sm"
-        style={{
-          backgroundColor: 'var(--color-surface)',
-          borderColor: isDark ? '#334155' : '#f1f5f9',
-        }}
-      >
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
-
-          {/* Branding */}
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text-main)' }}>
+      <header className="sticky top-0 z-50 border-b" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-black text-base shadow-md">
-              L
-            </div>
+            <TokenMark size={34} />
             <div className="leading-tight">
-              <p className="text-sm font-black text-primary tracking-tight leading-none">LNM BYTES</p>
-              <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Super Admin</p>
+              <p className="font-display font-extrabold text-lg tracking-tight">LNM Bytes</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Super admin</p>
             </div>
           </div>
 
-          {/* Right: theme + avatar + logout */}
-          <div className="flex items-center gap-3">
-            {/* Theme toggle */}
+          <div className="flex items-center gap-2">
             <button
               onClick={toggle}
-              aria-label="Toggle dark mode"
-              className={`relative flex items-center w-12 h-6 rounded-full p-0.5 transition-colors duration-300 border ${
-                isDark ? 'bg-primary border-primary/40' : 'bg-gray-100 border-gray-200'
-              }`}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-surface-2"
             >
-              <span className={`absolute flex items-center justify-center w-5 h-5 rounded-full shadow bg-white transition-all duration-300 ${isDark ? 'translate-x-6' : 'translate-x-0'}`}>
-                {isDark
-                  ? <Moon className="w-3 h-3 text-primary" />
-                  : <Sun  className="w-3 h-3 text-yellow-500" />
-                }
-              </span>
+              {isDark ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
             </button>
 
-            {/* Avatar */}
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border"
-              style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}
-            >
-              <div className="w-7 h-7 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-yellow-600 font-black text-xs">
-                {initials}
-              </div>
-              <span className="text-sm font-bold hidden sm:block" style={{ color: 'var(--text-main)' }}>
-                {name.split(' ')[0]}
-              </span>
-              <span
-                className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: isDark ? 'rgba(234,179,8,0.15)' : '#fef9c3', color: '#ca8a04' }}
-              >
-                👑 SuperAdmin
-              </span>
+            <div className="flex items-center gap-2 pl-1">
+              <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-display font-extrabold text-xs">{initials}</div>
+              <span className="text-sm font-bold hidden sm:block">{name.split(' ')[0]}</span>
             </div>
 
-            {/* Logout */}
             <button
               onClick={handleLogout}
-              className="px-4 py-2 rounded-xl text-xs font-black text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold border hover:bg-surface-2"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
             >
-              🚪 Logout
+              <LogOut className="w-4 h-4" /> Sign out
             </button>
           </div>
         </div>

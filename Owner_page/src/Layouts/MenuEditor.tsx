@@ -1,14 +1,15 @@
 import { useState } from 'react';
+import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { useMenu } from '../hooks/useMenu';
 import type { NewMenuItem } from '../hooks/useMenu';
 import type { MenuItem, MenuCategory } from '../types';
 
-const CATEGORIES: { value: MenuCategory; label: string; emoji: string }[] = [
-  { value: 'snacks', label: 'Snacks', emoji: '🍟' },
-  { value: 'drinks', label: 'Drinks', emoji: '🥤' },
-  { value: 'meals', label: 'Meals', emoji: '🍱' },
-  { value: 'dessert', label: 'Dessert', emoji: '🍨' },
-  { value: 'other', label: 'Other', emoji: '🍽️' },
+const CATEGORIES: { value: MenuCategory; label: string }[] = [
+  { value: 'snacks', label: 'Snacks' },
+  { value: 'drinks', label: 'Drinks' },
+  { value: 'meals', label: 'Meals' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'other', label: 'Other' },
 ];
 
 const EMPTY_FORM: NewMenuItem = {
@@ -21,6 +22,42 @@ const EMPTY_FORM: NewMenuItem = {
   isAvailable: true,
 };
 
+/** The standard Indian veg / non-veg mark: a square outline with a dot. */
+function DietMark({ veg }: { veg: boolean }) {
+  const c = veg ? 'var(--ok)' : 'var(--bad)';
+  return (
+    <span
+      role="img"
+      aria-label={veg ? 'Veg' : 'Non-veg'}
+      className="inline-flex w-4 h-4 items-center justify-center rounded-[3px] border-2 flex-shrink-0"
+      style={{ borderColor: c }}
+    >
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
+    </span>
+  );
+}
+
+function Switch({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onChange}
+      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors ${on ? 'bg-primary' : 'bg-surface-2 border'}`}
+      style={on ? undefined : { borderColor: 'var(--color-border)' }}
+    >
+      <span
+        className="absolute top-0.5 w-5 h-5 rounded-full shadow transition-all"
+        style={{ left: on ? '1.375rem' : '0.125rem', backgroundColor: on ? '#121B2E' : 'var(--color-text-muted)' }}
+      />
+    </button>
+  );
+}
+
+const labelCls = 'block text-[11px] font-bold uppercase tracking-widest mb-1.5';
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 function ItemModal({
   open, title, form, saving, onChange, onSubmit, onClose,
@@ -30,133 +67,122 @@ function ItemModal({
   onSubmit: () => void; onClose: () => void;
 }) {
   if (!open) return null;
+  const muted = { color: 'var(--color-text-muted)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
       <div
-        className="relative rounded-3xl shadow-2xl w-full max-w-md p-5 sm:p-8 animate-slide-up border max-h-[90vh] overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 sm:p-6 border max-h-[92vh] overflow-y-auto"
         style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black" style={{ color: 'var(--color-text-main)' }}>{title}</h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-            style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text-muted)' }}
-          >
-            ✕
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xl font-extrabold">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-2">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="space-y-5">
-          {/* Name */}
+        <div className="space-y-4">
           <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Item Name</label>
+            <label htmlFor="mi-name" className={labelCls} style={muted}>Item name</label>
             <input
+              id="mi-name"
               type="text"
-              placeholder="e.g. Samosa, Chai, Burger..."
+              placeholder="e.g. Samosa, Chai, Burger"
               value={form.name}
               onChange={(e) => onChange({ ...form, name: e.target.value })}
-              className="mt-1 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
-              style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
+              className="field"
             />
           </div>
 
-          {/* Full Price */}
           <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-              {form.hasHalf ? 'Full Portion Price (₹)' : 'Price (₹)'}
-            </label>
+            <label htmlFor="mi-price" className={labelCls} style={muted}>{form.hasHalf ? 'Full portion price (₹)' : 'Price (₹)'}</label>
             <input
+              id="mi-price"
               type="number"
+              inputMode="decimal"
               min={0}
               placeholder="0"
               value={form.price || ''}
               onChange={(e) => onChange({ ...form, price: parseFloat(e.target.value) || 0 })}
-              className="mt-1 w-full px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all border"
-              style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }}
+              className="field tnum"
             />
           </div>
 
-          {/* Has Half Toggle */}
-          <div
-            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-              form.hasHalf ? 'bg-blue-50 border-blue-200' : 'border-gray-200 dark:border-gray-600'
-            }`}
-            style={!form.hasHalf ? { backgroundColor: 'var(--color-background)' } : {}}
-            onClick={() => onChange({ ...form, hasHalf: !form.hasHalf, halfPrice: !form.hasHalf ? undefined : form.halfPrice })}
-          >
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-2">
             <div>
-              <p className={`font-black text-sm ${form.hasHalf ? 'text-blue-700' : 'text-gray-600'}`}>
-                🍜 Has Half Portion?
-              </p>
-              <p className="text-xs text-gray-400 font-medium mt-0.5">
-                Offer a smaller portion at a lower price
-              </p>
+              <p className="font-bold text-sm">Has a half portion</p>
+              <p className="text-xs mt-0.5" style={muted}>Offer a smaller portion at a lower price</p>
             </div>
-            <div className={`w-10 h-6 rounded-full transition-all duration-300 relative flex-shrink-0 ${form.hasHalf ? 'bg-blue-500' : 'bg-gray-300'}`}>
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.hasHalf ? 'left-5' : 'left-1'}`} />
-            </div>
+            <Switch
+              on={!!form.hasHalf}
+              label="Has a half portion"
+              onChange={() => onChange({ ...form, hasHalf: !form.hasHalf, halfPrice: !form.hasHalf ? undefined : form.halfPrice })}
+            />
           </div>
 
-          {/* Half Price (only shown when hasHalf is true) */}
           {form.hasHalf && (
             <div className="animate-fade-in">
-              <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest ml-1">Half Portion Price (₹)</label>
+              <label htmlFor="mi-half" className={labelCls} style={muted}>Half portion price (₹)</label>
               <input
+                id="mi-half"
                 type="number"
+                inputMode="decimal"
                 min={0}
                 placeholder="0"
                 value={form.halfPrice || ''}
                 onChange={(e) => onChange({ ...form, halfPrice: parseFloat(e.target.value) || 0 })}
-                className="mt-1 w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
+                className="field tnum"
               />
               {form.price > 0 && (form.halfPrice || 0) > 0 && (
-                <p className="text-xs text-gray-400 font-medium mt-1 ml-1">
-                  Full ₹{form.price} · Half ₹{form.halfPrice}
-                </p>
+                <p className="text-xs mt-1.5" style={muted}>Full ₹{form.price} · Half ₹{form.halfPrice}</p>
               )}
             </div>
           )}
 
-          {/* Category */}
           <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => onChange({ ...form, category: cat.value })}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border ${
-                    form.category === cat.value
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-primary/30 hover:text-primary'
-                  }`}
-                >
-                  {cat.emoji} {cat.label}
-                </button>
-              ))}
+            <span className={labelCls} style={muted}>Category</span>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Category">
+              {CATEGORIES.map((cat) => {
+                const on = form.category === cat.value;
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => onChange({ ...form, category: cat.value })}
+                    className={`px-3.5 py-1.5 rounded-full text-sm font-bold border ${on ? 'bg-primary text-on-primary border-transparent' : 'hover:bg-surface-2'}`}
+                    style={on ? undefined : { borderColor: 'var(--color-border)' }}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* isVeg + isAvailable */}
-          <div className="flex gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <button
+              type="button"
               onClick={() => onChange({ ...form, isVeg: !form.isVeg })}
-              className={`flex-1 py-3 rounded-xl font-black text-sm border transition-all ${
-                form.isVeg ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-200'
-              }`}
+              className="flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-sm border hover:bg-surface-2"
+              style={{ borderColor: 'var(--color-border)' }}
             >
-              {form.isVeg ? '🟢 Veg' : '🔴 Non-Veg'}
+              <DietMark veg={form.isVeg} /> {form.isVeg ? 'Veg' : 'Non-veg'}
             </button>
             <button
+              type="button"
               onClick={() => onChange({ ...form, isAvailable: !form.isAvailable })}
-              className={`flex-1 py-3 rounded-xl font-black text-sm border transition-all ${
-                form.isAvailable ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-400 border-gray-200'
-              }`}
+              className="flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-sm border hover:bg-surface-2"
+              style={{ borderColor: 'var(--color-border)', color: form.isAvailable ? 'var(--ok)' : 'var(--color-text-muted)' }}
             >
-              {form.isAvailable ? '✅ Available' : '❌ Unavailable'}
+              {form.isAvailable ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+              {form.isAvailable ? 'Available' : 'Unavailable'}
             </button>
           </div>
         </div>
@@ -164,70 +190,54 @@ function ItemModal({
         <button
           onClick={onSubmit}
           disabled={saving || !form.name.trim() || form.price <= 0 || (form.hasHalf && !form.halfPrice)}
-          className="mt-8 w-full py-4 bg-primary text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-6 w-full py-3.5 bg-primary text-on-primary rounded-lg font-extrabold text-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? '⏳ Saving...' : title}
+          {saving ? 'Saving…' : title}
         </button>
 
         {form.hasHalf && !form.halfPrice && (
-          <p className="mt-2 text-center text-xs text-red-500 font-bold">Half price is required when half portion is enabled</p>
+          <p className="mt-2 text-center text-xs font-bold" style={{ color: 'var(--bad)' }}>Half price is required when half portion is enabled</p>
         )}
       </div>
     </div>
   );
 }
 
-// ─── Menu Item Card ───────────────────────────────────────────────────────────
+// ─── Menu item row ────────────────────────────────────────────────────────────
 function MenuItemCard({
   item, onEdit, onDelete, onToggle,
 }: { item: MenuItem; onEdit: () => void; onDelete: () => void; onToggle: () => void }) {
-  const cat = CATEGORIES.find((c) => c.value === item.category);
   return (
     <div
-      className={`rounded-2xl border transition-all duration-200 hover:shadow-md group ${
-        item.isAvailable ? '' : 'opacity-60'
-      }`}
+      className={`rounded-xl border ${item.isAvailable ? '' : 'opacity-60'}`}
       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
     >
-      <div className="p-4 flex items-center gap-4">
-        {/* Icon */}
-        <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center text-2xl flex-shrink-0">
-          {cat?.emoji || '🍽️'}
-        </div>
-
-        {/* Info */}
+      <div className="p-3.5 sm:p-4 flex items-center gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-black text-sm truncate" style={{ color: 'var(--color-text-main)' }}>{item.name}</h3>
-            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${item.isVeg ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-              {item.isVeg ? '🟢 Veg' : '🔴 Non-Veg'}
-            </span>
+            <DietMark veg={item.isVeg} />
+            <h3 className="font-bold truncate">{item.name}</h3>
           </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <div className="mt-1 flex items-baseline gap-x-2 gap-y-0.5 flex-wrap text-sm">
             {item.hasHalf && item.halfPrice ? (
               <>
-                <span className="text-sm font-black text-primary">₹{item.price} <span className="text-gray-400 font-medium text-xs">full</span></span>
-                <span className="text-sm font-black text-blue-500">₹{item.halfPrice} <span className="text-gray-400 font-medium text-xs">half</span></span>
+                <span className="font-extrabold tnum">₹{item.price} <span className="font-medium text-xs" style={{ color: 'var(--color-text-muted)' }}>full</span></span>
+                <span className="font-extrabold tnum">₹{item.halfPrice} <span className="font-medium text-xs" style={{ color: 'var(--color-text-muted)' }}>half</span></span>
               </>
             ) : (
-              <span className="text-base font-black text-primary">₹{item.price}</span>
+              <span className="font-extrabold tnum">₹{item.price}</span>
             )}
-            <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded-lg">{item.category}</span>
-            {item.hasHalf && <span className="text-[9px] bg-blue-100 text-blue-600 font-bold px-2 py-0.5 rounded-full">Half available</span>}
+            <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{item.category}</span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={onToggle}
-            title={item.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-            className={`w-10 h-6 rounded-full transition-all duration-300 relative ${item.isAvailable ? 'bg-green-500' : 'bg-gray-300'}`}
-          >
-            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${item.isAvailable ? 'left-5' : 'left-1'}`} />
-          </button>
-          <button onClick={onEdit} className="p-2 rounded-xl text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors" title="Edit">✏️</button>
-          <button onClick={onDelete} className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">🗑️</button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Switch on={item.isAvailable} onChange={onToggle} label={item.isAvailable ? `Mark ${item.name} unavailable` : `Mark ${item.name} available`} />
+          <span className="hidden sm:inline text-xs font-bold w-20 pl-2" style={{ color: item.isAvailable ? 'var(--ok)' : 'var(--color-text-muted)' }}>
+            {item.isAvailable ? 'Available' : 'Sold out'}
+          </span>
+          <button onClick={onEdit} aria-label={`Edit ${item.name}`} className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-2"><Pencil className="w-4 h-4" /></button>
+          <button onClick={onDelete} aria-label={`Delete ${item.name}`} className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-2" style={{ color: 'var(--bad)' }}><Trash2 className="w-4 h-4" /></button>
         </div>
       </div>
     </div>
@@ -303,87 +313,80 @@ function MenuEditor() {
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in max-w-4xl">
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-2xl shadow-xl font-black text-sm text-white animate-slide-up ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div
+          role="status"
+          className="fixed top-16 md:top-6 right-4 md:right-6 z-50 px-5 py-3 rounded-lg shadow-xl font-bold text-sm text-white animate-slide-up"
+          style={{ backgroundColor: toast.type === 'success' ? '#15803D' : '#C62828' }}
+        >
           {toast.msg}
         </div>
       )}
 
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex justify-between items-end gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--color-text-main)' }}>Menu Editor</h1>
-          <p className="text-gray-500 text-sm mt-1 font-medium">{items.length} items · Manage your menu</p>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{items.length} items</p>
+          <h1 className="text-3xl font-extrabold tracking-tight mt-1">Menu</h1>
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-3 bg-primary text-white rounded-xl font-black text-sm hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all active:scale-95"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-on-primary rounded-lg font-extrabold text-sm hover:bg-primary-dark active:scale-[0.98]"
         >
-          <span className="text-lg">+</span> Add Item
+          <Plus className="w-4 h-4" /> Add item
         </button>
       </header>
 
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 text-red-700 dark:text-red-400 font-bold text-sm">⚠️ {error}</div>
+        <div role="alert" className="mb-6 p-4 rounded-lg border text-sm font-semibold" style={{ borderColor: 'var(--bad)', color: 'var(--bad)' }}>{error}</div>
       )}
 
-      {/* Category filter */}
-      <div className="mb-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
-        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-2">
-          {[{ value: 'all', label: 'All', emoji: '🍽️', key: 'all' }, ...CATEGORIES.map((c) => ({ ...c, key: c.value }))].map((cat) => (
+      <div className="mb-5 flex gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Category">
+        {[{ value: 'all', label: 'All' }, ...CATEGORIES].map((cat) => {
+          const on = activeCategory === cat.value;
+          return (
             <button
-              key={cat.key}
+              key={cat.value}
               onClick={() => setActiveCategory(cat.value as MenuCategory | 'all')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black whitespace-nowrap transition-all ${
-                activeCategory === cat.value ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'
-              }`}
+              aria-pressed={on}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-bold whitespace-nowrap border ${on ? 'bg-primary text-on-primary border-transparent' : 'hover:bg-surface-2'}`}
+              style={on ? undefined : { borderColor: 'var(--color-border)' }}
             >
-              <span>{cat.emoji}</span>
-              <span>{cat.label}</span>
-              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeCategory === cat.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
+              {cat.label}
+              <span className={`min-w-5 px-1.5 py-0.5 text-[11px] leading-none rounded-full tnum text-center ${on ? 'bg-[#121B2E] text-white' : 'bg-surface-2'}`}>
                 {counts[cat.value] ?? 0}
               </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Items List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <div className="w-12 h-12 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-          <p className="text-primary font-black text-sm uppercase tracking-widest animate-pulse">Loading menu...</p>
+        <div className="space-y-3" aria-busy="true" aria-label="Loading menu">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-[72px] rounded-xl animate-pulse bg-surface-2" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-24 rounded-3xl border-2 border-dashed"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-        >
-          <span className="text-6xl mb-4 opacity-40">🍽️</span>
-          <h3 className="text-xl font-black" style={{ color: 'var(--color-text-main)' }}>No items here</h3>
-          <p className="text-gray-400 font-medium mt-2 text-sm">Add your first menu item to get started</p>
-          <button onClick={openAdd} className="mt-6 px-6 py-3 bg-primary text-white rounded-xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20">
-            + Add Item
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border-2 border-dashed" style={{ borderColor: 'var(--color-border)' }}>
+          <h3 className="font-display text-lg font-bold">No items here</h3>
+          <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Add your first menu item to get started.</p>
+          <button onClick={openAdd} className="mt-5 flex items-center gap-1.5 px-5 py-2.5 bg-primary text-on-primary rounded-lg font-extrabold text-sm hover:bg-primary-dark">
+            <Plus className="w-4 h-4" /> Add item
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {filtered.map((item) => (
-            <div key={item._id} className="relative">
+            <div key={item._id}>
               {confirmDelete === item._id ? (
                 <div
-                  className="rounded-2xl p-4 flex items-center justify-between animate-shake border"
-                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                  className="rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 border"
+                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--bad)' }}
                 >
-                  <p className="font-bold text-sm" style={{ color: 'var(--color-text-main)' }}>Delete <span className="font-black">{item.name}</span>? This cannot be undone.</p>
+                  <p className="font-semibold text-sm">Delete <span className="font-extrabold">{item.name}</span>? This cannot be undone.</p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setConfirmDelete(null)}
-                      className="px-4 py-2 rounded-xl text-sm font-black border transition-all"
-                      style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
-                    >Cancel</button>
-                    <button onClick={() => handleDelete(item._id)} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-black text-white bg-red-500 hover:bg-red-600 transition-all disabled:opacity-50">
-                      {saving ? '...' : 'Delete'}
+                    <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 rounded-lg text-sm font-bold border hover:bg-surface-2" style={{ borderColor: 'var(--color-border)' }}>Keep</button>
+                    <button onClick={() => handleDelete(item._id)} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50" style={{ backgroundColor: '#C62828' }}>
+                      {saving ? '…' : 'Delete'}
                     </button>
                   </div>
                 </div>
@@ -402,7 +405,7 @@ function MenuEditor() {
 
       <ItemModal
         open={showModal}
-        title={editingItem ? 'Edit Item' : 'Add New Item'}
+        title={editingItem ? 'Edit item' : 'Add new item'}
         form={form}
         saving={saving}
         onChange={setForm}

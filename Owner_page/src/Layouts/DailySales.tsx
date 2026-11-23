@@ -1,14 +1,17 @@
+import { RefreshCw, IndianRupee, Receipt, TrendingUp, Trophy } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useDailySales } from "../hooks/useDailySales";
 import type { DailySalesItem } from "../hooks/useDailySales";
+import { StatsCard } from "../components/StatsCard";
 
-// ─── Status badge styling — works in both light and dark mode ─────────────────
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  pending:   { label: "Pending",   bg: "bg-amber-100/80 dark:bg-amber-900/30",  text: "text-amber-700 dark:text-amber-300"  },
-  accepted:  { label: "Accepted",  bg: "bg-blue-100/80 dark:bg-blue-900/30",    text: "text-blue-700 dark:text-blue-300"   },
-  preparing: { label: "Preparing", bg: "bg-primary/10 dark:bg-primary/20",      text: "text-primary"                       },
-  ready:     { label: "Ready",     bg: "bg-green-100/80 dark:bg-green-900/30",  text: "text-green-700 dark:text-green-300" },
-  delivered: { label: "Delivered", bg: "bg-purple-100/80 dark:bg-purple-900/30",text: "text-purple-700 dark:text-purple-300"},
-  cancelled: { label: "Cancelled", bg: "bg-red-100/80 dark:bg-red-900/30",      text: "text-red-600 dark:text-red-400"    },
+// Status pills: same colours as the Kitchen page
+const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
+  pending:   { label: "New",       cls: "bg-primary text-on-primary" },
+  accepted:  { label: "Accepted",  cls: "bg-sky-100 text-sky-900 dark:bg-sky-400/20 dark:text-sky-200" },
+  preparing: { label: "Preparing", cls: "bg-sky-100 text-sky-900 dark:bg-sky-400/20 dark:text-sky-200" },
+  ready:     { label: "Ready",     cls: "bg-green-100 text-green-900 dark:bg-green-400/20 dark:text-green-200" },
+  delivered: { label: "Picked up", cls: "bg-surface-2" },
+  cancelled: { label: "Cancelled", cls: "bg-red-100 text-red-900 dark:bg-red-400/20 dark:text-red-200" },
 };
 
 function fmt(n: number) {
@@ -25,41 +28,15 @@ function OrderRow({ order }: { order: DailySalesItem }) {
   const itemNames = order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ");
 
   return (
-    <tr className="border-b hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors" style={{ borderColor: 'var(--color-border)' }}>
-      <td className="py-3.5 px-5 text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>{order._id.slice(-6).toUpperCase()}</td>
-      <td className="py-3.5 px-5 text-sm font-medium max-w-[220px] truncate" style={{ color: 'var(--color-text-main)' }} title={itemNames}>{itemNames}</td>
-      <td className="py-3.5 px-5 text-sm font-black text-primary">₹{fmt(order.totalAmount)}</td>
-      <td className="py-3.5 px-5">
-        <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
-          {cfg.label}
-        </span>
+    <tr className="border-b hover:bg-surface-2" style={{ borderColor: 'var(--color-border)' }}>
+      <td className="py-3 px-5 text-xs font-bold tnum" style={{ color: 'var(--color-text-muted)' }}>#{order._id.slice(-4).toUpperCase()}</td>
+      <td className="py-3 px-5 text-sm font-medium max-w-[260px] truncate" title={itemNames}>{itemNames}</td>
+      <td className="py-3 px-5 text-sm font-extrabold tnum">₹{fmt(order.totalAmount)}</td>
+      <td className="py-3 px-5">
+        <span className={`text-[11px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md ${cfg.cls}`}>{cfg.label}</span>
       </td>
-      <td className="py-3.5 px-5 text-sm" style={{ color: 'var(--color-text-muted)' }}>{timeStr(order.createdAt)}</td>
+      <td className="py-3 px-5 text-sm tnum" style={{ color: 'var(--color-text-muted)' }}>{timeStr(order.createdAt)}</td>
     </tr>
-  );
-}
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, color, accent }: {
-  label: string; value: string; icon: string; color: string; accent: string;
-}) {
-  return (
-    <div
-      className="rounded-2xl border p-5 flex flex-col gap-2 transition-transform hover:scale-[1.02]"
-      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
-          {label}
-        </span>
-        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${accent}`}>
-          {icon}
-        </span>
-      </div>
-      <span className={`text-2xl sm:text-3xl font-black truncate ${color}`} title={value}>
-        {value}
-      </span>
-    </div>
   );
 }
 
@@ -71,120 +48,67 @@ function DailySales() {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 
-  const stats = [
-    {
-      label: "Total Revenue",
-      value: loading ? "—" : `₹${fmt(data.totalRevenue)}`,
-      icon: "💰",
-      color: "text-primary",
-      accent: "bg-primary/10",
-    },
-    {
-      label: "Orders Today",
-      value: loading ? "—" : String(data.orderCount),
-      icon: "📦",
-      color: "text-secondary-dark",
-      accent: "bg-secondary-light/10",
-    },
-    {
-      label: "Avg. Order Value",
-      value: loading ? "—" : `₹${fmt(data.avgOrderValue)}`,
-      icon: "📊",
-      color: "text-indigo-600 dark:text-indigo-400",
-      accent: "bg-indigo-500/10",
-    },
-    {
-      label: "Top Item",
-      value: loading ? "—" : data.topItem ? `${data.topItem.name} (×${data.topItem.qty})` : "—",
-      icon: "🏆",
-      color: "text-green-600 dark:text-green-400",
-      accent: "bg-green-500/10",
-    },
+  const stats: { title: string; value: string; Icon: LucideIcon; tone?: "ink" }[] = [
+    { title: "Revenue", value: loading ? "—" : `₹${fmt(data.totalRevenue)}`, Icon: IndianRupee, tone: "ink" },
+    { title: "Orders today", value: loading ? "—" : String(data.orderCount), Icon: Receipt },
+    { title: "Average order", value: loading ? "—" : `₹${fmt(data.avgOrderValue)}`, Icon: TrendingUp },
+    { title: "Top item", value: loading ? "—" : data.topItem ? `${data.topItem.name} ×${data.topItem.qty}` : "—", Icon: Trophy },
   ];
 
   return (
-    <div className="animate-fade-in">
-      {/* ── Header ── */}
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-8 gap-3">
+    <div className="animate-fade-in max-w-5xl">
+      <header className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--color-text-main)' }}>
-            Daily Sales
-          </h1>
-          <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-            {today}
-          </p>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{today}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight mt-1">Daily sales</h1>
         </div>
         <button
           onClick={refresh}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all disabled:opacity-50 self-start sm:self-auto border"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-muted)',
-          }}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold border disabled:opacity-50 hover:bg-surface-2"
+          style={{ borderColor: 'var(--color-border)' }}
         >
-          {loading ? "⏳" : "🔄"} Refresh
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Refresh
         </button>
       </header>
 
-      {/* ── Error banner ── */}
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 text-red-700 dark:text-red-400 font-bold text-sm">
-          ⚠️ {error} — Make sure the backend is running.
+        <div role="alert" className="mb-6 p-4 rounded-lg border text-sm font-semibold" style={{ borderColor: 'var(--bad)', color: 'var(--bad)' }}>
+          {error}. Make sure the backend is running.
         </div>
       )}
 
-      {/* ── Stats Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {stats.map((s) => (
-          <StatCard key={s.label} {...s} />
+          <StatsCard key={s.title} {...s} />
         ))}
       </div>
 
-      {/* ── Orders Table ── */}
-      <div
-        className="rounded-2xl border overflow-hidden"
-        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-      >
-        {/* Table header bar */}
-        <div
-          className="flex items-center justify-between px-5 py-3.5 border-b"
-          style={{ borderColor: 'var(--color-border)' }}
-        >
-          <h2 className="font-black text-sm" style={{ color: 'var(--color-text-main)' }}>
-            Today's Orders
-          </h2>
-          <span
-            className="text-xs font-black px-3 py-1 rounded-full"
-            style={{ color: 'var(--color-text-muted)', backgroundColor: 'var(--color-background)' }}
-          >
+      <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <h2 className="font-display font-extrabold text-lg">Today's orders</h2>
+          <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-surface-2 tnum">
             {data.orderCount} {data.orderCount === 1 ? "order" : "orders"}{data.orders.length > data.orderCount ? ` · ${data.orders.length - data.orderCount} cancelled` : ""}
           </span>
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-            <p className="text-primary font-black text-xs uppercase tracking-widest animate-pulse">Loading orders...</p>
+          <div className="p-5 space-y-3" aria-busy="true" aria-label="Loading orders">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="h-10 rounded-lg animate-pulse bg-surface-2" />)}
           </div>
         ) : data.orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <span className="text-6xl mb-4 opacity-30">📋</span>
-            <p className="font-black" style={{ color: 'var(--color-text-muted)' }}>No orders yet today</p>
-            <p className="text-sm font-medium mt-1" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>
-              Orders will appear here once placed
-            </p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Receipt className="w-9 h-9 mb-3" style={{ color: 'var(--color-text-muted)' }} aria-hidden />
+            <p className="font-display text-lg font-bold">No orders yet today</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Orders show up here as soon as they are placed.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr style={{ backgroundColor: 'var(--color-background)' }}>
-                  {["Order ID", "Items", "Amount", "Status", "Time"].map((h) => (
-                    <th key={h} className="py-3 px-5 text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
-                      {h}
-                    </th>
+                <tr className="bg-surface-2">
+                  {["Token", "Items", "Amount", "Status", "Time"].map((h) => (
+                    <th key={h} className="py-2.5 px-5 text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

@@ -5,6 +5,7 @@ import CopilotChat from '../components/CopilotChat';
 import { readAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { Menu } from 'lucide-react';
+import TokenMark from '../components/TokenMark';
 
 function AdminLayout() {
   const navigate = useNavigate();
@@ -33,35 +34,34 @@ function AdminLayout() {
 
   return (
     <div
-      className="flex min-h-screen font-sans selection:bg-primary/30 transition-colors duration-300"
+      className="flex min-h-screen font-sans selection:bg-primary/40"
       style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text-main)' }}
     >
-      {/* Mobile Top Header */}
-      <div 
-        className="md:hidden fixed top-0 w-full z-40 flex items-center justify-between p-4 border-b shadow-sm transition-colors duration-300" 
+      {/* Mobile top bar */}
+      <div
+        className="md:hidden fixed top-0 w-full z-40 h-14 flex items-center justify-between px-4 border-b"
         style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center font-black text-lg shadow-inner">
-            L
-          </div>
-          <span className="text-xl font-black tracking-tighter text-primary leading-none">LNM BYTES</span>
+        <div className="flex items-center gap-2.5">
+          <TokenMark size={32} />
+          <span className="font-display font-extrabold text-lg tracking-tight">LNM Bytes</span>
         </div>
-        <button 
-          onClick={() => setIsMobileOpen(true)} 
-          className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-95"
+        <button
+          onClick={() => setIsMobileOpen(true)}
+          aria-label="Open menu"
+          className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-surface-2"
         >
           <Menu className="w-6 h-6" />
         </button>
       </div>
 
       <Sidebar isMobileOpen={isMobileOpen} closeMobile={() => setIsMobileOpen(false)} />
-      
-      <main className="flex-1 md:ml-64 p-4 mt-16 md:mt-0 lg:p-8 transition-all relative z-0">
+
+      <main className="flex-1 min-w-0 md:ml-64 px-4 pb-8 pt-20 md:pt-8 lg:px-8 relative z-0">
         <Outlet />
       </main>
 
-      {/* AI Copilot — floating chat widget available on all admin pages */}
+      {/* AI Copilot: floating chat available on every admin page */}
       <CopilotChat />
     </div>
   );

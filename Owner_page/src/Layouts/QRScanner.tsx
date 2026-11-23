@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { ScanLine, CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
 import api from "../hooks/api";
 
 type ScannedOrder = {
@@ -119,10 +120,8 @@ export default function QRScanner() {
     <div className="animate-fade-in">
       {/* Header */}
       <header className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--text-main)" }}>
-          📷 QR Order Verification
-        </h1>
-        <p className="text-sm font-medium mt-1" style={{ color: "var(--text-muted)" }}>
+        <h1 className="text-3xl font-extrabold tracking-tight">Scan QR</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
           Scan the student's QR code to verify and hand over the order
         </p>
       </header>
@@ -132,20 +131,20 @@ export default function QRScanner() {
         {/* ── IDLE ── */}
         {scanState === "idle" && (
           <div className="flex flex-col items-center gap-6 py-10">
-            <div className="w-32 h-32 rounded-3xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-6xl">
-              📷
+            <div className="w-28 h-28 rounded-xl bg-primary text-on-primary flex items-center justify-center">
+              <ScanLine className="w-14 h-14" aria-hidden />
             </div>
             <div className="text-center">
-              <p className="font-black text-lg" style={{ color: "var(--text-main)" }}>Ready to Scan</p>
-              <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
+              <p className="font-display font-extrabold text-xl">Ready to scan</p>
+              <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
                 Ask the student to show their QR code from the "My Orders" page
               </p>
             </div>
             <button
               onClick={startScanner}
-              className="px-8 py-3 rounded-2xl bg-primary text-white font-black text-sm shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95"
+              className="px-8 py-3 rounded-lg bg-primary text-on-primary font-extrabold text-sm hover:bg-primary-dark active:scale-95"
             >
-              📷 Start Camera
+              Start camera
             </button>
           </div>
         )}
@@ -153,10 +152,10 @@ export default function QRScanner() {
         {/* ── SCANNING ── */}
         {isScanning && (
           <div className="flex flex-col items-center gap-4">
-            <p className="text-sm font-bold text-primary animate-pulse">🔍 Point camera at QR code…</p>
+            <p className="text-sm font-bold text-brand animate-pulse">Point the camera at the QR code</p>
             <button
               onClick={() => { stopScanner(); reset(); }}
-              className="px-4 py-2 rounded-xl text-sm font-black text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all"
+              className="px-4 py-2 rounded-lg text-sm font-bold border hover:bg-surface-2"
             >
               ✕ Cancel
             </button>
@@ -166,26 +165,26 @@ export default function QRScanner() {
         {/* ── The scanner div is ALWAYS in the DOM; visibility controlled by CSS ── */}
         <div
           id={SCANNER_ID}
-          className={`w-full rounded-2xl overflow-hidden border-2 border-primary/30 shadow-xl mt-4 ${isScanning ? "block" : "hidden"}`}
+          className={`w-full rounded-xl overflow-hidden border-2 border-primary/30 shadow-xl mt-4 ${isScanning ? "block" : "hidden"}`}
         />
 
         {/* ── LOADING ── */}
         {scanState === "loading" && (
           <div className="flex flex-col items-center py-16 gap-4">
             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            <p className="text-sm font-black text-primary animate-pulse">Verifying order…</p>
+            <p className="text-sm font-black text-brand animate-pulse">Verifying order…</p>
           </div>
         )}
 
         {/* ── SUCCESS ── */}
         {scanState === "success" && order && (
-          <div className="rounded-2xl border-2 border-green-500/40 bg-green-900/10 overflow-hidden">
+          <div className="rounded-xl border overflow-hidden">
             {/* Status banner */}
-            <div className="bg-green-500/20 px-6 py-4 flex items-center gap-3">
-              <span className="text-3xl">✅</span>
+            <div className="bg-green-100 dark:bg-green-400/20 px-6 py-4 flex items-center gap-3">
+              <CheckCircle2 className="w-8 h-8 text-green-700 dark:text-green-300" aria-hidden />
               <div>
-                <p className="font-black text-green-400 text-lg">Order Verified!</p>
-                <p className="text-xs text-green-500/80 font-medium">QR used — order marked as Delivered</p>
+                <p className="font-display font-extrabold text-green-900 dark:text-green-200 text-lg">Order verified</p>
+                <p className="text-xs text-green-800 dark:text-green-300 font-medium">QR used. Order marked as picked up.</p>
               </div>
             </div>
 
@@ -193,8 +192,8 @@ export default function QRScanner() {
               {/* Token number — bold & prominent */}
               {order.orderNumber && (
                 <div className="flex flex-col items-center py-4">
-                  <p className="text-[10px] uppercase tracking-widest font-black text-gray-500 mb-2">Token Number</p>
-                  <div className="bg-green-500 text-white font-black text-5xl px-10 py-4 rounded-2xl shadow-lg shadow-green-500/30 tracking-wider">
+                  <p className="text-[11px] uppercase tracking-widest font-bold mb-2" style={{ color: "var(--color-text-muted)" }}>Token number</p>
+                  <div className="bg-primary text-on-primary font-display font-extrabold text-5xl px-10 py-4 rounded-xl tnum">
                     #{order.orderNumber}
                   </div>
                 </div>
@@ -202,17 +201,17 @@ export default function QRScanner() {
 
               {/* Cash collection banner */}
               {order.paymentType === "cash" && order.paymentStatus === "pending" && (
-                <div className="p-5 bg-yellow-500/20 border-2 border-yellow-500/50 rounded-xl mb-4 text-center animate-pulse">
-                  <p className="text-xs font-black text-yellow-500 uppercase tracking-widest mb-1">Cash Collection Required</p>
-                  <p className="text-3xl font-black text-yellow-400">Collect ₹{order.totalAmount}</p>
+                <div className="p-5 bg-primary text-on-primary rounded-xl mb-4 text-center">
+                  <p className="text-xs font-extrabold uppercase tracking-widest mb-1 opacity-80">Collect cash</p>
+                  <p className="font-display text-4xl font-extrabold tnum">₹{order.totalAmount}</p>
                 </div>
               )}
               
               {/* Online payment banner */}
               {order.paymentType === "online" && order.paymentStatus === "paid" && (
-                <div className="p-4 bg-green-500/20 border-2 border-green-500/40 rounded-xl mb-4 text-center">
-                  <p className="text-xs font-black text-green-400 uppercase tracking-widest mb-1">Paid Online ✅</p>
-                  <p className="text-lg font-black text-green-500">No cash collection required</p>
+                <div className="p-4 bg-green-100 dark:bg-green-400/20 rounded-xl mb-4 text-center">
+                  <p className="text-xs font-extrabold text-green-900 dark:text-green-200 uppercase tracking-widest mb-1">Paid online</p>
+                  <p className="text-base font-bold text-green-900 dark:text-green-200">No cash to collect</p>
                 </div>
               )}
 
@@ -221,10 +220,10 @@ export default function QRScanner() {
                 className="p-4 rounded-xl border space-y-2"
                 style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
               >
-                <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">Student</p>
+                <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--color-text-muted)" }}>Student</p>
                 <p className="font-black text-lg" style={{ color: 'var(--color-text-main)' }}>{order.userName}</p>
-                <p className="text-blue-500 dark:text-blue-400 text-sm">✉️ {order.userEmail}</p>
-                {order.userPhone && <p className="text-green-600 dark:text-green-400 text-sm">📞 +91 {order.userPhone}</p>}
+                <p className="text-sm">{order.userEmail}</p>
+                {order.userPhone && <p className="text-sm font-bold">+91 {order.userPhone}</p>}
               </div>
 
               {/* Order summary */}
@@ -232,14 +231,14 @@ export default function QRScanner() {
                 className="p-4 rounded-xl border space-y-3"
                 style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
               >
-                <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">Items</p>
+                <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--color-text-muted)" }}>Items</p>
                 <div className="space-y-1.5">
                   {order.items.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
                       <span className="font-medium" style={{ color: 'var(--color-text-main)' }}>
                         {item.name}
                         {item.portionSize === "half" && (
-                          <span className="ml-1 text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Half</span>
+                          <span className="ml-1 text-[10px] font-bold uppercase bg-surface-2 px-1.5 py-0.5 rounded">Half</span>
                         )}
                       </span>
                       <span style={{ color: 'var(--color-text-muted)' }}>×{item.quantity} · ₹{item.price * item.quantity}</span>
@@ -247,12 +246,12 @@ export default function QRScanner() {
                   ))}
                 </div>
                 <div className="border-t pt-2 flex justify-between items-center" style={{ borderColor: 'var(--color-border)' }}>
-                  <span className="text-xs font-black text-gray-400 uppercase">Total</span>
-                  <span className="font-black text-orange-500 text-xl">₹{order.totalAmount}</span>
+                  <span className="text-xs font-bold uppercase" style={{ color: "var(--color-text-muted)" }}>Total</span>
+                  <span className="font-display font-extrabold text-xl tnum">₹{order.totalAmount}</span>
                 </div>
                 <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-muted)' }}>
                   <span className="font-medium">
-                    {order.paymentType === "cash" ? "💵 Cash" : "💳 Online"} ·{" "}
+                    {order.paymentType === "cash" ? "Cash" : "Online"} ·{" "}
                     <span className={order.paymentStatus === "paid" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}>
                       {order.paymentStatus === "paid" ? "Paid" : "Pending"}
                     </span>
@@ -262,15 +261,15 @@ export default function QRScanner() {
               </div>
 
               {/* Hand over banner */}
-              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-center">
-                <p className="font-black text-primary">🎉 Hand over the food to the student!</p>
+              <div className="p-4 rounded-xl bg-surface-2 text-center">
+                <p className="font-bold">Hand the food to the student.</p>
               </div>
 
               <button
                 onClick={reset}
-                className="w-full py-3 rounded-2xl bg-primary text-white font-black text-sm hover:bg-primary-dark transition-all active:scale-95"
+                className="w-full py-3 rounded-lg bg-primary text-on-primary font-extrabold text-sm hover:bg-primary-dark active:scale-95"
               >
-                📷 Scan Next Order
+                Scan next order
               </button>
             </div>
           </div>
@@ -278,11 +277,11 @@ export default function QRScanner() {
 
         {/* ── ALREADY USED ── */}
         {scanState === "already_used" && (
-          <div className="rounded-2xl border-2 border-yellow-500/40 bg-yellow-900/10 p-8 flex flex-col items-center gap-4 text-center">
-            <span className="text-5xl">⚠️</span>
-            <p className="font-black text-yellow-400 text-xl">Already Used</p>
-            <p className="text-yellow-500/80 text-sm font-medium">This QR code has already been scanned and verified.</p>
-            <button onClick={reset} className="px-6 py-2.5 rounded-xl bg-yellow-500/20 text-yellow-300 font-black text-sm border border-yellow-500/30 hover:bg-yellow-500/30 transition-all">
+          <div className="rounded-xl border-2 border-primary p-8 flex flex-col items-center gap-4 text-center">
+            <AlertTriangle className="w-12 h-12 text-brand" aria-hidden />
+            <p className="font-display font-extrabold text-xl">Already used</p>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>This QR code has already been scanned and verified.</p>
+            <button onClick={reset} className="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-extrabold text-sm hover:bg-primary-dark">
               Scan Another
             </button>
           </div>
@@ -290,11 +289,11 @@ export default function QRScanner() {
 
         {/* ── EXPIRED ── */}
         {scanState === "expired" && (
-          <div className="rounded-2xl border-2 border-orange-500/40 bg-orange-900/10 p-8 flex flex-col items-center gap-4 text-center">
-            <span className="text-5xl">⏰</span>
-            <p className="font-black text-orange-400 text-xl">QR Code Expired</p>
-            <p className="text-orange-500/80 text-sm font-medium">This QR code is older than 1 hour. Ask the student to refresh their order page.</p>
-            <button onClick={reset} className="px-6 py-2.5 rounded-xl bg-orange-500/20 text-orange-300 font-black text-sm border border-orange-500/30 hover:bg-orange-500/30 transition-all">
+          <div className="rounded-xl border-2 border-primary p-8 flex flex-col items-center gap-4 text-center">
+            <Clock className="w-12 h-12 text-brand" aria-hidden />
+            <p className="font-display font-extrabold text-xl">QR code expired</p>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>This QR code is older than 1 hour. Ask the student to refresh their order page.</p>
+            <button onClick={reset} className="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-extrabold text-sm hover:bg-primary-dark">
               Scan Another
             </button>
           </div>
@@ -302,11 +301,11 @@ export default function QRScanner() {
 
         {/* ── OTHER ERROR ── */}
         {scanState === "error" && (
-          <div className="rounded-2xl border-2 border-red-500/40 bg-red-900/10 p-8 flex flex-col items-center gap-4 text-center">
-            <span className="text-5xl">❌</span>
-            <p className="font-black text-red-400 text-xl">Verification Failed</p>
-            <p className="text-red-400/80 text-sm font-medium max-w-xs">{errorMsg || "Invalid QR code. Make sure you're scanning a valid LNM Bytes order QR."}</p>
-            <button onClick={reset} className="px-6 py-2.5 rounded-xl bg-red-500/20 text-red-300 font-black text-sm border border-red-500/30 hover:bg-red-500/30 transition-all">
+          <div className="rounded-xl border-2 p-8 flex flex-col items-center gap-4 text-center" style={{ borderColor: "var(--bad)" }}>
+            <XCircle className="w-12 h-12" style={{ color: "var(--bad)" }} aria-hidden />
+            <p className="font-display font-extrabold text-xl">Verification failed</p>
+            <p className="text-sm max-w-xs" style={{ color: "var(--color-text-muted)" }}>{errorMsg || "Invalid QR code. Make sure you're scanning a valid LNM Bytes order QR."}</p>
+            <button onClick={reset} className="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-extrabold text-sm hover:bg-primary-dark">
               Try Again
             </button>
           </div>

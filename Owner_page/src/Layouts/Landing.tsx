@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { Sun, Moon } from 'lucide-react';
+import TokenMark from '../components/TokenMark';
 
 type Mode = 'login' | 'register';
 
@@ -26,7 +27,7 @@ function Field({
         className={`w-full px-4 py-3.5 rounded-xl text-gray-800 dark:text-gray-100 font-medium
           placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all text-sm
           dark:bg-slate-700 dark:border-slate-600
-          ${error ? 'bg-red-50 border border-red-200 focus:ring-red-100' : 'bg-gray-50 border border-gray-100 focus:ring-primary/20 focus:border-primary'}`}
+          ${error ? 'bg-red-50 border border-red-200 focus:ring-red-100' : 'bg-gray-50 border border-gray-200 dark:border-slate-600 focus:ring-primary/40 focus:border-primary'}`}
       />
     </div>
   );
@@ -54,12 +55,12 @@ function PasswordField({
           className={`w-full px-4 py-3.5 pr-12 rounded-xl text-gray-800 dark:text-gray-100 font-medium
             placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all text-sm
             dark:bg-slate-700 dark:border-slate-600
-            ${error ? 'bg-red-50 border border-red-200 focus:ring-red-100' : 'bg-gray-50 border border-gray-100 focus:ring-primary/20 focus:border-primary'}`}
+            ${error ? 'bg-red-50 border border-red-200 focus:ring-red-100' : 'bg-gray-50 border border-gray-200 dark:border-slate-600 focus:ring-primary/40 focus:border-primary'}`}
         />
         <button
           type="button"
           onClick={() => setShow(s => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors p-1"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand transition-colors p-1"
           aria-label={show ? 'Hide password' : 'Show password'}
         >
           {show ? (
@@ -259,17 +260,13 @@ function Landing(): React.JSX.Element {
   // ─── Waiting screen for unapproved owners ────────────────────────────────
   if (existingAuth && !existingAuth.isApproved) {
     return (
-      <div
-        className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=2070&auto=format&fit=crop')" }}
-      >
-        <div className="absolute inset-0 bg-primary/45 backdrop-blur-sm" />
+      <div className="relative min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text-main)' }}>
         <div className="relative z-10 w-full max-w-md px-4">
-          <div className="rounded-3xl p-10 shadow-2xl border border-white/20 text-center" style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }}>
-            <div className="text-6xl mb-6">⏳</div>
-            <h2 className="text-2xl font-black text-gray-800 dark:text-gray-100">Awaiting Approval</h2>
+          <div className="rounded-xl p-10 border text-center" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+            <div className="mb-6 flex justify-center"><TokenMark size={56} /></div>
+            <h2 className="text-2xl font-black text-gray-800 dark:text-gray-100">Awaiting approval</h2>
             <p className="mt-3 text-gray-500 font-medium">
-              Hi <span className="font-black text-primary">{existingAuth.ownerName}</span>! Your account for{' '}
+              Hi <span className="font-black text-brand">{existingAuth.ownerName}</span>! Your account for{' '}
               <span className="font-black">{existingAuth.storeName}</span> is pending super admin approval.
             </p>
             <p className="mt-2 text-sm text-gray-400 font-medium">
@@ -295,49 +292,31 @@ function Landing(): React.JSX.Element {
   }
 
   return (
-    <div
-      className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=2070&auto=format&fit=crop')" }}
-    >
-      <div className="absolute inset-0 bg-primary/45 backdrop-blur-sm" />
+    <div className="relative min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text-main)' }}>
 
       {/* Theme toggle – floating top-right */}
       <button
         id="landing-theme-toggle"
         onClick={toggle}
-        aria-label="Toggle dark mode"
-        className={`absolute top-4 right-4 z-20 flex items-center w-14 h-7 rounded-full p-1 transition-colors duration-300 shadow-lg border ${
-          isDark ? 'bg-primary border-primary/40' : 'bg-white/30 border-white/40'
-        }`}
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        className="absolute top-4 right-4 z-20 w-10 h-10 rounded-lg flex items-center justify-center border hover:bg-surface-2"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
       >
-        <span
-          className={`absolute flex items-center justify-center w-5 h-5 rounded-full shadow-md transition-all duration-300 bg-white ${
-            isDark ? 'translate-x-7' : 'translate-x-0'
-          }`}
-        >
-          {isDark
-            ? <Moon className="w-3 h-3 text-primary" />
-            : <Sun  className="w-3 h-3 text-yellow-500" />
-          }
-        </span>
+        {isDark ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
       </button>
 
       <div className="relative z-10 w-full max-w-md px-4 py-10">
         {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-white/20 border border-white/30 shadow-xl backdrop-blur-md">
-            <span className="text-3xl font-black text-white">L</span>
-          </div>
-          <h1 className="text-4xl font-black text-white tracking-tighter uppercase">Partner Portal</h1>
-          <p className="mt-2 text-white/70 font-bold text-sm uppercase tracking-widest">LNM BYTES • ADMIN</p>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <TokenMark size={56} />
+          <h1 className="mt-4 text-4xl font-extrabold tracking-tight">Partner portal</h1>
+          <p className="mt-1.5 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>Run your canteen on LNM Bytes</p>
         </div>
 
         {/* Card */}
         <div
-          className="rounded-3xl p-8 shadow-2xl border border-white/20 transition-colors duration-300"
-          style={{
-            backgroundColor: isDark ? '#1e293b' : '#ffffff',
-          }}
+          className="rounded-xl p-6 sm:p-8 border"
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
         >
           {/* ── FORGOT PASSWORD FORM ── */}
           {showForgot ? (
@@ -380,8 +359,8 @@ function Landing(): React.JSX.Element {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
-                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                    className="w-full py-4 mt-2 font-black text-on-primary bg-primary rounded-xl hover:bg-primary-dark
+                       transition-all active:scale-[0.98] uppercase tracking-widest text-sm
                       disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? '⏳ Sending OTP...' : 'Send Verification Code →'}
@@ -409,7 +388,7 @@ function Landing(): React.JSX.Element {
                           className={`w-full aspect-square text-center text-xl font-black rounded-xl border
                             focus:outline-none focus:ring-2 transition-all
                             dark:bg-slate-700 dark:text-white dark:border-slate-600
-                            ${error ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-primary/20 focus:border-primary'}`}
+                            ${error ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'}`}
                         />
                       ))}
                     </div>
@@ -427,7 +406,7 @@ function Landing(): React.JSX.Element {
                           onClick={() => {
                             forgotSendOtp(fpEmail).then(ok => { if (ok) { setFpTimer(60); setFpOtp(['','','','','','']); } });
                           }}
-                          className="text-xs font-bold text-primary hover:underline"
+                          className="text-xs font-bold text-brand hover:underline"
                         >
                           Resend Code
                         </button>
@@ -437,8 +416,8 @@ function Landing(): React.JSX.Element {
                   <button
                     type="submit"
                     disabled={loading || fpTimer === 0}
-                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
-                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                    className="w-full py-4 mt-2 font-black text-on-primary bg-primary rounded-xl hover:bg-primary-dark
+                       transition-all active:scale-[0.98] uppercase tracking-widest text-sm
                       disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? '⏳ Verifying...' : 'Verify OTP →'}
@@ -459,8 +438,8 @@ function Landing(): React.JSX.Element {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
-                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                    className="w-full py-4 mt-2 font-black text-on-primary bg-primary rounded-xl hover:bg-primary-dark
+                       transition-all active:scale-[0.98] uppercase tracking-widest text-sm
                       disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? '⏳ Resetting...' : 'Set New Password →'}
@@ -484,9 +463,9 @@ function Landing(): React.JSX.Element {
                     type="button"
                     onClick={() => switchMode(m)}
                     className={`flex-1 py-2.5 rounded-lg text-sm font-black transition-all
-                      ${mode === m ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                      ${mode === m ? 'bg-primary text-on-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    {m === 'login' ? '🔑 Sign In' : '✨ Register'}
+                    {m === 'login' ? 'Sign in' : 'Register'}
                   </button>
                 ))}
               </div>
@@ -540,7 +519,7 @@ function Landing(): React.JSX.Element {
                     <button
                       type="button"
                       onClick={openForgot}
-                      className="text-xs font-bold text-primary hover:underline transition-all"
+                      className="text-xs font-bold text-brand hover:underline transition-all"
                     >
                       Forgot password?
                     </button>
@@ -549,8 +528,8 @@ function Landing(): React.JSX.Element {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
-                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                    className="w-full py-4 mt-2 font-black text-on-primary bg-primary rounded-xl hover:bg-primary-dark
+                       transition-all active:scale-[0.98] uppercase tracking-widest text-sm
                       disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? '⏳ Signing in...' : 'Access Dashboard →'}
@@ -601,8 +580,8 @@ function Landing(): React.JSX.Element {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 mt-2 font-black text-white bg-primary rounded-xl hover:bg-primary-dark
-                      shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest text-sm
+                    className="w-full py-4 mt-2 font-black text-on-primary bg-primary rounded-xl hover:bg-primary-dark
+                       transition-all active:scale-[0.98] uppercase tracking-widest text-sm
                       disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? '⏳ Creating account...' : 'Create Account →'}

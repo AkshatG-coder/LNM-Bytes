@@ -1,26 +1,54 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* ── Tailwind v4: use class-based dark mode ──────────────────────────────── */
 @variant dark (&:where(.dark, .dark *));
 
+/* ── LNM Bytes "canteen token" look (shared with the student app) ───────────
+   haldi yellow = actions and active states, always with ink text on top (on-primary).
+   --brand is the accent used AS TEXT: dark amber on light surfaces, haldi on dark ones. */
+:root {
+  --brand: #8A6100;
+  --ok: #15803D;
+  --warn: #B45309;
+  --bad: #C62828;
+  --shadow: 0 1px 2px rgb(18 27 46 / 0.06);
+}
+html.dark {
+  --brand: #F5B400;
+  --color-background: #0C121E;
+  --color-surface: #151D2E;
+  --color-surface-2: #1E2840;
+  --color-border: #2A3550;
+  --color-text-main: #EEF1F7;
+  --color-text-muted: #9AA5BA;
+  --ok: #4ADE80;
+  --warn: #FBBF24;
+  --bad: #F87171;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
 @theme {
-  --color-primary-light: #818cf8;
-  --color-primary: #4f46e5;
-  --color-primary-dark: #3730a3;
+  --color-background: #F3F4F6;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #E9ECF1;
+  --color-border: #DADFE7;
+  --color-text-main: #121B2E;
+  --color-text-muted: #566075;
+
+  --color-primary-light: #FFD152;
+  --color-primary: #F5B400;
+  --color-primary-dark: #D99E00;
+  --color-on-primary: #121B2E;
 
   --color-secondary-light: #fbbf24;
   --color-secondary: #f59e0b;
   --color-secondary-dark: #b45309;
 
   --color-accent: #f43f5e;
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-text-main: #111827;
-  --color-text-muted: #6b7280;
 
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Figtree", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
 
   --animate-fade-in: fade-in 0.35s ease both;
   --animate-fade-in-down: fade-in-down 0.4s ease both;
@@ -30,14 +58,11 @@
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-bounce: bounce 1s infinite;
 }
-
-/* ── Dark mode overrides ──────────────────────────────────────────────────── */
-html.dark {
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-border: #334155;
-  --color-text-main: #f1f5f9;
-  --color-text-muted: #94a3b8;
+@theme inline {
+  --color-brand: var(--brand);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
 }
 
 
@@ -137,75 +162,97 @@ html.dark {
     transition-duration: 200ms;
     transition-timing-function: ease;
   }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  :focus-visible {
+    outline: 2px solid var(--color-text-main);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  }
   body {
     background-color: var(--color-background);
-    color: var(--color-text-main, #111827);
+    color: var(--color-text-main);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 @layer components {
   .btn-primary {
     padding: 0.5rem 1rem;
     background-color: var(--color-primary);
-    color: white;
-    border-radius: 0.75rem;
-    transition: all 0.2s;
+    color: var(--color-on-primary);
+    border-radius: 0.5rem;
     font-weight: 700;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    transition: background-color 0.2s, transform 0.1s;
   }
-
-  .btn-primary:hover {
-    background-color: var(--color-primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-  }
+  .btn-primary:hover { background-color: var(--color-primary-dark); }
+  .btn-primary:active { transform: scale(0.98); }
 
   .btn-secondary {
     padding: 0.5rem 1rem;
-    background-color: var(--color-secondary);
-    color: white;
-    border-radius: 0.75rem;
-    transition: all 0.2s;
+    background-color: var(--color-surface-2);
+    color: var(--color-text-main);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
     font-weight: 700;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  }
-
-  .btn-secondary:hover {
-    background-color: var(--color-secondary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
   .card {
     background-color: var(--color-surface);
-    border-radius: 1rem;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-    padding: 1.5rem;
     border: 1px solid var(--color-border);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
   }
-  
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+
+  /* Canteen token slip: a ticket with half-round notches cut into both edges at --notch-y. */
+  .slip {
+    --notch-y: 5.5rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.875rem;
+    -webkit-mask:
+      radial-gradient(circle 9px at 0 var(--notch-y), #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle 9px at 100% var(--notch-y), #0000 97%, #000) right / 51% 100% no-repeat;
+            mask:
+      radial-gradient(circle 9px at 0 var(--notch-y), #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle 9px at 100% var(--notch-y), #0000 97%, #000) right / 51% 100% no-repeat;
   }
-  html.dark .card:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  .perf { border-top: 2px dashed var(--color-border); }
+  .leader {
+    flex: 1 1 auto;
+    min-width: 1rem;
+    align-self: flex-end;
+    margin-bottom: 0.3em;
+    border-bottom: 2px dotted color-mix(in srgb, var(--color-text-muted) 55%, transparent);
   }
+
+  /* Form fields: one look everywhere */
+  .field {
+    width: 100%;
+    background-color: var(--color-background);
+    color: var(--color-text-main);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  .field:focus { outline: 2px solid var(--color-primary); outline-offset: 1px; border-color: var(--color-primary); }
 }
+
 /* ── Charts on the Insights page ──────────────────────────────────────────── */
 .viz {
   --viz-1: #2a78d6;   /* blue */

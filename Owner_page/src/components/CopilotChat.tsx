@@ -20,7 +20,7 @@ interface Message {
     streaming?: boolean;
 }
 
-const ACCENT = '#4f46e5';
+const ACCENT = '#F5B400';
 
 const GREETING: Message = {
     role: 'assistant',
@@ -185,7 +185,7 @@ export default function CopilotChat() {
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label={isOpen ? 'Close Copilot' : 'Open Copilot, your store assistant'}
                 aria-expanded={isOpen}
-                className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-xl text-on-primary shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={{ background: ACCENT, outlineColor: ACCENT }}
             >
                 {isOpen ? (
@@ -202,12 +202,12 @@ export default function CopilotChat() {
                 <div
                     role="dialog"
                     aria-label="Store Copilot chat"
-                    className={`fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 ${expanded ? 'sm:w-[min(780px,calc(100vw-3rem))] sm:h-[calc(100vh-7rem)]' : 'sm:w-[480px] sm:h-[min(760px,calc(100vh-7rem))]'} flex flex-col overflow-hidden sm:rounded-2xl sm:border shadow-2xl`}
+                    className={`fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 ${expanded ? 'sm:w-[min(780px,calc(100vw-3rem))] sm:h-[calc(100vh-7rem)]' : 'sm:w-[480px] sm:h-[min(760px,calc(100vh-7rem))]'} flex flex-col overflow-hidden sm:rounded-xl sm:border shadow-2xl`}
                     style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
                 >
                     {/* Header */}
-                    <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ background: ACCENT }}>
-                        <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <div className="flex items-center gap-3 px-4 py-3 text-on-primary flex-shrink-0" style={{ background: ACCENT }}>
+                        <div className="w-9 h-9 rounded-xl bg-black/10 flex items-center justify-center flex-shrink-0">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d="M4 5h16v11H9l-5 4z" />
                                 <path d="M8 10h8M8 13h5" />
@@ -215,7 +215,7 @@ export default function CopilotChat() {
                         </div>
                         <div className="min-w-0 flex-1">
                             <h2 className="text-[15px] font-semibold leading-tight">Copilot</h2>
-                            <p className="text-xs text-white/80 truncate">Orders, sales, menu and store</p>
+                            <p className="text-xs text-on-primary/75 truncate">Orders, sales, menu and store</p>
                         </div>
                         <button
                             onClick={() => {
@@ -226,7 +226,7 @@ export default function CopilotChat() {
                             disabled={loading || messages.length <= 1}
                             aria-label="Start a new chat"
                             title="New chat"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-white"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-[#121B2E]"
                         >
                             <Icon d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" size={16} />
                         </button>
@@ -235,14 +235,14 @@ export default function CopilotChat() {
                             onClick={() => setExpanded((v) => !v)}
                             aria-label={expanded ? 'Make the chat smaller' : 'Make the chat larger'}
                             title={expanded ? 'Smaller' : 'Larger'}
-                            className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white"
+                            className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-[#121B2E]"
                         >
                             <Icon d={expanded ? 'M9 4v5H4M15 20v-5h5M4 9l6-6M20 15l-6 6' : 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7'} size={16} />
                         </button>
                         <button
                             onClick={() => setIsOpen(false)}
                             aria-label="Close chat"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-[#121B2E]"
                         >
                             <Icon d="M6 18L18 6M6 6l12 12" size={18} />
                         </button>
@@ -255,7 +255,7 @@ export default function CopilotChat() {
                                 <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div
                                         className={`max-w-[88%] px-3.5 py-2.5 text-[14px] leading-relaxed motion-safe:animate-fade-in ${
-                                            msg.role === 'user' ? 'text-white rounded-xl rounded-br-sm' : 'rounded-xl rounded-bl-sm border'
+                                            msg.role === 'user' ? 'text-on-primary rounded-xl rounded-br-sm' : 'rounded-xl rounded-bl-sm border'
                                         }`}
                                         style={
                                             msg.role === 'user'
@@ -270,7 +270,7 @@ export default function CopilotChat() {
                                             <button
                                                 onClick={() => sendMessage(msg.retryText)}
                                                 disabled={loading}
-                                                className="mt-2 block text-xs font-semibold underline underline-offset-2 disabled:opacity-50 text-indigo-600 dark:text-indigo-300"
+                                                className="mt-2 block text-xs font-semibold underline underline-offset-2 disabled:opacity-50 text-brand"
                                             >
                                                 Try again
                                             </button>
@@ -302,7 +302,7 @@ export default function CopilotChat() {
                                 <button
                                     key={s}
                                     onClick={() => sendMessage(s)}
-                                    className="flex-shrink-0 text-[13px] font-medium px-3.5 py-2 rounded-lg border transition-colors active:scale-95 hover:bg-indigo-500/10"
+                                    className="flex-shrink-0 text-[13px] font-medium px-3.5 py-2 rounded-lg border transition-colors active:scale-95 hover:bg-primary/10"
                                     style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                                 >
                                     {s}
@@ -317,7 +317,7 @@ export default function CopilotChat() {
                     )}
                     <div className="px-3.5 pt-2 pb-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                         <div
-                            className="flex items-center gap-2 rounded-xl border pl-4 pr-2 py-2 focus-within:ring-2 focus-within:ring-indigo-500/50"
+                            className="flex items-center gap-2 rounded-xl border pl-4 pr-2 py-2 focus-within:ring-2 focus-within:ring-primary/60"
                             style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                         >
                             <input
@@ -332,12 +332,12 @@ export default function CopilotChat() {
                                 className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"
                                 style={{ color: 'var(--color-text-main)' }}
                             />
-                            <VoiceInput value={input} onChange={setInput} disabled={loading} accent={ACCENT} onListening={setListening} onError={setVoiceError} />
+                            <VoiceInput value={input} onChange={setInput} disabled={loading} onListening={setListening} onError={setVoiceError} />
                             <button
                                 onClick={() => sendMessage()}
                                 disabled={!input.trim() || loading}
                                 aria-label="Send message"
-                                className="w-10 h-10 rounded-lg flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0"
+                                className="w-10 h-10 rounded-lg flex items-center justify-center text-on-primary transition-transform active:scale-95 disabled:opacity-30 flex-shrink-0"
                                 style={{ background: ACCENT }}
                             >
                                 <Icon d="M5 12h14M13 6l6 6-6 6" size={18} />
