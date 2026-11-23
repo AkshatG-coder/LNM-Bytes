@@ -4,14 +4,14 @@ interface StatsCardProps {
   title: string;
   value: string | number;
   Icon: LucideIcon;
-  /** "alert" = haldi fill (needs attention), "ink" = dark fill (the money number), default = plain surface */
+  /** "alert" = surface with a haldi edge (needs attention), "ink" = dark fill (the money number), default = plain surface */
   tone?: 'default' | 'alert' | 'ink';
   hint?: string;
 }
 
 const TONES = {
   default: { box: 'border', style: { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)' }, muted: 'var(--color-text-muted)' },
-  alert:   { box: 'border border-transparent bg-primary text-on-primary', style: {}, muted: 'rgb(18 27 46 / 0.7)' },
+  alert:   { box: 'border', style: { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderLeft: '4px solid var(--color-primary)', color: 'var(--color-text-main)' }, muted: 'var(--color-text-muted)' },
   ink:     { box: 'border border-transparent', style: { backgroundColor: '#121B2E', color: '#EEF1F7' }, muted: '#9AA5BA' },
 } as const;
 

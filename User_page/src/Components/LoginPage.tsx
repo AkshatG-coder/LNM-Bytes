@@ -42,12 +42,12 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2" style={{ backgroundColor: 'var(--bg)' }}>
-      {/* Brand panel: always haldi yellow with ink text */}
-      <div className="bg-primary text-on-primary px-6 pt-8 pb-10 md:p-12 flex flex-col justify-between gap-10">
+      {/* Brand panel: ink navy, with haldi only for the logo and one phrase */}
+      <div className="px-6 pt-8 pb-10 md:p-12 flex flex-col justify-between gap-10" style={{ backgroundColor: '#121B2E', color: '#EEF1F7' }}>
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden
-            className="w-10 h-10 flex items-center justify-center bg-on-primary text-primary font-display font-extrabold text-xl"
+            className="w-10 h-10 flex items-center justify-center bg-primary text-on-primary font-display font-extrabold text-xl"
             style={{
               borderRadius: 9,
               WebkitMask: 'radial-gradient(circle 5.5px at 0 50%, #0000 96%, #000) left / 51% 100% no-repeat, radial-gradient(circle 5.5px at 100% 50%, #0000 96%, #000) right / 51% 100% no-repeat',
@@ -61,9 +61,9 @@ export function LoginPage() {
 
         <div>
           <h1 className="font-display font-extrabold text-4xl md:text-6xl leading-[1.02] max-w-lg">
-            Order now. Skip the queue.
+            Order now. <span className="text-primary">Skip the queue.</span>
           </h1>
-          <p className="mt-4 text-base md:text-lg font-semibold max-w-sm">
+          <p className="mt-4 text-base md:text-lg font-semibold max-w-sm" style={{ color: '#9AA5BA' }}>
             Order from any LNMIIT canteen and pick it up when your token is called.
           </p>
         </div>

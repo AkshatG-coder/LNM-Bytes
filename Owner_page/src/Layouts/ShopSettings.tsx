@@ -236,9 +236,8 @@ function ShopSettings() {
   const open = store.status === 'open';
   const saved = { open: store.operationTime?.openTime || '08:00', close: store.operationTime?.closeTime || '22:00' };
   const state = shopState(store, saved, now);
-  const live = state.kind === 'open';
-  const banner = live ? 'bg-primary text-on-primary' : '';
-  const bannerStyle = live ? undefined : state.kind === 'closed' ? { backgroundColor: '#121B2E', color: '#EEF1F7' } : { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text-main)' };
+  // The banner stays neutral; only the dot and the edge carry the state colour.
+  const tone = state.kind === 'open' ? 'var(--ok)' : state.kind === 'closed' ? 'var(--bad)' : 'var(--warn)';
   const overnight = isOvernight(draft.openTime, draft.closeTime);
 
   return (
@@ -263,28 +262,32 @@ function ShopSettings() {
       )}
 
       {/* What students can do right now: owner switch + opening hours, together */}
-      <div className={`p-5 rounded-xl mb-8 ${banner}`} style={bannerStyle} aria-live="polite">
+      <div className="p-5 rounded-xl border mb-8" style={{ ...cardStyle, borderLeft: `4px solid ${tone}` }} aria-live="polite">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="min-w-0">
-            <p className="font-display text-2xl font-extrabold">{state.headline}</p>
-            <p className="text-sm mt-0.5 opacity-80">{state.detail}</p>
+            <p className="font-display text-2xl font-extrabold flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: tone }} aria-hidden />
+              {state.headline}
+            </p>
+            <p className="text-sm mt-1" style={muted}>{state.detail}</p>
           </div>
           {!confirmClose && (
             <button
               onClick={handleOpenClose}
               disabled={saving}
-              className={`px-5 py-2.5 rounded-lg font-extrabold text-sm disabled:opacity-50 active:scale-[0.98] ${open ? (live ? 'bg-[#121B2E] text-white' : 'bg-primary text-on-primary') : 'bg-primary text-on-primary'}`}
+              className={`px-5 py-2.5 rounded-lg font-extrabold text-sm disabled:opacity-50 active:scale-[0.98] ${open ? 'border hover:bg-surface-2' : 'bg-primary text-on-primary hover:bg-primary-dark'}`}
+              style={open ? { borderColor: 'var(--color-border)' } : undefined}
             >
               {saving ? 'Please wait…' : open ? 'Close shop' : 'Open shop'}
             </button>
           )}
         </div>
         {confirmClose && (
-          <div className="mt-4 pt-4 border-t border-current/20 flex items-center justify-between gap-3 flex-wrap">
+          <div className="mt-4 pt-4 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: 'var(--color-border)' }}>
             <p className="text-sm font-bold">Close the shop? New orders will stop. Orders already placed are not affected.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmClose(false)} className="px-4 py-2 rounded-lg text-sm font-bold border border-current/30">Keep open</button>
-              <button onClick={handleOpenClose} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-extrabold bg-[#121B2E] text-white disabled:opacity-50">Yes, close</button>
+              <button onClick={() => setConfirmClose(false)} className="px-4 py-2 rounded-lg text-sm font-bold border hover:bg-surface-2" style={{ borderColor: 'var(--color-border)' }}>Keep open</button>
+              <button onClick={handleOpenClose} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-extrabold text-white disabled:opacity-50" style={{ backgroundColor: '#C62828' }}>Yes, close</button>
             </div>
           </div>
         )}

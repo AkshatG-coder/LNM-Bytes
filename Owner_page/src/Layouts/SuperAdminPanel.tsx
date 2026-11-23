@@ -94,9 +94,9 @@ function SuperAdminPanel() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mt-5">
-          <div className="rounded-xl p-4 bg-primary text-on-primary">
+          <div className="rounded-xl border p-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderLeft: '4px solid var(--color-primary)' }}>
             <div className="font-display text-3xl font-extrabold tnum">{pending.length}</div>
-            <div className="text-xs font-bold uppercase tracking-wider mt-1 opacity-75">Waiting for approval</div>
+            <div className="text-xs font-bold uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>Waiting for approval</div>
           </div>
           <div className="rounded-xl border p-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <div className="font-display text-3xl font-extrabold tnum">{approved.length}</div>
