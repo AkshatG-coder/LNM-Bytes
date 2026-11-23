@@ -2,6 +2,7 @@ import asyncHandler from "../utils/AsyncHandler";
 import { Store } from "../Models/Store.model";
 import { ApiResponse } from "../utils/ApiResponse";
 import { ApiError } from "../utils/ApiError";
+import { parseStoreUpdate } from "../utils/storeSettings";
 
 const Create_Store = asyncHandler(async (req, res) => {
     const store = await Store.create(req.body);
@@ -15,7 +16,10 @@ const Update_Store = asyncHandler(async (req, res) => {
     if (owner && owner.role === "owner" && id !== String(owner.storeId)) {
         return res.status(403).json({ success: false, message: "Unauthorized: Cannot modify another shop's store" });
     }
-    const store = await Store.findByIdAndUpdate(id, req.body, { new: true });
+    const parsed = parseStoreUpdate(req.body, owner?.role);
+    if (!parsed.ok) return res.status(400).json({ success: false, message: parsed.error });
+    const store = await Store.findByIdAndUpdate(id, { $set: parsed.update }, { new: true, runValidators: true });
+    if (!store) return res.status(404).json({ success: false, message: "Store not found" });
     return res.json(new ApiResponse(200, true, "Store Details Updated Successfully", {}));
 });
 

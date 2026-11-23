@@ -66,6 +66,7 @@ export type Store = {
   foodType: 'veg' | 'non-veg' | 'both';
   isOnlineOrderAvailable: boolean;
   isActive: boolean;
+  upiId?: string;
 };
 
 // ─── For Super Admin Panel ────────────────────────────────────────────────────
