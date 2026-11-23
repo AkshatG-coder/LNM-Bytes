@@ -7,15 +7,18 @@ export const NIGHT_CHARGE_MAX = 500;
 // ownerName, ...) is ignored, so a request body can't flip fields the settings page doesn't own.
 const OWNER_FIELDS = [
     "name", "description", "phone", "location", "operationTime",
-    "nightDelivery", "nightDeliveryCharge", "foodType", "isOnlineOrderAvailable", "upiId",
+    "nightDelivery", "nightDeliveryCharge", "foodType", "isOnlineOrderAvailable",
 ] as const;
-const SUPERADMIN_EXTRA_FIELDS = ["status", "isActive", "ownerName"] as const;
+// upiId is the payment-routing ID (it becomes the Cashfree vendor_id), so a wrong value sends money
+// to the wrong place. Only a superadmin may change it.
+const SUPERADMIN_EXTRA_FIELDS = ["status", "isActive", "ownerName", "upiId"] as const;
 
 export type StoreUpdate = Record<string, unknown>;
 export type ParsedStoreUpdate = { ok: true; update: StoreUpdate } | { ok: false; error: string };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const UPI = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$/;
+// Real UPI IDs (name@bank) and plain Cashfree vendor IDs (letters, digits, _ - .) are both in use.
+const PAYMENT_ID = /^[a-zA-Z0-9._@-]{2,256}$/;
 
 function cleanText(value: unknown): string {
     if (typeof value !== "string") return "";
@@ -62,8 +65,8 @@ export function parseStoreUpdate(body: unknown, role: string | undefined): Parse
                 update.phone = p; break;
             }
             case "upiId": {
-                const t = cleanText(v).toLowerCase();
-                if (!UPI.test(t)) return { ok: false, error: "UPI ID looks wrong. It should look like name@bank" };
+                const t = cleanText(v);
+                if (!PAYMENT_ID.test(t)) return { ok: false, error: "Payment ID can only use letters, digits and . _ @ -" };
                 update.upiId = t; break;
             }
             case "operationTime": {

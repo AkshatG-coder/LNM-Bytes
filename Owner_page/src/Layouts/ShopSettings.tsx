@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Check, Save, Clock, MapPin, Moon, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Check, Save, Clock, MapPin, Moon, RotateCcw } from 'lucide-react';
 import { useStore } from '../hooks/useStore';
 import type { Store } from '../types';
 import { fmt12, isOvernight, openHours, nowIST, shopState } from '../utils/shopHours';
@@ -9,12 +9,11 @@ const labelCls = 'block text-[11px] font-bold uppercase tracking-widest mb-1.5';
 const cardStyle = { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' };
 
 type Draft = {
-  name: string; description: string; location: string; phone: string; upiId: string;
+  name: string; description: string; location: string; phone: string;
   openTime: string; closeTime: string; nightDeliveryCharge: number;
 };
 
 const DESC_MAX = 200;
-const UPI_RE = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$/;
 const HOURS_PRESETS = [
   { label: '8 AM to 10 PM', open: '08:00', close: '22:00' },
   { label: '9 AM to 6 PM', open: '09:00', close: '18:00' },
@@ -32,7 +31,6 @@ const draftFrom = (s: Store): Draft => ({
   description: s.description || '',
   location: s.location || '',
   phone: toDigits(s.phone || ''),
-  upiId: s.upiId || '',
   openTime: s.operationTime?.openTime || '08:00',
   closeTime: s.operationTime?.closeTime || '22:00',
   nightDeliveryCharge: s.nightDeliveryCharge ?? 10,
@@ -47,7 +45,6 @@ function validate(d: Draft): Partial<Record<keyof Draft, string>> {
   else if (desc.length > DESC_MAX) e.description = `Keep it under ${DESC_MAX} characters`;
   if (loc.length < 2 || loc.length > 80) e.location = 'Use 2 to 80 characters';
   if (d.phone.length !== 10) e.phone = 'Enter a 10 digit mobile number';
-  if (!UPI_RE.test(d.upiId.trim())) e.upiId = 'Should look like name@bank';
   if (!d.openTime || !d.closeTime) e.openTime = 'Pick both times';
   else if (d.openTime === d.closeTime) e.closeTime = 'Opening and closing time can not be the same';
   if (!Number.isFinite(d.nightDeliveryCharge) || d.nightDeliveryCharge < 0 || d.nightDeliveryCharge > 500) e.nightDeliveryCharge = 'Between ₹0 and ₹500';
@@ -171,13 +168,12 @@ function ShopSettings() {
     if (changed.includes('description')) payload.description = draft.description.trim();
     if (changed.includes('location')) payload.location = draft.location.trim();
     if (changed.includes('phone')) payload.phone = draft.phone;
-    if (changed.includes('upiId')) payload.upiId = draft.upiId.trim().toLowerCase();
     if (changed.includes('openTime') || changed.includes('closeTime')) payload.operationTime = { openTime: draft.openTime, closeTime: draft.closeTime };
     if (changed.includes('nightDeliveryCharge')) payload.nightDeliveryCharge = draft.nightDeliveryCharge;
 
     const ok = await updateStore(payload);
     if (ok) {
-      const saved = { ...draft, name: draft.name.trim(), description: draft.description.trim(), location: draft.location.trim(), upiId: draft.upiId.trim().toLowerCase() };
+      const saved = { ...draft, name: draft.name.trim(), description: draft.description.trim(), location: draft.location.trim() };
       setBase(saved);
       setDraft(saved);
       setTouched(new Set());
@@ -244,7 +240,6 @@ function ShopSettings() {
   const banner = live ? 'bg-primary text-on-primary' : '';
   const bannerStyle = live ? undefined : state.kind === 'closed' ? { backgroundColor: '#121B2E', color: '#EEF1F7' } : { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text-main)' };
   const overnight = isOvernight(draft.openTime, draft.closeTime);
-  const upiChanged = changed.includes('upiId');
 
   return (
     <div className="max-w-5xl animate-fade-in pb-28">
@@ -319,16 +314,10 @@ function ShopSettings() {
                       onChange={e => set('phone', toDigits(e.target.value))} onBlur={() => touch('phone')} />
                   </div>
                 </Field>
-                <Field id="ss-upi" label="UPI ID" error={err('upiId')} hint="Online payments go to this ID">
-                  <input id="ss-upi" className="field" value={draft.upiId} autoCapitalize="none" spellCheck={false} placeholder="shopname@bank" aria-describedby="ss-upi-msg" aria-invalid={!!err('upiId')}
-                    onChange={e => set('upiId', e.target.value)} onBlur={() => touch('upiId')} />
+                <Field id="ss-upi" label="Payment ID" hint="Online payments are routed with this ID. Ask the LNM Bytes admin to change it.">
+                  <input id="ss-upi" className="field opacity-70 cursor-not-allowed" value={store.upiId || 'Not set'} readOnly disabled aria-describedby="ss-upi-msg" />
                 </Field>
               </div>
-              {upiChanged && !errors.upiId && (
-                <p className="flex items-start gap-2 text-xs font-bold p-3 rounded-lg bg-surface-2" style={{ color: 'var(--warn)' }}>
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden /> Double check this UPI ID. Once saved, students' online payments are sent here.
-                </p>
-              )}
             </div>
           </Section>
 
