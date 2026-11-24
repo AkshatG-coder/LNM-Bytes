@@ -141,6 +141,26 @@ const CreateOrder = asyncHandler(async (req, res) => {
         return fail(res, 409, "Prices have changed since you added these items. Please refresh your cart and try again.");
     }
 
+    // If an earlier online payment of this student went through but was never confirmed (tab closed,
+    // network drop), settle it now instead of letting them pay twice for the same food.
+    if (paymentType === "online" && isRazorpayConfigured()) {
+        try {
+            const stale = await OrderModel.find({
+                userId, status: "payment_pending", razorpayOrderId: { $ne: null },
+                createdAt: { $gte: new Date(Date.now() - 6 * 60 * 60 * 1000) },
+            }).sort({ createdAt: -1 }).limit(3);
+            for (const prev of stale) {
+                const done = await confirmWithRazorpay(prev, undefined).catch(() => null);
+                if (done && done.ok) {
+                    await settlePaidOrder(prev, done.paymentId);
+                    return fail(res, 409, `Your earlier payment for order #${(prev as any).orderNumber} went through. Check My Orders instead of paying again.`);
+                }
+            }
+        } catch (e: any) {
+            logger.warn({ err: e?.message }, "Stale payment check failed; continuing");
+        }
+    }
+
     const nextOrderNumber = (counterDoc?.seq ?? 0) + 1000; // orders start at 1001
 
     const initialStatus = paymentType === "online" ? "payment_pending" : "pending";

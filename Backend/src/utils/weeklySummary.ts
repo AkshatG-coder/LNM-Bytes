@@ -84,11 +84,11 @@ export function summaryFacts(ins: Insights): string[] {
     const k = ins.kpis;
     const facts: string[] = [];
     const rev = changeText(pctChange(k.revenue, ins.previous.revenue));
-    facts.push(`Sales were ${inr(k.revenue)} from ${k.orders} orders${rev && ins.hasPrevious ? `, ${rev}` : ""}.`);
+    facts.push(`Sales were ${inr(k.revenue)} from ${k.orders} order${k.orders === 1 ? "" : "s"}${rev && ins.hasPrevious ? `, ${rev}` : ""}.`);
 
     const best = [...ins.perDay].sort((a, b) => b.revenue - a.revenue)[0];
     if (best && best.revenue > 0) facts.push(`${best.label} was the best day, with ${inr(best.revenue)}.`);
-    if (ins.peak) facts.push(`The busiest time was ${ins.peak.weekday} around ${ins.peak.hour}, with ${ins.peak.orders} orders.`);
+    if (ins.peak) facts.push(`The busiest time was ${ins.peak.weekday} around ${ins.peak.hour}, with ${ins.peak.orders} order${ins.peak.orders === 1 ? "" : "s"}.`);
 
     if (ins.topItems.length) {
         facts.push(`Top sellers: ${ins.topItems.slice(0, 3).map((i) => `${i.name} (${i.qty})`).join(", ")}.`);
