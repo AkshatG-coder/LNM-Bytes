@@ -467,12 +467,29 @@ const CancelOrder = asyncHandler(async (req, res) => {
     if (order.status !== "pending") return fail(res, 400, "Order has already started preparation");
 
     order.status = "cancelled";
+
+    // A paid online order is refunded in full when the student cancels it before the kitchen starts
+    if (order.paymentType === "online" && order.paymentStatus === "paid") {
+        try {
+            if (!(order as any).razorpayPaymentId) throw new Error("No Razorpay payment id on this order");
+            await refundRazorpayPayment((order as any).razorpayPaymentId, order.totalAmount, {
+                orderId: order._id.toString(),
+                reason: "Order cancelled by student",
+            });
+            order.paymentStatus = "refunded";
+        } catch (error: any) {
+            logger.error({ err: error.response?.data || error.message, orderId: order._id }, "Refund on student cancel failed");
+            order.paymentStatus = "failed"; // order stays cancelled; needs manual refund
+        }
+    }
     await order.save();
 
     emitOrderEvent("ORDER_CANCELLED", order, order.userId.toString(), {
         type: "orderCancelled",
         orderId: order._id,
-        message: "Your order has been cancelled.",
+        message: order.paymentStatus === "refunded"
+            ? "Your order has been cancelled and your payment will be refunded in 5-7 working days."
+            : "Your order has been cancelled.",
     });
 
     return res.json(new ApiResponse(200, true, "Order cancelled successfully", order));
