@@ -7,7 +7,7 @@ One VM runs everything: MongoDB, the API, both web apps, nginx (HTTPS), and a da
 - Three hostnames pointing at the VM: e.g. `app.…` (students), `owner.…` (canteen), `api.…` (backend).
 - A TLS certificate for them (college CA or Let's Encrypt). Put `fullchain.pem` and `privkey.pem` in `deploy/certs/`.
 - Ports 80/443 reachable from the campus network (and from the internet if students use mobile data or Razorpay's webhook must reach you).
-- Outbound HTTPS allowed to: api.razorpay.com, checkout.razorpay.com, generativelanguage.googleapis.com, your SMTP host, push services (fcm.googleapis.com and others), Cloudinary, Twilio, Google sign-in.
+- Outbound HTTPS allowed to: api.razorpay.com, checkout.razorpay.com, generativelanguage.googleapis.com, your SMTP host, push services (fcm.googleapis.com and others), Cloudinary, Google sign-in.
 
 ## 2. Configure
 1. Replace `example.edu` with your hostnames in `deploy/nginx.conf`.

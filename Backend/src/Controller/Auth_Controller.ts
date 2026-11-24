@@ -6,7 +6,6 @@ import bcrypt from "bcryptjs";
 import { UserModel } from "../Models/User.model";
 import { OwnerModel } from "../Models/Owner.model";
 import { Store } from "../Models/Store.model";
-import { sendOtp, verifyOtp } from "../services/otp.service";
 import { sendOtpEmail } from "../services/email.service";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -72,56 +71,6 @@ const googleLogin = asyncHandler(async (req, res) => {
     }));
 });
 
-
-// ─── User: Send OTP to phone ─────────────────────────────────────────────────
-// POST /auth/otp/send
-// Body: { phone: string }
-const sendPhoneOtp = asyncHandler(async (req, res) => {
-    const { phone } = req.body;
-    if (!phone || !/^\d{10}$/.test(phone))
-        return err(res, 400, "Please enter a valid 10-digit mobile number");
-
-    // Check if Twilio Verify is configured
-    if (!process.env.TWILIO_VERIFY_SID || !process.env.TWILIO_AUTH_TOKEN) {
-        // Development fallback — log only in development
-        if (process.env.NODE_ENV !== "production") {
-            console.log(`[DEV MODE] OTP for ${phone}: 123456`);
-        }
-        return res.json(new ApiResponse(200, true, "OTP sent (dev mode — use 123456)", { phone }));
-    }
-
-    try {
-        await sendOtp(phone);
-        return res.json(new ApiResponse(200, true, "OTP sent successfully to +91" + phone, { phone }));
-    } catch (e: any) {
-        return err(res, 500, "Failed to send OTP. Please check your phone number and try again.");
-    }
-});
-
-
-// ─── User: Verify OTP + save phone ───────────────────────────────────────────
-// POST /auth/otp/verify
-// Body: { userId, phone, otp }
-const verifyPhoneOtp = asyncHandler(async (req, res) => {
-    const { userId, phone, otp } = req.body;
-    if (!userId || !phone || !otp)
-        return err(res, 400, "userId, phone, and otp are all required");
-
-    // Dev mode bypass
-    const isDev = !process.env.TWILIO_VERIFY_SID || !process.env.TWILIO_AUTH_TOKEN;
-    const isValid = isDev ? otp === "123456" : verifyOtp(phone, otp);
-
-    if (!isValid)
-        return err(res, 400, "Incorrect or expired OTP. Please try again.");
-
-    const user = await UserModel.findByIdAndUpdate(userId, { phone }, { new: true });
-    if (!user) return err(res, 404, "User not found");
-
-    return res.json(new ApiResponse(200, true, "Phone verified and saved successfully", {
-        id: user._id,
-        phone: user.phone,
-    }));
-});
 
 // ─── User: Update Phone (direct, no OTP — kept for backward compat) ───────────
 const updatePhone = asyncHandler(async (req, res) => {
@@ -447,8 +396,6 @@ const forgotPasswordReset = asyncHandler(async (req, res) => {
 export {
     googleLogin,
     updatePhone,
-    sendPhoneOtp,
-    verifyPhoneOtp,
     ownerRegister,
     ownerLogin,
     resetOwnerPassword,

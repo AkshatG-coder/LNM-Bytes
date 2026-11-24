@@ -388,7 +388,7 @@ export default function OrderAlerts() {
 
   const dismiss = (key: string) => { remember(key); setDismissedTick((n) => n + 1) }
 
-  const shell = 'fixed z-40 left-3 right-20 bottom-3 sm:right-auto sm:w-80 rounded-2xl border p-4 shadow-xl animate-fade-in'
+  const shell = 'fixed z-[60] left-3 right-3 bottom-24 md:bottom-3 md:right-auto md:w-80 rounded-2xl border p-4 shadow-xl animate-fade-in'
   const shellStyle = { background: 'var(--surface)', borderColor: 'var(--border)' }
   const primaryBtn = 'text-xs font-bold px-3.5 py-2 rounded-lg bg-primary text-on-primary disabled:opacity-50'
   const ghostBtn = 'text-xs font-semibold px-3.5 py-2 rounded-lg border'
