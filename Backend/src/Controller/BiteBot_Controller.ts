@@ -1,11 +1,11 @@
-import { GoogleGenAI, Type, FunctionCallingConfigMode } from "@google/genai";
+import { Type, FunctionCallingConfigMode } from "@google/genai";
 import { MenuItemModel } from "../Models/Menu_Item.model";
 import { OrderModel } from "../Models/Order_Schema.model";
 import { Store } from "../Models/Store.model";
 import asyncHandler from "../utils/AsyncHandler";
 import logger from "../utils/logger";
 import mongoose from "mongoose";
-import { generateWithFallback, generateStreamWithFallback, createGeminiRun } from "../utils/geminiClient";
+import { generateWithFallback, generateStreamWithFallback, createGeminiRun } from "../utils/groqClient";
 import { startSse, toolStatus } from "../utils/sse";
 import { UserModel } from "../Models/User.model";
 import { applyPrefsUpdate, normalizePrefs, prefsInstruction, type Prefs } from "../utils/preferenceHelpers";
@@ -29,7 +29,7 @@ import {
     toUiStore,
 } from "../utils/bitebotHelpers";
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+// Read GROQ_API_KEY at request time so dotenv ordering never hides it
 
 // ─── Tool definitions for the student-facing chatbot ─────────────────────────
 const tools: any = [
@@ -616,8 +616,8 @@ const TOOL_STATUS: Record<string, string> = {
 };
 
 const BotChat = asyncHandler(async (req, res) => {
-    if (!GEMINI_KEY) {
-        return res.status(500).json({ success: false, message: "GEMINI_API_KEY not configured on server" });
+    if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ success: false, message: "AI service is not configured on server (missing GROQ_API_KEY / GEMINI_API_KEY)" });
     }
 
     const { message, history } = req.body;
@@ -627,10 +627,7 @@ const BotChat = asyncHandler(async (req, res) => {
     if (!message) return res.status(400).json({ success: false, message: "message is required" });
     if (!userId) return res.status(401).json({ success: false, message: "Please sign in to use BiteBot" });
 
-    const ai = new GoogleGenAI({
-        apiKey: GEMINI_KEY,
-        apiVersion: "v1beta",
-    });
+    const ai = null; // Groq client is initialised inside groqClient.ts
 
     // Build conversation from frontend history
     const contents: any[] = [];
