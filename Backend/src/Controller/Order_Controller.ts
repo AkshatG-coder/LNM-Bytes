@@ -69,6 +69,11 @@ const CreateOrder = asyncHandler(async (req, res) => {
     if (!userId || !storeId || !Array.isArray(items) || items.length === 0 || !paymentType)
         return fail(res, 400, "All fields are required");
 
+    // A student can only order for themselves
+    const tokenUser = (req as any).user;
+    if (!tokenUser || String(userId) !== String(tokenUser.userId))
+        return fail(res, 403, "Unauthorized: You can only place orders for your own account.");
+
     // Validate ObjectIds before hitting Mongoose (prevents CastError 500)
     if (!mongoose.Types.ObjectId.isValid(userId))
         return fail(res, 400, "Invalid userId format");
@@ -209,18 +214,24 @@ const CreateOrder = asyncHandler(async (req, res) => {
 // Three paths end here: the checkout callback (signature), a status lookup (student returns to
 // /orders), and the Razorpay webhook (student closed the tab after paying). All are idempotent.
 async function settlePaidOrder(order: any, paymentId: string) {
-    if (order.paymentStatus === "paid") return false;
-    order.status = "pending";
-    order.paymentStatus = "paid";
-    order.razorpayPaymentId = paymentId;
-    await order.save();
+    // Atomic: when the checkout callback and the webhook arrive together, only one of them wins,
+    // so the canteen gets a single "new order" alert.
+    const won = await OrderModel.findOneAndUpdate(
+        { _id: order._id, paymentStatus: { $ne: "paid" }, status: "payment_pending" },
+        { $set: { status: "pending", paymentStatus: "paid", razorpayPaymentId: paymentId } },
+        { new: true },
+    );
+    if (!won) return false;
+    order.status = won.status;
+    order.paymentStatus = won.paymentStatus;
+    order.razorpayPaymentId = won.razorpayPaymentId;
 
-    emitOrderEvent("ORDER_CREATED", order, order.storeId.toString(), {
+    emitOrderEvent("ORDER_CREATED", won, won.storeId.toString(), {
         type: "newOrder",
-        orderId: order._id,
-        orderNumber: order.orderNumber,
-        message: `New order #${order.orderNumber} from ${order.userName}${order.paymentType === 'online' ? ' (PAID ONLINE)' : ''}!`,
-        paymentType: order.paymentType,
+        orderId: won._id,
+        orderNumber: (won as any).orderNumber,
+        message: `New order #${(won as any).orderNumber} from ${won.userName}${won.paymentType === 'online' ? ' (PAID ONLINE)' : ''}!`,
+        paymentType: won.paymentType,
     });
     return true;
 }
@@ -361,7 +372,9 @@ const GetOwnerAll_Orders = asyncHandler(async (req, res) => {
 
     // Covered by index: { storeId: 1, status: 1, createdAt: -1 }
     const matchStage: any = { storeId: new mongoose.Types.ObjectId(String(storeId)) };
-    if (status) matchStage.status = status;
+    // Unpaid online orders (payment_pending) are not real orders yet, so the canteen never sees them
+    matchStage.status = status ? status : { $ne: "payment_pending" };
+    if (status === "payment_pending") matchStage.status = { $ne: "payment_pending" };
 
     const orders = await OrderModel.aggregate([
         { $match: matchStage },
@@ -605,7 +618,7 @@ const VerifyOrderQR = asyncHandler(async (req, res) => {
 
     if ((order as any).qrVerified) return fail(res, 400, "This QR has already been used");
     if ((order as any).qrExpiresAt && new Date() > (order as any).qrExpiresAt)
-        return fail(res, 400, "QR code has expired (30 min limit)");
+        return fail(res, 400, "QR code has expired (1 hour limit)");
 
     (order as any).qrVerified   = true;
     (order as any).qrVerifiedAt = new Date();

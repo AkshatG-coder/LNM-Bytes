@@ -3,24 +3,16 @@ import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import { useAppDispatch, useAppSelector } from '../Util/hook'
 import { loginWithGoogle } from '../Util/UserReducer'
 import { Navigate, useNavigate } from 'react-router-dom'
-import PhoneModal from './PhoneModal'
 
 export function LoginPage() {
   const dispatch = useAppDispatch()
-  const { isAuthenticated, user, loading } = useAppSelector((state) => state.User)
+  const { isAuthenticated, loading } = useAppSelector((state) => state.User)
   const [error, setError] = useState<string | null>(null)
-  const [showPhoneModal, setShowPhoneModal] = useState(false)
   const navigate = useNavigate()
 
-  // Already authenticated with phone → go home
-  if (isAuthenticated && user?.phone) {
+  // Signed in: go home. A phone number is no longer asked for.
+  if (isAuthenticated) {
     return <Navigate to="/" replace />
-  }
-
-  // Authenticated but no phone → show phone modal immediately
-  if (isAuthenticated && !user?.phone && !showPhoneModal) {
-    // Trigger it on next render
-    setTimeout(() => setShowPhoneModal(true), 0)
   }
 
   const handleSuccess = async (credentialResponse: CredentialResponse) => {
@@ -31,12 +23,7 @@ export function LoginPage() {
       const errMsg = result.payload as string
       setError(errMsg || "Sign-in failed. Use your @lnmiit.ac.in account.")
     } else if (loginWithGoogle.fulfilled.match(result)) {
-      const { user: loggedUser } = result.payload.data
-      if (!loggedUser.phone) {
-        setShowPhoneModal(true)
-      } else {
-        navigate('/')
-      }
+      navigate('/')
     }
   }
 
@@ -117,10 +104,6 @@ export function LoginPage() {
         </div>
       </div>
 
-      {/* Phone modal */}
-      {showPhoneModal && user && (
-        <PhoneModal userId={user.id} onComplete={() => { setShowPhoneModal(false); navigate('/'); }} />
-      )}
     </div>
   )
 }
