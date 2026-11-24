@@ -635,7 +635,8 @@ const BotChat = asyncHandler(async (req, res) => {
     // Build conversation from frontend history
     const contents: any[] = [];
     if (history && Array.isArray(history)) {
-        for (const h of history) {
+        for (const h of history.slice(-10)) { // recent turns only: a long history makes every answer slower
+            if (!h || typeof h.text !== "string") continue;
             contents.push({
                 role: h.role === "user" ? "user" : "model",
                 parts: [{ text: h.text }],
@@ -712,26 +713,24 @@ CORE GUIDELINES:
             const functionCalls = parts.filter((p: any) => p.functionCall);
             if (functionCalls.length === 0) break;
 
-            const functionResponses: any[] = [];
-            for (const part of functionCalls) {
-                const fc = (part as any).functionCall;
+            // Independent lookups run side by side instead of one after another
+            const results = await Promise.all(functionCalls.map(async (part: any) => {
+                const fc = part.functionCall;
                 logger.info({ tool: fc.name, args: fc.args }, "BiteBot tool call");
                 sse?.send("status", { text: toolStatus(TOOL_STATUS, fc.name) });
                 usedTools.add(fc.name);
-
-                let result: ToolOutput;
                 try {
-                    result = await executeTool(fc.name, fc.args || {}, userId, prefs);
+                    return { fc, result: await executeTool(fc.name, fc.args || {}, userId, prefs) as ToolOutput };
                 } catch (toolErr: any) {
                     // A failing tool must not break the whole chat: tell the model, which can explain it.
                     logger.error({ tool: fc.name, err: toolErr?.message }, "BiteBot tool failed");
-                    result = out({ error: "That lookup failed. Apologise briefly and suggest trying again." });
+                    return { fc, result: out({ error: "That lookup failed. Apologise briefly and suggest trying again." }) as ToolOutput };
                 }
-
+            }));
+            const functionResponses: any[] = [];
+            for (const { fc, result } of results) {
                 blocks.push(...result.ui);
-                functionResponses.push({
-                    functionResponse: { name: fc.name, response: { result: result.text } },
-                });
+                functionResponses.push({ functionResponse: { name: fc.name, response: { result: result.text } } });
             }
 
             contents.push(candidate.content);
@@ -747,11 +746,25 @@ CORE GUIDELINES:
         if (lastDraftIndex >= 0) finalBlocks = [blocks[lastDraftIndex]];
         else finalBlocks = blocks.slice(-MAX_BLOCKS);
 
-        const text =
-            response.candidates?.[0]?.content?.parts
-                ?.filter((p: any) => p.text)
+        const textOf = (r: any) =>
+            r.candidates?.[0]?.content?.parts
+                ?.filter((p: any) => p.text && !p.thought)
                 .map((p: any) => p.text)
                 .join("") || "";
+        let text = textOf(response);
+
+        // The model sometimes ends a turn with no words (only tool calls or an empty reply). Ask once more.
+        if (!text.trim() && !finalBlocks.length) {
+            try {
+                const lastParts = response.candidates?.[0]?.content;
+                if (lastParts?.parts?.length && !lastParts.parts.some((p: any) => p.functionCall)) contents.push(lastParts);
+                contents.push({ role: "user", parts: [{ text: "Please answer the student in one or two short lines." }] });
+                response = await callModel();
+                text = textOf(response);
+            } catch (retryErr: any) {
+                logger.warn({ err: retryErr?.message }, "BiteBot empty-reply retry failed");
+            }
+        }
 
         const finalText = text || (finalBlocks.length ? "Here you go 👇" : "Oops, something went wrong. Please try again! 😅");
 

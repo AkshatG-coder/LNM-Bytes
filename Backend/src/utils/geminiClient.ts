@@ -11,9 +11,17 @@ export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 // Tried in order when the primary model is overloaded (503/429) or gone (404).
 const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
 
-const PER_CALL_TIMEOUT_MS = 25_000; // abort a single hung Gemini call
-const TOTAL_BUDGET_MS = 40_000;     // stop retrying/falling back after this long
-const RETRY_DELAY_MS = 800;
+const PER_CALL_TIMEOUT_MS = 15_000; // abort a single hung Gemini call (a chat turn answers in a few seconds)
+const TOTAL_BUDGET_MS = 30_000;     // stop retrying/falling back after this long
+const RETRY_DELAY_MS = 500;
+
+// Gemini 3 models "think" before answering, which adds seconds of silence. Chat answers need little
+// reasoning, so ask for a light level. Override with GEMINI_THINKING (minimal|low|medium|high|off).
+function thinkingLevel(): string | null {
+    const v = (process.env.GEMINI_THINKING || "low").toLowerCase();
+    return v === "off" ? null : v;
+}
+const rejectsThinking = (err: any) => /thinking/i.test(String(err?.message ?? "")) && statusOf(err) === 400;
 
 export function getGeminiClient(): GoogleGenAI {
     const key = process.env.GEMINI_API_KEY || "";
@@ -53,6 +61,8 @@ function isBusy(err: any): boolean {
     return /UNAVAILABLE|high demand|overloaded|RESOURCE_EXHAUSTED|timed? ?out|aborted|fetch failed|ECONNRESET|ETIMEDOUT/i
         .test(String(err?.message ?? ""));
 }
+
+const isTimeout = (err: any) => /timed? ?out|aborted|ETIMEDOUT/i.test(String(err?.message ?? ""));
 
 /** The model name itself is retired / not available to this key. */
 function isModelGone(err: any): boolean {
@@ -101,6 +111,7 @@ async function runWithFallback<T>(
                 if (busy) sawBusy = true;
                 if (gone) break;               // this model is out — go to the next one
                 if (Date.now() - started > TOTAL_BUDGET_MS) break;
+                if (isTimeout(err)) break;     // a hung model will likely hang again: go to the next one
                 if (n < attempts) await sleep(RETRY_DELAY_MS);
             }
         }
@@ -115,10 +126,25 @@ async function runWithFallback<T>(
     );
 }
 
-const withTimeout = (params: Omit<GenerateContentParameters, "model">) => ({
-    ...params.config,
-    httpOptions: { ...params.config?.httpOptions, timeout: PER_CALL_TIMEOUT_MS },
-});
+const buildConfig = (params: Omit<GenerateContentParameters, "model">, withThinking: boolean) => {
+    const level = withThinking ? thinkingLevel() : null;
+    return {
+        ...params.config,
+        ...(level && !params.config?.thinkingConfig ? { thinkingConfig: { thinkingLevel: level as any } } : {}),
+        httpOptions: { ...params.config?.httpOptions, timeout: PER_CALL_TIMEOUT_MS },
+    };
+};
+
+/** Runs `call` with a light thinking level; if the model refuses that setting, runs it again without. */
+async function withThinkingFallback<T>(call: (withThinking: boolean) => Promise<T>): Promise<T> {
+    try {
+        return await call(true);
+    } catch (err: any) {
+        if (!rejectsThinking(err)) throw err;
+        logger.warn("Gemini model rejected the thinking setting, retrying without it");
+        return call(false);
+    }
+}
 
 /** generateContent with retry + model fallback. */
 export async function generateWithFallback(
@@ -127,7 +153,7 @@ export async function generateWithFallback(
     run?: GeminiRun,
 ): Promise<GenerateContentResponse> {
     return runWithFallback(
-        (model) => ai.models.generateContent({ ...params, model, config: withTimeout(params) }),
+        (model) => withThinkingFallback((t) => ai.models.generateContent({ ...params, model, config: buildConfig(params, t) })),
         run,
     );
 }
@@ -146,8 +172,8 @@ export async function generateStreamWithFallback(
     let emitted = false;
     return runWithFallback(
         async (model) => {
-            const stream = await ai.models.generateContentStream({ ...params, model, config: withTimeout(params) });
-            const parts: any[] = []; // kept exactly as received, so tool-call signatures survive
+            const parts: any[] = [];
+            const stream = await withThinkingFallback((t) => ai.models.generateContentStream({ ...params, model, config: buildConfig(params, t) })); // kept exactly as received, so tool-call signatures survive
             for await (const chunk of stream) {
                 for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
                     parts.push(part);
