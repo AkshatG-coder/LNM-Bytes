@@ -9,6 +9,12 @@ import toast from "react-hot-toast"
 import { Link, useNavigate } from "react-router-dom"
 import { payWithRazorpay } from "../Util/razorpay"
 
+function withinHoursIST(t?: { openTime?: string; closeTime?: string }): boolean {
+  if (!t?.openTime || !t?.closeTime) return true
+  const now = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' })
+  return t.closeTime < t.openTime ? now >= t.openTime || now <= t.closeTime : now >= t.openTime && now <= t.closeTime
+}
+
 export function Cart_Details() {
   const cart_details = useAppSelector((state) => state.Cart.items)
   const user = useSelector((state) => state.User.user)
@@ -16,7 +22,7 @@ export function Cart_Details() {
   const navigate = useNavigate()
   const [placing, setPlacing] = useState(false)
   const [isNightDelivery, setIsNightDelivery] = useState(false)
-  const [storeStatus, setStoreStatus] = useState({ name: '', open: true, onlineAvailable: true, nightDeliveryCharge: 10, nightDeliveryEnabled: false })
+  const [storeStatus, setStoreStatus] = useState({ name: '', open: true, inHours: true, onlineAvailable: true, nightDeliveryCharge: 10, nightDeliveryEnabled: false })
 
   // Fetch store status for the canteen in cart
   const canteenId = cart_details[0]?.canteen_id
@@ -27,7 +33,9 @@ export function Cart_Details() {
           if (res.data?.success) {
             setStoreStatus({
               name: res.data.data.name ?? '',
-              open: res.data.data.status === 'open',
+              // open = the owner has not closed the shop by hand; inHours = inside opening hours (IST)
+              open: res.data.data.status === 'open' && res.data.data.isActive !== false,
+              inHours: withinHoursIST(res.data.data.operationTime),
               onlineAvailable: res.data.data.isOnlineOrderAvailable ?? true,
               nightDeliveryCharge: res.data.data.nightDeliveryCharge ?? 10,
               nightDeliveryEnabled: res.data.data.nightDelivery ?? false
@@ -118,7 +126,8 @@ export function Cart_Details() {
     }
   }
 
-  const cannotOrder = !storeStatus.onlineAvailable || (!storeStatus.open && (!isNightDelivery || !storeStatus.nightDeliveryEnabled))
+  const afterHours = storeStatus.open && !storeStatus.inHours
+  const cannotOrder = !storeStatus.onlineAvailable || !storeStatus.open || (afterHours && !(isNightDelivery && storeStatus.nightDeliveryEnabled))
   const totalQty = cart_details.reduce((n, c) => n + c.qty, 0)
 
   if (cart_details.length === 0) {
@@ -203,10 +212,14 @@ export function Cart_Details() {
 
           {cannotOrder && (
             <div className="rounded-xl border p-3 text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 14%, transparent)', borderColor: 'color-mix(in srgb, var(--primary) 55%, transparent)', color: 'var(--text-main)' }} role="alert">
-              <p className="font-extrabold">{!storeStatus.open ? 'This canteen is closed' : 'App orders are paused'}</p>
+              <p className="font-extrabold">{!storeStatus.open ? 'This canteen is closed' : afterHours ? 'This canteen is closed for the day' : 'App orders are paused'}</p>
               <p className="mt-0.5">
-                {!storeStatus.open && storeStatus.nightDeliveryEnabled
+                {!storeStatus.open
+                  ? 'The owner has closed the canteen for now. Try again later.'
+                  : afterHours && storeStatus.nightDeliveryEnabled
                   ? 'Turn on night delivery above to order after hours.'
+                  : afterHours
+                  ? 'It is outside opening hours. Come back when it opens.'
                   : 'The kitchen is not taking app orders right now. Try again in a little while.'}
               </p>
             </div>

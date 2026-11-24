@@ -20,6 +20,7 @@ import { buildDemandHints, DEMAND_WINDOW_DAYS } from "../utils/demandHelpers";
 import { buildInsights, INSIGHT_RANGES } from "../utils/insightsHelpers";
 import { startOfIstDay, NOT_SALES_STATUSES } from "../utils/copilotHelpers";
 import { planReorder, buildFavorites } from "../utils/reorderHelpers";
+import { priceOrder } from "../utils/orderPricing";
 import { toPaise, verifyCheckoutSignature, verifyWebhookSignature, judgePayment, pickSettlingPayment } from "../utils/razorpayHelpers";
 import {
     isRazorpayConfigured, razorpayKeyId, razorpayKeySecret, createRazorpayOrder,
@@ -63,9 +64,9 @@ const emitOrderEvent = (
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
 const CreateOrder = asyncHandler(async (req, res) => {
-    const { userId, storeId, items, totalAmount, paymentType, orderNote, deliveryType } = req.body;
+    const { userId, storeId, items, paymentType, orderNote, deliveryType } = req.body;
 
-    if (!userId || !storeId || !items || items.length === 0 || !totalAmount || !paymentType)
+    if (!userId || !storeId || !Array.isArray(items) || items.length === 0 || !paymentType)
         return fail(res, 400, "All fields are required");
 
     // Validate ObjectIds before hitting Mongoose (prevents CastError 500)
@@ -88,6 +89,7 @@ const CreateOrder = asyncHandler(async (req, res) => {
 
     if (!user) return fail(res, 404, "User not found");
     if (!store) return fail(res, 404, "Store not found");
+    if (paymentType !== "cash" && paymentType !== "online") return fail(res, 400, "Invalid payment type");
 
     if (store.status !== "open" || !store.isActive) {
         return fail(res, 400, "Sorry, this store is currently closed manually by the owner.");
@@ -125,6 +127,15 @@ const CreateOrder = asyncHandler(async (req, res) => {
         }
     }
 
+    // Price everything on the server from the menu; the client total is only a stale-price check
+    const menu = await MenuItemModel.find({ _id: { $in: items.map((i: any) => i?.menuItemId).filter((id: any) => mongoose.Types.ObjectId.isValid(String(id))) } }).lean();
+    const priced = priceOrder(items, menu as any, String(storeId), { isNight: isNightDeliveryOrder, charge: (store as any).nightDeliveryCharge ?? 10 });
+    if (!priced.ok) return fail(res, 400, priced.message);
+    const totalAmount = priced.total;
+    if (typeof req.body.totalAmount === "number" && Math.abs(req.body.totalAmount - totalAmount) > 0.01) {
+        return fail(res, 409, "Prices have changed since you added these items. Please refresh your cart and try again.");
+    }
+
     const nextOrderNumber = (counterDoc?.seq ?? 0) + 1000; // orders start at 1001
 
     const initialStatus = paymentType === "online" ? "payment_pending" : "pending";
@@ -135,7 +146,7 @@ const CreateOrder = asyncHandler(async (req, res) => {
         userEmail: user.email,
         userPhone: (user as any).phone || null,
         storeId,
-        items,
+        items: priced.items,
         totalAmount,
         paymentType,
         paymentStatus: "pending",
