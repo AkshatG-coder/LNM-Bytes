@@ -1,0 +1,17 @@
+# Builds one of the two React apps (APP=User_page or Owner_page) into static files served by nginx
+FROM node:20-alpine AS build
+ARG APP
+ARG VITE_API_URL
+ARG VITE_GOOGLE_CLIENT_ID=""
+ARG VITE_PEXELS_API_KEY=""
+ARG VITE_STORE_ID=""
+ENV VITE_API_URL=$VITE_API_URL VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID VITE_PEXELS_API_KEY=$VITE_PEXELS_API_KEY VITE_STORE_ID=$VITE_STORE_ID
+WORKDIR /app
+COPY ${APP}/package*.json ./
+RUN npm ci
+COPY ${APP}/ ./
+RUN npm run build
+
+FROM nginx:1.27-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY deploy/web.nginx.conf /etc/nginx/conf.d/default.conf

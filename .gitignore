@@ -39,3 +39,6 @@ Thumbs.db
 
 # Temp files
 git_status.txt
+deploy/.env
+deploy/certs/
+deploy/backups/

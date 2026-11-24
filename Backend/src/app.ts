@@ -15,6 +15,8 @@ import { Push_Router } from './Routers/Push_Router'
 import { Summary_Router } from './Routers/Summary_Router'
 
 const app = express()
+// Behind nginx on the college VM: trust one proxy hop so rate limits see each student's real IP
+app.set('trust proxy', 1)
 
 // ─── Bulletproof CORS & Preflight Handler ───────────────────────────────────────
 app.use((req, res, next) => {
