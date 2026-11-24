@@ -70,7 +70,9 @@ const OrderSchema = new Schema({
     // ─── Payment ──────────────────────────────────────────────────────────────
     paymentType:   { type: String, enum: ["online", "cash"], required: true, default: "cash" },
     paymentStatus: { type: String, enum: ["pending", "paid", "failed", "refunded"], default: "pending" },
-    cashfreeOrderId: { type: String, default: null },
+    cashfreeOrderId: { type: String, default: null }, // legacy: orders paid before the Razorpay switch
+    razorpayOrderId: { type: String, default: null },
+    razorpayPaymentId: { type: String, default: null },
 
     // ─── Misc ─────────────────────────────────────────────────────────────────
     orderNote:    { type: String, default: "" },

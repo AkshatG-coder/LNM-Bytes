@@ -317,9 +317,6 @@ function ShopSettings() {
                       onChange={e => set('phone', toDigits(e.target.value))} onBlur={() => touch('phone')} />
                   </div>
                 </Field>
-                <Field id="ss-upi" label="Payment ID" hint="Online payments are routed with this ID. Ask the LNM Bytes admin to change it.">
-                  <input id="ss-upi" className="field opacity-70 cursor-not-allowed" value={store.upiId || 'Not set'} readOnly disabled aria-describedby="ss-upi-msg" />
-                </Field>
               </div>
             </div>
           </Section>

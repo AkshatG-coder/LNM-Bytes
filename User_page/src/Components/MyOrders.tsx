@@ -305,7 +305,7 @@ export default function MyOrders() {
     }
   }, [user?.id])
 
-  // ─── Verify Online Payment when returning from Cashfree ──────────────────
+  // ─── Fallback: verify an online payment by order id (status lookup at Razorpay) ──────────────────
   useEffect(() => {
     const orderIdToVerify = searchParams.get('order_id')
     if (orderIdToVerify) {

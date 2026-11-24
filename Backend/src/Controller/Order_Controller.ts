@@ -11,7 +11,6 @@ import QRCode from "qrcode";
 import crypto from "crypto";
 import logger from "../utils/logger";
 import { Store } from "../Models/Store.model";
-import axios from "axios";
 import { parseRejectReason, rejectionMessage } from "../utils/rejectReasons";
 import { pushOrderEvent } from "../utils/pushService";
 import { parseStars, addRatingPipeline } from "../utils/ratingHelpers";
@@ -21,14 +20,12 @@ import { buildDemandHints, DEMAND_WINDOW_DAYS } from "../utils/demandHelpers";
 import { buildInsights, INSIGHT_RANGES } from "../utils/insightsHelpers";
 import { startOfIstDay, NOT_SALES_STATUSES } from "../utils/copilotHelpers";
 import { planReorder, buildFavorites } from "../utils/reorderHelpers";
+import { toPaise, verifyCheckoutSignature, verifyWebhookSignature, judgePayment, pickSettlingPayment } from "../utils/razorpayHelpers";
+import {
+    isRazorpayConfigured, razorpayKeyId, razorpayKeySecret, createRazorpayOrder,
+    fetchRazorpayPayment, fetchOrderPayments, captureRazorpayPayment, refundRazorpayPayment,
+} from "../services/razorpay.service";
 
-const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID || "";
-const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || "";
-const CASHFREE_ENV = process.env.CASHFREE_ENV || "TEST";
-const CASHFREE_BASE_URL = CASHFREE_ENV === "PRODUCTION" 
-    ? "https://api.cashfree.com/pg/orders" 
-    : "https://sandbox.cashfree.com/pg/orders";
-const CASHFREE_API_VERSION = "2023-08-01"; // using the latest API version corresponding to fresh keys
 
 const fail = (res: any, code: number, msg: string) =>
     res.status(code).json({ success: false, message: msg });
@@ -148,86 +145,40 @@ const CreateOrder = asyncHandler(async (req, res) => {
     });
 
     if (paymentType === "online") {
+        if (!isRazorpayConfigured()) {
+            logger.error("RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not set");
+            return fail(res, 503, "Online payments are not set up yet. Please pay at the counter.");
+        }
+        if (toPaise(totalAmount) < 100) return fail(res, 400, "Online payment needs an order of at least ₹1");
+
         try {
-            // Cashfree requires order_id to be alphanumeric with _ or - only (no ObjectId!)
-            const cfOrderId = `ord_${nextOrderNumber}_${Date.now()}`;
-
-            // Phone: Cashfree requires exactly 10 digits, no country code
-            let customerPhone = (user as any).phone ? String((user as any).phone).replace(/\D/g, "") : "";
-            if (customerPhone.length !== 10) customerPhone = "9999999999"; // fallback for test
-
-            // customer_id: alphanumeric only
-            const customerId = String(userId).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50);
-
-            const payload: any = {
-                order_id: cfOrderId,
-                order_amount: parseFloat(totalAmount.toString()),  // MUST be float, not string
-                order_currency: "INR",
-                customer_details: {
-                    customer_id:    customerId,
-                    customer_name:  user.name,
-                    customer_email: user.email,
-                    customer_phone: customerPhone,
-                },
-                order_meta: {
-                    return_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders?order_id=${newOrder._id.toString()}`
-                }
-            };
-
-            // NOTE: vendor_splits/order_splits requires Easy Split to be enabled on your
-            // Cashfree merchant account.
-            if ((store as any).upiId) {
-                // Cashfree strictly requires vendor_id to be alphanumeric with _ or - only
-                const cleanVendorId = String((store as any).upiId).replace(/[^a-zA-Z0-9_-]/g, "");
-                
-                if (cleanVendorId) {
-                    payload.order_splits = [{ vendor_id: cleanVendorId, percentage: 100 }];
-                }
-            }
-
-            logger.info({ cfOrderId, amount: payload.order_amount }, "Creating Cashfree order");
-
-            const cfRes = await axios.post(CASHFREE_BASE_URL, payload, {
-                headers: {
-                    "x-client-id":     process.env.CASHFREE_APP_ID,
-                    "x-client-secret": process.env.CASHFREE_SECRET_KEY,
-                    "x-api-version":   CASHFREE_API_VERSION,
-                    "Content-Type":    "application/json"
-                }
+            const rzpOrder = await createRazorpayOrder(totalAmount, `ord_${nextOrderNumber}`, {
+                orderId: newOrder._id.toString(),
+                orderNumber: String(nextOrderNumber),
+                storeId: storeId.toString(),
             });
 
-            const paymentSessionId = cfRes.data.payment_session_id;
-            if (!paymentSessionId) {
-                logger.error({ cfRes: cfRes.data }, "Cashfree returned no payment_session_id");
-                return fail(res, 502, "Cashfree returned no session. Try again.");
-            }
-
-            newOrder.cashfreeOrderId = cfOrderId;
-            (newOrder as any).paymentSessionId = paymentSessionId;
+            newOrder.razorpayOrderId = rzpOrder.id;
             await newOrder.save();
+            logger.info({ razorpayOrderId: rzpOrder.id, orderId: newOrder._id }, "Razorpay order created");
 
-            logger.info({ cfOrderId, paymentSessionId }, "Cashfree order created OK");
-
-            // Return immediately without pushing WebSocket — atomic!
+            // The order only goes to the canteen after payment is confirmed (verify-payment or webhook)
             return res.status(201).json(new ApiResponse(201, true, "Order created. Pending payment", {
                 ...newOrder.toJSON(),
-                payment_session_id: paymentSessionId
+                razorpay: {
+                    keyId: razorpayKeyId(),
+                    orderId: rzpOrder.id,
+                    amount: rzpOrder.amount,
+                    currency: rzpOrder.currency,
+                    storeName: (store as any).name,
+                    prefill: { name: user.name, email: user.email, contact: (user as any).phone ? String((user as any).phone).replace(/\D/g, "").slice(-10) : "" },
+                },
             }));
-
         } catch (error: any) {
-            const cfErr  = error.response?.data;
-            const cfMsg  = cfErr?.message || cfErr?.error || error.message || "Unknown Cashfree error";
-            const cfCode = error.response?.status;
-            
-            const usedId = process.env.CASHFREE_APP_ID || "undefined";
-            logger.error({ 
-                cfErr, 
-                cfCode,
-                usedAppIdStart: usedId.substring(0, 8) 
-            }, "Cashfree API error");
-            
-            // Keep order in payment_pending so user can retry
-            return fail(res, 502, `Payment gateway error (${cfCode}): ${cfMsg} (Using AppID starting with ${usedId.substring(0, 8)})`);
+            const rzpErr = error.response?.data?.error;
+            logger.error({ rzpErr, status: error.response?.status, message: error.message }, "Razorpay order creation failed");
+            // Keep the order in payment_pending so the student can try again
+            return fail(res, 502, `Payment gateway error: ${rzpErr?.description || error.message || "Unknown error"}`);
         }
     }
 
@@ -243,58 +194,113 @@ const CreateOrder = asyncHandler(async (req, res) => {
     return res.status(201).json(new ApiResponse(201, true, "Order created successfully", newOrder));
 });
 
-// ─── Verify Payment (Webhook / Callback) ──────────────────────────────────────
+// ─── Payment confirmation ─────────────────────────────────────────────────────
+// Three paths end here: the checkout callback (signature), a status lookup (student returns to
+// /orders), and the Razorpay webhook (student closed the tab after paying). All are idempotent.
+async function settlePaidOrder(order: any, paymentId: string) {
+    if (order.paymentStatus === "paid") return false;
+    order.status = "pending";
+    order.paymentStatus = "paid";
+    order.razorpayPaymentId = paymentId;
+    await order.save();
+
+    emitOrderEvent("ORDER_CREATED", order, order.storeId.toString(), {
+        type: "newOrder",
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        message: `New order #${order.orderNumber} from ${order.userName}${order.paymentType === 'online' ? ' (PAID ONLINE)' : ''}!`,
+        paymentType: order.paymentType,
+    });
+    return true;
+}
+
+/** Looks the payment up at Razorpay, captures it if needed, and checks order id and amount. */
+async function confirmWithRazorpay(order: any, paymentId?: string): Promise<{ ok: true; paymentId: string } | { ok: false; reason: string }> {
+    const rzpOrderId = order.razorpayOrderId as string;
+    const expected = toPaise(order.totalAmount);
+
+    let settling: { payment: { id: string; amount: number }; verdict: "captured" | "needs_capture" } | null = null;
+    if (paymentId) {
+        const p = await fetchRazorpayPayment(paymentId);
+        const v = judgePayment(p, expected, rzpOrderId);
+        if (v === "captured" || v === "needs_capture") settling = { payment: p, verdict: v };
+        else return { ok: false, reason: v === "mismatch" ? "Payment does not match this order" : `Payment is ${p.status}` };
+    } else {
+        settling = pickSettlingPayment(await fetchOrderPayments(rzpOrderId), expected, rzpOrderId);
+        if (!settling) return { ok: false, reason: "Payment is still pending" };
+    }
+    if (settling.verdict === "needs_capture") await captureRazorpayPayment(settling.payment.id, expected);
+    return { ok: true, paymentId: settling.payment.id };
+}
+
 const VerifyPayment = asyncHandler(async (req, res) => {
-    const { orderId } = req.params;
-    
+    const orderId = String(req.params.orderId);
+    if (!mongoose.Types.ObjectId.isValid(orderId)) return fail(res, 400, "Invalid order id");
+
     const order = await OrderModel.findById(orderId);
     if (!order) return fail(res, 404, "Order not found");
+
+    const user = (req as any).user;
+    if (user && String(order.userId) !== String(user.userId)) return fail(res, 403, "Unauthorized: This order belongs to someone else.");
 
     if (order.paymentStatus === "paid") {
         return res.json(new ApiResponse(200, true, "Payment already verified", order));
     }
+    if (!order.razorpayOrderId) return fail(res, 400, "This order has no online payment to verify");
+    if (!isRazorpayConfigured()) return fail(res, 503, "Online payments are not set up");
+
+    const { razorpay_payment_id, razorpay_signature } = req.body || {};
 
     try {
-        // IMPORTANT: must use the Cashfree-assigned order ID, not our MongoDB _id
-        const cfLookupId = order.cashfreeOrderId || order._id.toString();
-        const cfRes = await axios.get(`${CASHFREE_BASE_URL}/${cfLookupId}`, {
-            headers: {
-                "x-client-id": CASHFREE_APP_ID,
-                "x-client-secret": CASHFREE_SECRET_KEY,
-                "x-api-version": "2023-08-01",
+        let paymentId: string | undefined;
+        if (razorpay_payment_id || razorpay_signature) {
+            // Coming straight from Razorpay Checkout: the signature proves the payment belongs to this order
+            if (!verifyCheckoutSignature(order.razorpayOrderId, String(razorpay_payment_id || ""), String(razorpay_signature || ""), razorpayKeySecret())) {
+                logger.warn({ orderId }, "Razorpay signature check failed");
+                return fail(res, 400, "Payment signature is not valid");
             }
-        });
-
-        const orderStatus = cfRes.data.order_status;
-
-        if (orderStatus === "PAID") {
-            order.status = "pending";
-            order.paymentStatus = "paid";
-            await order.save();
-
-            // Kafka event — same shape as a cash order notification
-            emitOrderEvent("ORDER_CREATED", order, order.storeId.toString(), {
-                type: "newOrder",
-                orderId: order._id,
-                orderNumber: (order as any).orderNumber,
-                message: `New order #${(order as any).orderNumber} from ${order.userName}${order.paymentType === 'online' ? ' (PAID ONLINE)' : ''}!`,
-                paymentType: order.paymentType,
-            });
-
-            return res.json(new ApiResponse(200, true, "Payment completed successfully", order));
-        } else if (orderStatus === "FAILED" || orderStatus === "TERMINATED" || orderStatus === "USER_DROPPED") {
-            order.status = "cancelled";
-            order.paymentStatus = "failed";
-            await order.save();
-            return fail(res, 400, `Payment was ${orderStatus.toLowerCase()}`);
-        } else {
-            return fail(res, 400, "Payment is still " + orderStatus);
+            paymentId = String(razorpay_payment_id);
         }
 
+        const confirmed = await confirmWithRazorpay(order, paymentId);
+        if (!confirmed.ok) return fail(res, 400, confirmed.reason);
+
+        await settlePaidOrder(order, confirmed.paymentId);
+        return res.json(new ApiResponse(200, true, "Payment completed successfully", order));
     } catch (err: any) {
-        console.error("Cashfree Verification Error:", err.response?.data || err.message);
-        return fail(res, 500, "Error verifying payment with Cashfree");
+        logger.error({ err: err.response?.data || err.message, orderId }, "Razorpay verification error");
+        return fail(res, 500, "Error verifying payment with Razorpay");
     }
+});
+
+// ─── Razorpay webhook (needs the raw body, see app.ts) ────────────────────────
+// Dashboard setup: Settings > Webhooks, URL https://<backend>/order/razorpay-webhook,
+// events payment.captured and order.paid, secret = RAZORPAY_WEBHOOK_SECRET.
+const RazorpayWebhook = asyncHandler(async (req, res) => {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "";
+    const raw: Buffer | undefined = (req as any).rawBody;
+    const signature = String(req.headers["x-razorpay-signature"] || "");
+    if (!secret || !raw || !verifyWebhookSignature(raw, signature, secret)) {
+        return res.status(400).json({ success: false, message: "Invalid webhook signature" });
+    }
+
+    const event = req.body?.event as string | undefined;
+    const payment = req.body?.payload?.payment?.entity;
+    const rzpOrderId: string | undefined = payment?.order_id || req.body?.payload?.order?.entity?.id;
+
+    if ((event === "payment.captured" || event === "order.paid") && rzpOrderId) {
+        const order = await OrderModel.findOne({ razorpayOrderId: rzpOrderId });
+        if (order && order.paymentStatus !== "paid") {
+            try {
+                const confirmed = await confirmWithRazorpay(order, payment?.id);
+                if (confirmed.ok) await settlePaidOrder(order, confirmed.paymentId);
+            } catch (err: any) {
+                logger.error({ err: err.response?.data || err.message, rzpOrderId }, "Webhook confirmation failed");
+                return res.status(500).json({ success: false }); // Razorpay retries on non-2xx
+            }
+        }
+    }
+    return res.json({ success: true });
 });
 
 // ─── Get All Orders for a User ────────────────────────────────────────────────
@@ -613,33 +619,23 @@ const RejectOrder = asyncHandler(async (req, res) => {
     order.rejectionReason = parsedReason.code;
     order.rejectionNote = parsedReason.note;
 
-    // 2. If it was paid online, issue a Cashfree Refund
+    // 2. If it was paid online, refund the payment through Razorpay
     if (order.paymentType === "online" && order.paymentStatus === "paid") {
         try {
-            const refundPayload = {
-                refund_amount: order.totalAmount,
-                refund_id: `rfnd_${order._id.toString()}_${Date.now()}`,
-                refund_note: "Order cancelled by canteen owner"
-            };
-            
-            await axios.post(`${CASHFREE_BASE_URL}/${order._id.toString()}/refunds`, refundPayload, {
-                headers: {
-                    "x-client-id": process.env.CASHFREE_APP_ID || CASHFREE_APP_ID,
-                    "x-client-secret": process.env.CASHFREE_SECRET_KEY || CASHFREE_SECRET_KEY,
-                    "x-api-version": CASHFREE_API_VERSION,
-                    "Content-Type": "application/json"
-                }
+            if (!(order as any).razorpayPaymentId) throw new Error("No Razorpay payment id on this order (paid before the Razorpay switch?)");
+            await refundRazorpayPayment((order as any).razorpayPaymentId, order.totalAmount, {
+                orderId: order._id.toString(),
+                reason: "Order cancelled by canteen owner",
             });
             order.paymentStatus = "refunded";
-            logger.info({ orderId: order._id }, "Cashfree refund initiated successfully");
+            logger.info({ orderId: order._id }, "Razorpay refund initiated successfully");
         } catch (error: any) {
-            logger.error({ 
-                err: error.response?.data || error.message, 
-                orderId: order._id 
-            }, "Failed to initiate Cashfree refund");
-            // We still cancel the order, but keep paymentStatus as 'paid' or mark as 'refund_failed'
-            order.paymentStatus = "failed"; // For simplicity, though manual intervention might be needed.
-            // Ideally: order.paymentStatus = "refund_pending" or flag for manual.
+            logger.error({
+                err: error.response?.data || error.message,
+                orderId: order._id
+            }, "Failed to initiate Razorpay refund");
+            // The order is still cancelled; the refund needs manual follow-up
+            order.paymentStatus = "failed";
         }
     }
 
@@ -869,6 +865,7 @@ const MarkPreparing = asyncHandler(async (req, res) => {
 });
 
 export {
+    RazorpayWebhook,
     CreateOrder,
     GetUserAll_Orders,
     GetOwnerAll_Orders,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../Util/api';
 import { announceOrdersChanged } from '../Util/orderText';
+import { payWithRazorpay } from '../Util/razorpay';
 import { useAppDispatch, useAppSelector } from '../Util/hook';
 import { add_item, clear_all_item, decrease_item, increase_item } from '../Util/CartReducer';
 
@@ -646,15 +647,33 @@ function DraftCard({
           paymentStatus: o?.paymentStatus,
         });
       } else {
-        // Online payment: same Cashfree flow as the cart. It redirects back to /orders to verify.
-        const sessionId = o?.payment_session_id;
-        if (sessionId && window.Cashfree) {
-          const cashfree = window.Cashfree({ mode: 'sandbox' });
-          cashfree.checkout({ paymentSessionId: sessionId });
-        } else if (sessionId) {
-          toast.error('Cashfree SDK not loaded. Please refresh and try again.');
+        // Online payment: same Razorpay flow as the cart; confirmed by the server before we move on.
+        if (!o?.razorpay) {
+          toast.error('The payment could not start. Please try again.');
         } else {
-          toast.error('No payment session returned. Please try again.');
+          try {
+            const outcome = await payWithRazorpay(String(o._id), o.razorpay);
+            if (outcome === 'paid') {
+              announceOrdersChanged();
+              toast.success('Payment done. Your order is placed.');
+              setPlaced({
+                id: String(o._id),
+                orderNumber: o.orderNumber,
+                status: 'pending',
+                storeName: draft.storeName,
+                items: draft.items.map((i) => `${i.name} x${i.quantity}`).join(', '),
+                totalAmount: total,
+                paymentType: 'online',
+                paymentStatus: 'paid',
+              });
+            } else if (outcome === 'failed') {
+              toast.error('We could not confirm the payment. If money was deducted, check My Orders.');
+            } else {
+              toast('Payment cancelled.');
+            }
+          } catch (e: any) {
+            toast.error(e?.message || 'Payment could not load. Try again.');
+          }
         }
       }
     } catch (err: any) {

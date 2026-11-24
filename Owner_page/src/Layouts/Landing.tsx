@@ -97,7 +97,6 @@ function Landing(): React.JSX.Element {
   const [storeName, setStoreName] = useState('');
   const [phone, setPhone]         = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [upiId, setUpiId]         = useState('');
 
   // ── Forgot-password 3-step wizard state ──────────────────────────────────
   const [fpStep, setFpStep]               = useState<1 | 2 | 3>(1);
@@ -161,7 +160,7 @@ function Landing(): React.JSX.Element {
     }
     if (password !== confirmPw) { setError('Passwords do not match.'); return; }
     if (password.length < 6)   { setError('Password must be at least 6 characters.'); return; }
-    const auth = await register(name, email, password, storeName, phone, upiId);
+    const auth = await register(name, email, password, storeName, phone);
     if (auth) navigate('/admin');
   };
 
@@ -565,12 +564,6 @@ function Landing(): React.JSX.Element {
                     <PasswordField label="Confirm Password" placeholder="••••••••"
                       value={confirmPw} onChange={setConfirmPw}
                       error={password !== confirmPw && confirmPw.length > 0} />
-                  </div>
-
-                  {/* Row 4: Cashfree Single Column */}
-                  <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
-                    <Field label="Cashfree Vendor ID (Optional)" placeholder="Strictly alphanumeric, e.g. storename99"
-                      value={upiId} onChange={setUpiId} />
                   </div>
 
                   <p className="text-[11px] text-gray-400 font-medium px-1">

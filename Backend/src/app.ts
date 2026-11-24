@@ -43,7 +43,10 @@ app.use(helmet({
 app.use(compression())
 
 // ─── Body parsing (Express 5 built-in, body-parser is deprecated) ─────────────
-app.use(express.json({ limit: '100kb' }))
+app.use(express.json({
+    limit: '100kb',
+    verify: (req, _res, buf) => { (req as any).rawBody = buf; }, // Razorpay webhook signature needs the exact bytes
+}))
 app.use(express.urlencoded({ extended: true, limit: '100kb' }))
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────

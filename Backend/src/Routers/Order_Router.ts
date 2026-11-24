@@ -16,6 +16,7 @@ import {
     VerifyOrderQR,
     GetDailySales,
     VerifyPayment,
+    RazorpayWebhook,
     RateOrder,
     GetDemandHints,
     GetInsights,
@@ -27,6 +28,8 @@ const Order_Router = Router();
 // ─── Create ───────────────────────────────────────────────────────────────────
 Order_Router.post("/create", verifyUserToken, CreateOrder);
 Order_Router.post("/verify-payment/:orderId", verifyUserToken, VerifyPayment);
+// Called by Razorpay servers: no JWT, authenticated by HMAC signature of the raw body
+Order_Router.post("/razorpay-webhook", RazorpayWebhook);
 
 // ─── User & Store order lists ─────────────────────────────────────────────────
 Order_Router.get("/user/:userId",          verifyUserToken, GetUserAll_Orders);

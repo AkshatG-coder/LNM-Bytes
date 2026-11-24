@@ -147,7 +147,7 @@ const updatePhone = asyncHandler(async (req, res) => {
 
 // ─── Owner: Register ─────────────────────────────────────────────────────────
 const ownerRegister = asyncHandler(async (req, res) => {
-    const { name, email, password, storeName, phone, upiId } = req.body;
+    const { name, email, password, storeName, phone } = req.body;
 
     if (!name || !email || !password || !storeName || !phone)
         return err(res, 400, "All fields are required — name, phone, email, password, and store name");
@@ -171,7 +171,6 @@ const ownerRegister = asyncHandler(async (req, res) => {
         operationTime: { openTime: "08:00", closeTime: "22:00" },
         isActive: false,
         status: "closed",
-        ...(upiId ? { upiId: upiId.trim() } : {}),
     });
 
     const owner = await OwnerModel.create({

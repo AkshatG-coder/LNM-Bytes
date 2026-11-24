@@ -6,12 +6,14 @@ import api from "../Util/api"
 import { announceOrdersChanged } from '../Util/orderText'
 import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { payWithRazorpay } from "../Util/razorpay"
 
 export function Cart_Details() {
   const cart_details = useAppSelector((state) => state.Cart.items)
   const user = useSelector((state) => state.User.user)
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const [placing, setPlacing] = useState(false)
   const [isNightDelivery, setIsNightDelivery] = useState(false)
   const [storeStatus, setStoreStatus] = useState({ name: '', open: true, onlineAvailable: true, nightDeliveryCharge: 10, nightDeliveryEnabled: false })
@@ -79,21 +81,28 @@ export function Cart_Details() {
             toast.success("Order placed. Pick it up at the counter when it is ready.")
           }
         } else {
-          // ── Cashfree online payment flow ──────────────────────────────────
-          // IMPORTANT: Do NOT clear the cart here — if the user cancels or payment
-          // fails, the cart should still be intact. Cart is cleared after the
-          // payment is successfully verified in MyOrders (via /verify-payment).
-          const sessionId = response.data.data?.payment_session_id
-
-          if (sessionId && window.Cashfree) {
-            const cashfree = window.Cashfree({ mode: "sandbox" })
-            cashfree.checkout({ paymentSessionId: sessionId })
-            // Cashfree redirects back to /orders?order_id=... on success
-            // MyOrders page calls /verify-payment and then clears the cart
-          } else if (sessionId && !window.Cashfree) {
-            toast.error("Payment could not load. Refresh the page and try again.")
-          } else {
+          // Online payment: the cart is cleared only after the server confirms the payment,
+          // so a cancelled or failed payment leaves the cart intact.
+          const order = response.data.data
+          if (!order?.razorpay) {
             toast.error("The payment could not start. Try again.")
+          } else {
+            try {
+              const outcome = await payWithRazorpay(String(order._id), order.razorpay)
+              if (outcome === 'paid') {
+                dispatch(clear_all_item())
+                announceOrdersChanged()
+                toast.success("Payment done. Your order is placed.")
+                navigate('/orders')
+              } else if (outcome === 'failed') {
+                toast.error("We could not confirm the payment. If money was deducted, check My Orders or ask at the counter.")
+                navigate('/orders')
+              } else {
+                toast("Payment cancelled. Your cart is still here.")
+              }
+            } catch (e: any) {
+              toast.error(e?.message || "Payment could not load. Try again.")
+            }
           }
         }
       } else {
