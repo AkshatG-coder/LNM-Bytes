@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, NavLink, useNavigate } from "react-router-dom"
-import { Moon, Sun, LogOut, Receipt, ShoppingBag, Utensils } from "lucide-react"
+import { Moon, Sun, LogOut, Receipt, ShoppingBag, Sparkles, Utensils } from "lucide-react"
 import { useAppSelector, useAppDispatch } from "../Util/hook"
 import { useTheme } from "../Util/useTheme"
 import { logout } from "../Util/UserReducer"
@@ -131,6 +131,15 @@ export function Header() {
                       <p className="text-sm font-bold truncate" style={{ color: 'var(--text-main)' }}>{user.name}</p>
                       <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
                     </div>
+                    <Link
+                      role="menuitem"
+                      to="/wrapped"
+                      onClick={() => setMenuOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-left hover:bg-[var(--surface-2)]"
+                      style={{ color: 'var(--text-main)' }}
+                    >
+                      <Sparkles className="w-4 h-4" /> My Wrapped
+                    </Link>
                     <button
                       role="menuitem"
                       onClick={handleLogout}

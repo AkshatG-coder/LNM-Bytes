@@ -12,6 +12,7 @@ import { Cart_Details } from './Components/Cart_Details.tsx'
 import ErrorPage from './Components/Error_Page.tsx'
 import LoginPage from './Components/LoginPage.tsx'
 import MyOrders from './Components/MyOrders.tsx'
+import Wrapped from './Components/Wrapped'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { registerServiceWorker } from './Util/pushClient.ts'
 
@@ -52,6 +53,10 @@ const router = createBrowserRouter([
       {
         path: "/orders",
         element: <RequireAuth><MyOrders /></RequireAuth>
+      },
+      {
+        path: "/wrapped",
+        element: <RequireAuth><Wrapped /></RequireAuth>
       },
     ]
   }

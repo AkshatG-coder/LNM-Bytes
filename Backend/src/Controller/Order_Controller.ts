@@ -21,6 +21,8 @@ import { buildInsights, INSIGHT_RANGES } from "../utils/insightsHelpers";
 import { startOfIstDay, NOT_SALES_STATUSES } from "../utils/copilotHelpers";
 import { planReorder, buildFavorites } from "../utils/reorderHelpers";
 import { priceOrder } from "../utils/orderPricing";
+import { buildRush, HISTORY_DAYS } from "../utils/rushHelpers";
+import { buildWrapped, periodFor } from "../utils/wrappedHelpers";
 import { toPaise, verifyCheckoutSignature, verifyWebhookSignature, judgePayment, pickSettlingPayment } from "../utils/razorpayHelpers";
 import {
     isRazorpayConfigured, razorpayKeyId, razorpayKeySecret, createRazorpayOrder,
@@ -343,6 +345,98 @@ const RazorpayWebhook = asyncHandler(async (req, res) => {
         }
     }
     return res.json({ success: true });
+});
+
+// ─── Rush Radar: how busy a canteen is now, and when it usually gets quiet ────
+const RUSH_LIVE_SECONDS = 20;
+const RUSH_HISTORY_SECONDS = 30 * 60;
+const QUEUE_STATUSES = ["pending", "accepted", "preparing"];
+
+const GetRush = asyncHandler(async (req, res) => {
+    const storeId = String(req.params.storeId);
+    if (!mongoose.isValidObjectId(storeId)) return fail(res, 400, "Invalid store id");
+
+    const sid = new mongoose.Types.ObjectId(storeId);
+    const liveKey = `rush_live_${storeId}`;
+    const histKey = `rush_hist_${storeId}`;
+
+    let active = appCache.get<number>(liveKey);
+    let history = appCache.get<{ date: string; hour: number; count: number }[]>(histKey);
+    let hours = appCache.get<{ openTime?: string; closeTime?: string }>(`rush_hours_${storeId}`);
+
+    const [freshActive, freshHistory, store] = await Promise.all([
+        active === undefined
+            ? OrderModel.countDocuments({
+                storeId: sid,
+                status: { $in: QUEUE_STATUSES },
+                createdAt: { $gte: new Date(Date.now() - 3 * 60 * 60 * 1000) }, // an order stuck for hours is not a queue
+            })
+            : Promise.resolve(active),
+        history === undefined
+            ? OrderModel.aggregate([
+                { $match: { storeId: sid, createdAt: { $gte: startOfIstDay(new Date(), HISTORY_DAYS) }, status: { $nin: NOT_SALES_STATUSES } } },
+                { $group: {
+                    _id: {
+                        d: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Kolkata" } },
+                        h: { $hour: { date: "$createdAt", timezone: "Asia/Kolkata" } },
+                    },
+                    count: { $sum: 1 },
+                } },
+            ]).then((rows: any[]) => rows.map((r) => ({ date: r._id.d, hour: r._id.h, count: r.count })))
+            : Promise.resolve(history),
+        hours === undefined ? Store.findById(sid).select("operationTime").lean() : Promise.resolve(null),
+    ]);
+
+    active = freshActive;
+    history = freshHistory;
+    if (hours === undefined) {
+        hours = { openTime: (store as any)?.operationTime?.openTime, closeTime: (store as any)?.operationTime?.closeTime };
+        appCache.set(`rush_hours_${storeId}`, hours, RUSH_HISTORY_SECONDS);
+    }
+    appCache.set(liveKey, active, RUSH_LIVE_SECONDS);
+    appCache.set(histKey, history, RUSH_HISTORY_SECONDS);
+
+    return res.json(new ApiResponse(200, true, "Rush radar", buildRush({ activeOrders: active, history, ...hours })));
+});
+
+// ─── LNM Bytes Wrapped: a student's semester in food ──────────────────────────
+const WRAPPED_COUNTS_SECONDS = 10 * 60;
+
+const GetWrapped = asyncHandler(async (req, res) => {
+    const userId = String((req as any).user?.userId || "");
+    if (!mongoose.isValidObjectId(userId)) return fail(res, 401, "Please sign in");
+
+    const period = periodFor(String(req.query.period || "semester"));
+    const uid = new mongoose.Types.ObjectId(userId);
+    const range = { $gte: period.from, $lt: period.to };
+
+    const countsKey = `wrapped_counts_${period.id}_${period.from.getTime()}`;
+    let allCounts = appCache.get<number[]>(countsKey);
+
+    const [orders, counts] = await Promise.all([
+        OrderModel.find({ userId: uid, createdAt: range, status: { $nin: NOT_SALES_STATUSES } })
+            .select("storeId totalAmount createdAt deliveryType items.name items.quantity")
+            .limit(5000)
+            .lean(),
+        allCounts === undefined
+            ? OrderModel.aggregate([
+                { $match: { createdAt: range, status: { $nin: NOT_SALES_STATUSES } } },
+                { $group: { _id: "$userId", n: { $sum: 1 } } },
+            ]).then((rows: any[]) => rows.map((r) => r.n as number))
+            : Promise.resolve(allCounts),
+    ]);
+    allCounts = counts;
+    appCache.set(countsKey, allCounts, WRAPPED_COUNTS_SECONDS);
+
+    const wrapped = buildWrapped(orders as any[], period, allCounts);
+    let topStoreName: string | null = null;
+    if (wrapped.topStoreId && mongoose.isValidObjectId(wrapped.topStoreId)) {
+        const st: any = await Store.findById(wrapped.topStoreId).select("name").lean();
+        topStoreName = st?.name ?? null;
+    }
+    const user: any = await UserModel.findById(userId).select("name").lean();
+
+    return res.json(new ApiResponse(200, true, "Wrapped", { ...wrapped, topStoreName, firstName: String(user?.name || "").split(" ")[0] || "there" }));
 });
 
 // ─── Get All Orders for a User ────────────────────────────────────────────────
@@ -927,6 +1021,8 @@ const MarkPreparing = asyncHandler(async (req, res) => {
 
 export {
     RazorpayWebhook,
+    GetRush,
+    GetWrapped,
     CreateOrder,
     GetUserAll_Orders,
     GetOwnerAll_Orders,

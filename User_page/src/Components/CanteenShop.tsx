@@ -3,7 +3,8 @@ import { CanteenStoreCard } from './CanteenStoreCard'
 import { useSearch } from '../Util/useSearch'
 import { useEffect, useState } from 'react'
 import api from '../Util/api'
-import { Search, X } from 'lucide-react'
+import { ArrowRight, Search, Sparkles, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAppSelector } from '../Util/hook'
 
 
@@ -93,6 +94,21 @@ export function CanteenShop() {
           )}
         </div>
       </div>
+
+      <Link
+        to="/wrapped"
+        className="mb-4 flex items-center gap-3 rounded-2xl p-4 group"
+        style={{ backgroundColor: '#121B2E', color: '#FFF8E1' }}
+      >
+        <span className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#F5B400', color: '#121B2E' }}>
+          <Sparkles className="w-5 h-5" aria-hidden />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block font-display font-extrabold leading-tight">Your LNM Bytes Wrapped</span>
+          <span className="block text-sm font-medium opacity-75">See your semester in food and share it.</span>
+        </span>
+        <ArrowRight className="w-5 h-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+      </Link>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy="true" aria-label="Loading canteens">

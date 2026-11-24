@@ -5,6 +5,7 @@ import type { MenuCardItemInterface } from "../Util/MenuItemInterface"
 import { useSearch } from "../Util/useSearch"
 import api from "../Util/api"
 import { Pause, Search } from "lucide-react"
+import { RushRadar } from "./RushRadar"
 
 const CACHE_TTL = 60_000 // 60 seconds
 
@@ -156,6 +157,8 @@ export function MenuCard() {
             You can look at the menu, but orders open when the canteen does.
           </p>
         )}
+
+        {storeStatus !== 'closed' && id && <RushRadar storeId={id} />}
 
         {/* Orders paused alert */}
         {!isOnlineOrderAvailable && storeStatus === "open" && (

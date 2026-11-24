@@ -17,6 +17,8 @@ import {
     GetDailySales,
     VerifyPayment,
     RazorpayWebhook,
+    GetRush,
+    GetWrapped,
     RateOrder,
     GetDemandHints,
     GetInsights,
@@ -40,6 +42,10 @@ Order_Router.get("/sales/daily/:storeId",  verifyOwnerToken, GetDailySales);
 
 Order_Router.get("/insights/:storeId",     verifyOwnerToken, GetInsights);
 Order_Router.get("/demand/:storeId",       verifyOwnerToken, GetDemandHints);
+
+// ─── Student extras (before /:order_id) ───────────────────────────────────────
+Order_Router.get("/rush/:storeId",         verifyUserToken, GetRush);
+Order_Router.get("/wrapped",               verifyUserToken, GetWrapped);
 
 // ─── Tracking ─────────────────────────────────────────────────────────────────
 Order_Router.get("/track/:orderId",        verifyUserToken, TrackOrderStatus);

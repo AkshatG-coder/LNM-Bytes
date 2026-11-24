@@ -1,6 +1,7 @@
 import type { CanteenStoreInterface } from "../Util/CanteenStoreInterface"
 import { Link } from "react-router-dom"
 import { Clock, MapPin, Moon } from "lucide-react"
+import { RushChip } from "./RushRadar"
 
 const FOOD_TYPE: Record<string, string> = { veg: 'Veg only', 'non-veg': 'Non-veg' }
 
@@ -36,7 +37,9 @@ export function CanteenStoreCard({
         </span>
       </div>
 
-      <p className="mt-1.5 text-sm line-clamp-2 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+      {open && <div className="mt-2.5 flex"><RushChip storeId={_id} /></div>}
+
+      <p className="mt-2 text-sm line-clamp-2 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
         {description}
       </p>
 
