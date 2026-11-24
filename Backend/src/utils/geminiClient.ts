@@ -6,14 +6,15 @@ import logger from "./logger";
 // NOTE: do not auto-pick a model from ListModels. It also returns models that
 // are still listed but no longer available to this key (e.g. gemini-2.5-flash),
 // which causes 404 NOT_FOUND on generateContent.
-export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 
 // Tried in order when the primary model is overloaded (503/429) or gone (404).
-const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
+// gemini-3.8-flash produces near-zero output on the free tier right now — kept only as last resort.
+const FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-3.8-flash"];
 
-const PER_CALL_TIMEOUT_MS = 15_000; // abort a single hung Gemini call (a chat turn answers in a few seconds)
-const TOTAL_BUDGET_MS = 30_000;     // stop retrying/falling back after this long
-const RETRY_DELAY_MS = 500;
+const PER_CALL_TIMEOUT_MS = 20_000; // abort a single hung Gemini call
+const TOTAL_BUDGET_MS    = 45_000; // stop retrying/falling back after this long
+const BASE_RETRY_MS      = 2_000;  // exponential backoff base: 2 s → 4 s → 8 s (avoids 429 loops)
 
 // Gemini 3 models "think" before answering, which adds seconds of silence. Chat answers need little
 // reasoning, so ask for a light level. Override with GEMINI_THINKING (minimal|low|medium|high|off).
@@ -73,11 +74,11 @@ function isModelGone(err: any): boolean {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Runs `attempt` with retry + model fallback.
- * - busy (503/429/timeout): retry the primary model once, then try the fallback models
- * - model retired (404): skip straight to the next model
+ * Runs `attempt` with exponential-backoff retry + model fallback.
+ * - busy (429/500/503/504/timeout): retry primary model up to 3× with 2s→4s→8s delay
+ * - model retired (404 / zero output): skip to the next model immediately
  * - anything else (e.g. 400 bad request): thrown as-is, not hidden
- * `canRetry` lets a streaming call refuse to start over once the student has already seen text.
+ * `canRetry` lets a streaming call refuse to restart once text has already reached the client.
  */
 async function runWithFallback<T>(
     attempt: (model: string) => Promise<T>,
@@ -90,9 +91,9 @@ async function runWithFallback<T>(
 
     for (let i = 0; i < chain.length; i++) {
         const model = chain[i];
-        const attempts = i === 0 ? 2 : 1;
+        const maxAttempts = i === 0 ? 3 : 1; // primary: 3 tries (2s→4s→8s); fallbacks: 1 try each
 
-        for (let n = 1; n <= attempts; n++) {
+        for (let n = 1; n <= maxAttempts; n++) {
             try {
                 const result = await attempt(model);
                 if (run) run.model = model;
@@ -101,18 +102,24 @@ async function runWithFallback<T>(
             } catch (err: any) {
                 const gone = isModelGone(err);
                 const busy = !gone && isBusy(err);
+                const delay = BASE_RETRY_MS * Math.pow(2, n - 1); // 2 000 ms, 4 000 ms, 8 000 ms
                 logger.warn(
-                    { model, attempt: n, status: statusOf(err), busy, gone, err: String(err?.message ?? err).slice(0, 300) },
+                    { model, attempt: n, maxAttempts, status: statusOf(err), busy, gone, nextDelayMs: busy && n < maxAttempts ? delay : 0, err: String(err?.message ?? err).slice(0, 300) },
                     "Gemini call failed",
                 );
 
                 if (!gone && !busy) throw err; // real error — don't mask it
-                if (!canRetry()) throw err;    // text already reached the student, so cannot start over
+                if (!canRetry()) throw err;    // text already reached the client, cannot restart
                 if (busy) sawBusy = true;
-                if (gone) break;               // this model is out — go to the next one
+                if (gone) break;               // model retired — go to next immediately
                 if (Date.now() - started > TOTAL_BUDGET_MS) break;
-                if (isTimeout(err)) break;     // a hung model will likely hang again: go to the next one
-                if (n < attempts) await sleep(RETRY_DELAY_MS);
+                if (isTimeout(err)) break;     // hung model will likely hang again — skip to next
+
+                // Exponential backoff before retrying the same model
+                if (n < maxAttempts) {
+                    logger.info({ model, delayMs: delay }, "Gemini exponential backoff");
+                    await sleep(delay);
+                }
             }
         }
 
