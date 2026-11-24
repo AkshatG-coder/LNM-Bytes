@@ -24,7 +24,7 @@ const ACCENT = '#F5B400';
 
 const GREETING: Message = {
     role: 'assistant',
-    text: "Hi, I'm Copilot.\nAsk me about orders, sales, your menu or store status. I can also mark items out of stock, change prices and open or close the store.",
+    text: "Hi, I'm BiteBot.\nAsk me about orders, sales, your menu or store status. I can also mark items out of stock, change prices and open or close the store.",
     timestamp: new Date(),
 };
 
@@ -183,7 +183,7 @@ export default function CopilotChat() {
             {/* Launcher */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                aria-label={isOpen ? 'Close Copilot' : 'Open Copilot, your store assistant'}
+                aria-label={isOpen ? 'Close BiteBot' : 'Open BiteBot, your store assistant'}
                 aria-expanded={isOpen}
                 className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-xl text-on-primary shadow-lg flex items-center justify-center transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={{ background: ACCENT, outlineColor: ACCENT }}
@@ -201,7 +201,7 @@ export default function CopilotChat() {
             {isOpen && (
                 <div
                     role="dialog"
-                    aria-label="Store Copilot chat"
+                    aria-label="BiteBot store assistant chat"
                     className={`fixed z-50 inset-0 sm:inset-auto sm:bottom-24 sm:right-5 ${expanded ? 'sm:w-[min(780px,calc(100vw-3rem))] sm:h-[calc(100vh-7rem)]' : 'sm:w-[480px] sm:h-[min(760px,calc(100vh-7rem))]'} flex flex-col overflow-hidden sm:rounded-xl sm:border shadow-2xl`}
                     style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)' }}
                 >
@@ -214,7 +214,7 @@ export default function CopilotChat() {
                             </svg>
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-[15px] font-semibold leading-tight">Copilot</h2>
+                            <h2 className="text-[15px] font-semibold leading-tight">BiteBot</h2>
                             <p className="text-xs text-on-primary/75 truncate">Orders, sales, menu and store</p>
                         </div>
                         <button
@@ -283,7 +283,7 @@ export default function CopilotChat() {
                         )))}
 
                         {loading && !last?.text && (
-                            <div className="flex justify-start" aria-label="Copilot is typing">
+                            <div className="flex justify-start" aria-label="BiteBot is typing">
                                 <div className="px-4 py-3 rounded-xl rounded-bl-sm border flex items-center gap-1.5" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                                     {[0, 150, 300].map((d) => (
                                         <span key={d} className="w-1.5 h-1.5 rounded-full motion-safe:animate-bounce" style={{ background: ACCENT, animationDelay: `${d}ms` }} />
@@ -327,7 +327,7 @@ export default function CopilotChat() {
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder={listening ? "Listening… speak in English or Hinglish" : "Ask about orders or sales"}
-                                aria-label="Message Copilot"
+                                aria-label="Message BiteBot"
                                 disabled={loading}
                                 className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-gray-400 disabled:opacity-60"
                                 style={{ color: 'var(--color-text-main)' }}

@@ -491,7 +491,7 @@ const CopilotChat = asyncHandler(async (req, res) => {
         hour12: false,
     });
 
-    const systemInstruction = `You are "Copilot", an intelligent and professional operations assistant built into the LNM Bytes canteen owner dashboard.
+    const systemInstruction = `You are "BiteBot", an intelligent and professional operations assistant built into the LNM Bytes canteen owner dashboard.
 You assist canteen owners and managers in overseeing store operations, real-time inventory availability, pricing, order queues, and revenue analytics.
 Current time at campus (IST): ${istNow}.
 

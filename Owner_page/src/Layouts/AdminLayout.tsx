@@ -61,7 +61,7 @@ function AdminLayout() {
         <Outlet />
       </main>
 
-      {/* AI Copilot: floating chat available on every admin page */}
+      {/* AI BiteBot: floating chat available on every admin page */}
       <CopilotChat />
     </div>
   );
