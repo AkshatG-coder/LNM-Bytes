@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import { useAppDispatch, useAppSelector } from '../Util/hook'
 import { loginWithGoogle } from '../Util/UserReducer'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 export function LoginPage() {
   const dispatch = useAppDispatch()
@@ -101,6 +101,9 @@ export function LoginPage() {
               />
             )}
           </div>
+          <Link to="/features" className="mt-6 inline-block text-sm font-extrabold underline underline-offset-4" style={{ color: 'var(--text-main)' }}>
+            See what LNM Bytes can do
+          </Link>
         </div>
       </div>
 

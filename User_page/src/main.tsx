@@ -13,6 +13,7 @@ import ErrorPage from './Components/Error_Page.tsx'
 import LoginPage from './Components/LoginPage.tsx'
 import MyOrders from './Components/MyOrders.tsx'
 import Wrapped from './Components/Wrapped'
+import Features from './Components/Features'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { registerServiceWorker } from './Util/pushClient.ts'
 
@@ -32,6 +33,10 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/features",
+    element: <Features />,
   },
   {
     path: "/",

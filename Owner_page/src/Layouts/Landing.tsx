@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { Sun, Moon } from 'lucide-react';
@@ -310,6 +310,7 @@ function Landing(): React.JSX.Element {
           <TokenMark size={56} />
           <h1 className="mt-4 text-4xl font-extrabold tracking-tight">Partner portal</h1>
           <p className="mt-1.5 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>Run your canteen on LNM Bytes</p>
+          <Link to="/features" className="mt-3 text-sm font-extrabold underline underline-offset-4">See what you can do</Link>
         </div>
 
         {/* Card */}

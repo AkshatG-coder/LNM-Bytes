@@ -8,6 +8,7 @@ import DailySales from "./Layouts/DailySales";
 import ShopSettings from "./Layouts/ShopSettings";
 import SuperAdminLayout from "./Layouts/SuperAdminLayout";
 import QRScanner from "./Layouts/QRScanner";
+import Features from "./Layouts/Features";
 
 function App() {
   return (
@@ -15,6 +16,9 @@ function App() {
       <Routes>
         {/* Login / Register */}
         <Route path="/" element={<Landing />} />
+
+        {/* Public features page, for demos */}
+        <Route path="/features" element={<Features />} />
 
         {/* ── Super Admin Portal (standalone, no sidebar nav) ── */}
         <Route path="/superadmin" element={<SuperAdminLayout />} />
