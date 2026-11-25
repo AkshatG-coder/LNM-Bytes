@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 // Renders the small subset of Markdown that Gemini usually returns (bold, bullet and
-// numbered lists, inline code). It builds React elements, never raw HTML, so replies cannot inject markup.
+// number lists, inline code). It builds React elements, never raw HTML, so replies cannot inject markup.
 
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
